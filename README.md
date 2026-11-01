@@ -24,9 +24,9 @@ Oxford Circus to Waterloo, for example, comes out at 8 min 04 s over 3.45 km
 with every algorithm. Contraction Hierarchies finds it after looking at 117
 intersections; Dijkstra looks at 27,278.
 
-> **Status:** milestones 1 to 3 of 6 are done: road graph, travel-time model,
-> Dijkstra, bidirectional search, A\* and Contraction Hierarchies. Traffic and
-> the live map demo are next ([roadmap](#roadmap)).
+> **Status:** milestones 1 to 4 of 6 are done: road graph, four search
+> algorithms, rush-hour traffic and turn costs. The live map demo is next
+> ([roadmap](#roadmap)).
 
 ## How it works
 
@@ -95,7 +95,44 @@ ball of the city. The implementation includes lazy priority updates during
 ordering, bounded witness searches, stall-on-demand at query time, and
 recursive unpacking of shortcuts back into real road segments.
 
-### 4. What the London numbers show
+### 4. Traffic and turns
+
+**Rush hour** (`traffic.py`). The same road has a different speed at 3am and
+8am. Each edge's speed is scaled by a city-wide congestion curve for the hour
+(separate weekday and weekend curves) and by how sensitive that class of road
+is to congestion: arterials lose up to half their speed at the peak,
+residential streets far less, because through-traffic avoids them. So at
+8am the quickest route can leave the main road for back streets, and the
+tests check that it does. The curves are illustrative, shaped after London's
+familiar pattern rather than fitted to measured data; production systems use
+historical and live per-segment speeds from vehicle GPS traces, which would
+slot in here without touching the routing code.
+
+**Turns** (`turns.py`). In a plain road graph, a node is an intersection, so
+the search cannot tell turning right across oncoming traffic from carrying
+straight on. The fix is an **edge-expanded graph**: each node is a directed
+road segment ("I just drove u to v") and each edge is a manoeuvre ("then
+take v to w"), costing the next segment's travel time plus a turn penalty.
+UK defaults make right turns (crossing traffic) dearer than left turns, with
+extra cost for sharp turns, U-turns and traffic lights parsed from OSM. A
+bend in a single road is not a junction, so it costs nothing.
+
+Every algorithm runs on the expanded graph unchanged, Contraction
+Hierarchies included, since it is just another weighted graph. A `Router`
+(`router.py`) builds the right graph for a scenario and maps routes back to
+intersections.
+
+```
+$ python -m fastroute eta <from> <to> --turns
+03:00 weekday, with turn costs    2 min 20 s   1.01 km  reference route
+08:00 weekday, with turn costs    3 min 59 s   0.99 km  different route (30% shared)
+13:00 weekday, with turn costs    3 min 06 s   1.01 km  same route
+17:30 weekday, with turn costs    3 min 50 s   0.99 km  different route (30% shared)
+```
+
+<sub>Synthetic street grid; London output lands with the next data refresh.</sub>
+
+### 5. What the London numbers show
 
 * **Contraction Hierarchies work because real roads are hierarchical.** On a
   uniform synthetic grid the reduction in search work is 24x; on London it
@@ -109,7 +146,7 @@ recursive unpacking of shortcuts back into real road segments.
   Python**, because juggling two frontiers costs interpreter overhead that
   eats most of the saving.
 
-### 5. Measuring fairly
+### 6. Measuring fairly
 
 Benchmarks report **nodes settled** alongside wall-clock time. Settled nodes
 measure the work each algorithm does, independent of language; Python
@@ -133,6 +170,14 @@ python -m fastroute route 51.5154,-0.1410 51.5033,-0.1196
 python -m fastroute route 51.5154,-0.1410 51.5033,-0.1196 -a astar
 
 python -m fastroute bench      # compare all four on random queries
+
+# Rush hour, with turn costs and traffic lights
+python -m fastroute route 51.5154,-0.1410 51.5033,-0.1196 --at 08:30 --turns -a astar
+python -m fastroute eta 51.5154,-0.1410 51.5033,-0.1196 --turns
+
+# Contraction Hierarchies need preprocessing per scenario
+python -m fastroute contract --at 08:30 --turns
+python -m fastroute bench --at 08:30 --turns
 ```
 
 On Windows PowerShell 5, run the commands one per line (it does not support
@@ -152,15 +197,17 @@ Every algorithm is checked for exact agreement with Dijkstra on randomised
 street grids with one-way roads, and Dijkstra itself is checked against
 NetworkX. Targeted cases cover a faster road beating a shorter one, one-way
 loops, parallel edges, unreachable targets, OSM tag parsing, component
-pruning, hierarchy rank invariants, witness behaviour and save/load round
-trips. CI runs lint, formatting and tests on Python 3.10, 3.12 and 3.13.
+pruning, hierarchy rank invariants, witness behaviour, save/load round
+trips, rush-hour route changes, left versus right turn costs (and their swap
+for right-hand traffic), traffic lights, free bends, U-turns, and the
+turn-expanded graph matching the plain one when penalties are zero. CI runs lint, formatting and tests on Python 3.10, 3.12 and 3.13.
 
 ## Roadmap
 
 - [x] **Road graph and Dijkstra:** OSM pipeline, travel-time model, CSR graph, tested baseline
 - [x] **A\* and bidirectional search:** admissible straight-line heuristic, meet-in-the-middle stopping rule
 - [x] **Contraction Hierarchies:** node ordering, witness search, shortcuts, upward query, path unpacking
-- [ ] **Traffic:** time-of-day speed profiles and turn penalties
+- [x] **Traffic and turns:** time-of-day speed profiles, edge-expanded graph with turn and traffic-light costs
 - [ ] **Live demo:** in-browser routing on a map, animating the nodes each algorithm explores
 - [ ] **ETA model:** learning a correction to graph ETAs, the approach used in production ride-hailing
 

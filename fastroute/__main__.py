@@ -13,8 +13,6 @@ import gzip
 import json
 import sys
 import time
-import urllib.parse
-import urllib.request
 from pathlib import Path
 
 # Central London: Paddington and Notting Hill across to Whitechapel,
@@ -22,7 +20,6 @@ from pathlib import Path
 DEFAULT_BBOX = (51.485, -0.205, 51.540, -0.065)
 DEFAULT_RAW = Path("data/raw/central-london.json.gz")
 DEFAULT_NETWORK = Path("data/central-london.npz")
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 
 
 def _parse_point(text: str) -> tuple[float, float]:
@@ -33,19 +30,24 @@ def _parse_point(text: str) -> tuple[float, float]:
     return lat, lon
 
 
+def _require(path: Path, how_to_make: str) -> Path:
+    """Exit with a helpful message if a pipeline step's input is missing."""
+    if not path.exists():
+        raise SystemExit(f"{path} not found. Run `python -m fastroute {how_to_make}` first.")
+    return path
+
+
 def cmd_fetch(args: argparse.Namespace) -> int:
     # Standard library only, so this step runs on any machine with Python.
-    from .overpass import overpass_query
+    from .overpass import OVERPASS_URLS, OverpassError, download, overpass_query
 
-    query = overpass_query(*args.bbox)
-    body = urllib.parse.urlencode({"data": query}).encode()
-    request = urllib.request.Request(
-        args.url, data=body, headers={"User-Agent": "fastroute (github.com/ayqon/fastroute)"}
-    )
-    print(f"Querying Overpass for bbox {args.bbox} ...", file=sys.stderr)
+    urls = [args.url] if args.url else list(OVERPASS_URLS)
+    print(f"Downloading roads in bbox {tuple(args.bbox)} from OpenStreetMap", file=sys.stderr)
     started = time.perf_counter()
-    with urllib.request.urlopen(request, timeout=600) as response:
-        raw = response.read()
+    try:
+        raw = download(overpass_query(*args.bbox), urls)
+    except OverpassError as exc:
+        raise SystemExit(str(exc)) from None
     payload = json.loads(raw)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     with gzip.open(args.out, "wb") as fh:
@@ -63,7 +65,7 @@ def cmd_fetch(args: argparse.Namespace) -> int:
 def cmd_build(args: argparse.Namespace) -> int:
     from .osm import network_from_overpass
 
-    with gzip.open(args.raw, "rb") as fh:
+    with gzip.open(_require(args.raw, "fetch"), "rb") as fh:
         payload = json.load(fh)
     network = network_from_overpass(payload)
     args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -75,7 +77,7 @@ def cmd_build(args: argparse.Namespace) -> int:
 def cmd_info(args: argparse.Namespace) -> int:
     from .graph import Graph, RoadNetwork
 
-    graph = Graph(RoadNetwork.load(args.network))
+    graph = Graph(RoadNetwork.load(_require(args.network, "build")))
     total_km = sum(graph.length_m) / 1000
     print(f"nodes:      {graph.num_nodes:,}")
     print(f"edges:      {graph.num_edges:,}")
@@ -91,9 +93,7 @@ def _load_ch(network_path: Path):
     from .ch import ContractionHierarchy
 
     ch_path = _ch_path(network_path)
-    if not ch_path.exists():
-        raise SystemExit(f"{ch_path} not found: run `python -m fastroute contract` first")
-    return ContractionHierarchy.load(ch_path)
+    return ContractionHierarchy.load(_require(ch_path, "contract"))
 
 
 def _ch_path(network_path: Path) -> Path:
@@ -104,7 +104,7 @@ def cmd_contract(args: argparse.Namespace) -> int:
     from .ch import ContractionHierarchy
     from .graph import Graph, RoadNetwork
 
-    graph = Graph(RoadNetwork.load(args.network))
+    graph = Graph(RoadNetwork.load(_require(args.network, "build")))
 
     def progress(done: int, total: int) -> None:
         print(f"\r  contracted {done:,}/{total:,} nodes", end="", file=sys.stderr, flush=True)
@@ -127,7 +127,7 @@ def cmd_route(args: argparse.Namespace) -> int:
     from .dijkstra import dijkstra
     from .graph import Graph, RoadNetwork
 
-    graph = Graph(RoadNetwork.load(args.network))
+    graph = Graph(RoadNetwork.load(_require(args.network, "build")))
     s = graph.nearest_node(*args.origin)
     t = graph.nearest_node(*args.destination)
     if args.algorithm == "ch":
@@ -165,7 +165,7 @@ def cmd_bench(args: argparse.Namespace) -> int:
         print(f"Synthetic {args.grid}x{args.grid} grid, contracting...", file=sys.stderr)
         ch = ContractionHierarchy.build(graph)
     else:
-        graph = Graph(RoadNetwork.load(args.network))
+        graph = Graph(RoadNetwork.load(_require(args.network, "build")))
         ch = _load_ch(args.network)
     print(
         f"{graph.num_nodes:,} nodes, {graph.num_edges:,} edges, {args.queries} random queries\n",
@@ -190,7 +190,7 @@ def main(argv: list[str] | None = None) -> int:
         metavar=("SOUTH", "WEST", "NORTH", "EAST"),
     )
     p.add_argument("--out", type=Path, default=DEFAULT_RAW)
-    p.add_argument("--url", default=OVERPASS_URL)
+    p.add_argument("--url", help="use only this Overpass server (default: try several)")
     p.set_defaults(func=cmd_fetch)
 
     p = sub.add_parser("build", help="convert raw OSM JSON into a road network")

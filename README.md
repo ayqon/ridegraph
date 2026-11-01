@@ -116,6 +116,10 @@ python -m fastroute route 51.5154,-0.1410 51.5033,-0.1196 -a astar
 python -m fastroute bench      # compare all four on random queries
 ```
 
+On Windows PowerShell 5, run the commands one per line (it does not support
+`&&`). `fetch` uses shared public OpenStreetMap servers that are sometimes
+busy; it retries and falls back across mirrors automatically.
+
 No map data handy? `python -m fastroute bench --grid 120` runs the comparison
 on a synthetic street grid.
 

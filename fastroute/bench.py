@@ -43,7 +43,9 @@ def run(
     *,
     queries: int = 200,
     seed: int = 0,
+    pairs: list[tuple[int, int]] | None = None,
 ) -> list[BenchRow]:
+    """Compare algorithms on ``pairs`` of graph nodes (random pairs by default)."""
     algorithms: dict[str, Callable[[int, int], Route]] = {
         "Dijkstra": lambda s, t: dijkstra(graph, s, t),
         "Bidirectional Dijkstra": lambda s, t: bidirectional_dijkstra(graph, s, t),
@@ -52,10 +54,11 @@ def run(
     if ch is not None:
         algorithms["Contraction Hierarchies"] = ch.query
 
-    rng = random.Random(seed)
-    pairs = [
-        (rng.randrange(graph.num_nodes), rng.randrange(graph.num_nodes)) for _ in range(queries)
-    ]
+    if pairs is None:
+        rng = random.Random(seed)
+        pairs = [
+            (rng.randrange(graph.num_nodes), rng.randrange(graph.num_nodes)) for _ in range(queries)
+        ]
 
     settled: dict[str, list[int]] = {name: [] for name in algorithms}
     timings: dict[str, list[float]] = {name: [] for name in algorithms}

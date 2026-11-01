@@ -87,31 +87,91 @@ def cmd_info(args: argparse.Namespace) -> int:
 
 
 ALGORITHMS = ("ch", "astar", "bidirectional", "dijkstra")
+ETA_TIMES = ("03:00", "07:00", "08:00", "10:00", "13:00", "16:00", "17:30", "19:00", "22:00")
 
 
-def _load_ch(network_path: Path):
+def _add_scenario_args(p: argparse.ArgumentParser) -> None:
+    from .traffic import parse_time
+
+    def time_arg(text: str) -> float:
+        try:
+            return parse_time(text)
+        except ValueError as exc:
+            raise argparse.ArgumentTypeError(str(exc)) from exc
+
+    p.add_argument("--at", type=time_arg, metavar="HH:MM", help="time of day for traffic")
+    p.add_argument("--weekend", action="store_true", help="use the weekend traffic curve")
+    p.add_argument("--turns", action="store_true", help="charge for turns and traffic lights")
+
+
+def _scenario(args: argparse.Namespace):
+    from .router import Scenario
+
+    return Scenario(hour=args.at, weekend=args.weekend, turns=args.turns)
+
+
+def _ch_path(network_path: Path, scenario) -> Path:
+    tag = scenario.file_tag()
+    stem = network_path.with_suffix("")
+    return Path(f"{stem}.{tag}.ch.npz" if tag else f"{stem}.ch.npz")
+
+
+def _load_network(path: Path):
+    from .graph import RoadNetwork
+
+    return RoadNetwork.load(_require(path, "build"))
+
+
+def _load_ch(network_path: Path, scenario):
     from .ch import ContractionHierarchy
 
-    ch_path = _ch_path(network_path)
-    return ContractionHierarchy.load(_require(ch_path, "contract"))
+    path = _ch_path(network_path, scenario)
+    if not path.exists():
+        flags = " ".join(_scenario_flags(scenario))
+        raise SystemExit(
+            f"{path} not found. Run `python -m fastroute contract {flags}`.".replace("  ", " ")
+        )
+    return ContractionHierarchy.load(path)
 
 
-def _ch_path(network_path: Path) -> Path:
-    return network_path.with_suffix(".ch.npz")
+def _scenario_flags(scenario) -> list[str]:
+    flags = []
+    if scenario.hour is not None:
+        h, m = divmod(round(scenario.hour * 60), 60)
+        flags.append(f"--at {h:02d}:{m:02d}")
+    if scenario.weekend:
+        flags.append("--weekend")
+    if scenario.turns:
+        flags.append("--turns")
+    return flags
+
+
+def _format_duration(seconds: float) -> str:
+    minutes, secs = divmod(round(seconds), 60)
+    return f"{minutes} min {secs:02d} s"
+
+
+def _format_manoeuvres(trip) -> str:
+    order = ["right", "left", "sharp right", "sharp left", "u turn", "traffic lights"]
+    parts = [f"{trip.manoeuvres[k]} {k}" for k in order if trip.manoeuvres.get(k)]
+    return ", ".join(parts) if parts else "no turns or lights"
 
 
 def cmd_contract(args: argparse.Namespace) -> int:
     from .ch import ContractionHierarchy
-    from .graph import Graph, RoadNetwork
+    from .router import Router
 
-    graph = Graph(RoadNetwork.load(_require(args.network, "build")))
+    scenario = _scenario(args)
+    router = Router(_load_network(args.network), scenario)
+    graph = router.graph
 
     def progress(done: int, total: int) -> None:
         print(f"\r  contracted {done:,}/{total:,} nodes", end="", file=sys.stderr, flush=True)
 
+    print(f"Contracting for {scenario.label()}", file=sys.stderr)
     ch = ContractionHierarchy.build(graph, progress=progress)
     print(file=sys.stderr)
-    out = _ch_path(args.network)
+    out = _ch_path(args.network, scenario)
     ch.save(out)
     print(
         f"Contracted {graph.num_nodes:,} nodes in {ch.build_seconds:.1f}s, "
@@ -122,56 +182,97 @@ def cmd_contract(args: argparse.Namespace) -> int:
 
 
 def cmd_route(args: argparse.Namespace) -> int:
-    from .astar import astar
-    from .bidirectional import bidirectional_dijkstra
-    from .dijkstra import dijkstra
-    from .graph import Graph, RoadNetwork
+    from .router import Router
 
-    graph = Graph(RoadNetwork.load(_require(args.network, "build")))
-    s = graph.nearest_node(*args.origin)
-    t = graph.nearest_node(*args.destination)
-    if args.algorithm == "ch":
-        search = _load_ch(args.network).query
-    else:
-        fn = {"astar": astar, "bidirectional": bidirectional_dijkstra, "dijkstra": dijkstra}[
-            args.algorithm
-        ]
-
-        def search(a: int, b: int):
-            return fn(graph, a, b)
+    scenario = _scenario(args)
+    router = Router(_load_network(args.network), scenario)
+    ch = _load_ch(args.network, scenario) if args.algorithm == "ch" else None
+    s = router.nearest(*args.origin)
+    t = router.nearest(*args.destination)
 
     started = time.perf_counter()
-    route = search(s, t)
+    trip = router.trip(s, t, args.algorithm, ch)
     elapsed_ms = (time.perf_counter() - started) * 1000
-    if not route.found:
+    if not trip.found:
         print("No route found.")
         return 1
-    km = graph.path_length_m(route.path) / 1000
-    minutes, seconds = divmod(round(route.seconds), 60)
-    print(f"{route.algorithm}: {minutes} min {seconds:02d} s, {km:.2f} km")
-    print(f"  {len(route.path):,} nodes on path, {route.settled:,} settled, {elapsed_ms:.1f} ms")
+    print(
+        f"{trip.algorithm}, {scenario.label()}: "
+        f"{_format_duration(trip.seconds)}, {trip.metres / 1000:.2f} km"
+    )
+    if scenario.turns:
+        print(f"  {_format_manoeuvres(trip)}")
+    print(
+        f"  {len(trip.intersections):,} intersections on route, "
+        f"{trip.settled:,} settled, {elapsed_ms:.1f} ms"
+    )
+    return 0
+
+
+def cmd_eta(args: argparse.Namespace) -> int:
+    from .graph import Graph
+    from .router import Router, Scenario
+    from .traffic import parse_time
+    from .turns import TurnGraph
+
+    network = _load_network(args.network)
+    turn_graph = TurnGraph(network) if args.turns else None
+    lookup = Graph(network)
+    s = lookup.nearest_node(*args.origin)
+    t = lookup.nearest_node(*args.destination)
+
+    first = None
+    rows = []
+    for text in args.times or ETA_TIMES:
+        try:
+            hour = parse_time(text)
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from None
+        scenario = Scenario(hour=hour, weekend=args.weekend, turns=args.turns)
+        router = Router(network, scenario, turn_graph=turn_graph)
+        trip = router.trip(s, t, "bidirectional")
+        if not trip.found:
+            print("No route found.")
+            return 1
+        if first is None:
+            first = trip
+            note = "reference route"
+        elif trip.intersections == first.intersections:
+            note = "same route"
+        else:
+            shared = len(set(trip.intersections) & set(first.intersections))
+            note = f"different route ({shared / len(trip.intersections):.0%} shared)"
+        rows.append((scenario.label(), _format_duration(trip.seconds), trip.metres / 1000, note))
+
+    width = max(len(r[0]) for r in rows)
+    for label, eta, km, note in rows:
+        print(f"{label:<{width}}  {eta:>12}  {km:5.2f} km  {note}")
     return 0
 
 
 def cmd_bench(args: argparse.Namespace) -> int:
     from . import bench
     from .ch import ContractionHierarchy
-    from .graph import Graph, RoadNetwork
+    from .router import Router
 
+    scenario = _scenario(args)
     if args.grid:
         from .synthetic import grid_network
 
-        graph = Graph(grid_network(args.grid, args.grid, seed=args.seed))
+        router = Router(grid_network(args.grid, args.grid, seed=args.seed), scenario)
         print(f"Synthetic {args.grid}x{args.grid} grid, contracting...", file=sys.stderr)
-        ch = ContractionHierarchy.build(graph)
+        ch = ContractionHierarchy.build(router.graph)
     else:
-        graph = Graph(RoadNetwork.load(_require(args.network, "build")))
-        ch = _load_ch(args.network)
+        router = Router(_load_network(args.network), scenario)
+        ch = _load_ch(args.network, scenario)
+    graph = router.graph
     print(
-        f"{graph.num_nodes:,} nodes, {graph.num_edges:,} edges, {args.queries} random queries\n",
+        f"{scenario.label()}: {graph.num_nodes:,} nodes, {graph.num_edges:,} edges, "
+        f"{args.queries} random queries\n",
         file=sys.stderr,
     )
-    print(bench.to_markdown(bench.run(graph, ch, queries=args.queries, seed=args.seed)))
+    pairs = router.random_pairs(args.queries, args.seed)
+    print(bench.to_markdown(bench.run(graph, ch, pairs=pairs)))
     return 0
 
 
@@ -207,10 +308,21 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("destination", type=_parse_point, help="lat,lon")
     p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
     p.add_argument("--algorithm", "-a", choices=ALGORITHMS, default="ch")
+    _add_scenario_args(p)
     p.set_defaults(func=cmd_route)
+
+    p = sub.add_parser("eta", help="how one trip's time and route change through the day")
+    p.add_argument("origin", type=_parse_point, help="lat,lon")
+    p.add_argument("destination", type=_parse_point, help="lat,lon")
+    p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
+    p.add_argument("--times", nargs="+", metavar="HH:MM", help="times of day to compare")
+    p.add_argument("--weekend", action="store_true")
+    p.add_argument("--turns", action="store_true")
+    p.set_defaults(func=cmd_eta)
 
     p = sub.add_parser("contract", help="preprocess the network into a Contraction Hierarchy")
     p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
+    _add_scenario_args(p)
     p.set_defaults(func=cmd_contract)
 
     p = sub.add_parser("bench", help="compare all algorithms on random queries")
@@ -218,6 +330,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--grid", type=int, help="use a synthetic N x N grid instead")
     p.add_argument("--queries", type=int, default=200)
     p.add_argument("--seed", type=int, default=0)
+    _add_scenario_args(p)
     p.set_defaults(func=cmd_bench)
 
     args = parser.parse_args(argv)

@@ -112,7 +112,17 @@ def free_flow_cost(network: RoadNetwork) -> np.ndarray:
 class Graph:
     """Directed graph in CSR form with travel-time weights in seconds."""
 
-    __slots__ = ("network", "first_out", "head", "weight", "length_m", "max_speed_mps")
+    __slots__ = (
+        "network",
+        "first_out",
+        "head",
+        "weight",
+        "length_m",
+        "first_in",
+        "tail",
+        "in_weight",
+        "max_speed_mps",
+    )
 
     def __init__(self, network: RoadNetwork, cost: EdgeCost = free_flow_cost) -> None:
         weights = np.asarray(cost(network), dtype=np.float64)
@@ -133,6 +143,15 @@ class Graph:
         self.head: list[int] = network.dst[order].tolist()
         self.weight: list[float] = weights[order].tolist()
         self.length_m: list[float] = network.length_m[order].astype(np.float64).tolist()
+
+        # The same edges indexed by their head, for searches that run backwards
+        # from the target: incoming edges of v are tail[first_in[v]:first_in[v + 1]].
+        rorder = np.argsort(network.dst, kind="stable")
+        first_in = np.zeros(network.num_nodes + 1, dtype=np.int64)
+        np.cumsum(np.bincount(network.dst, minlength=network.num_nodes), out=first_in[1:])
+        self.first_in: list[int] = first_in.tolist()
+        self.tail: list[int] = network.src[rorder].tolist()
+        self.in_weight: list[float] = weights[rorder].tolist()
 
         # Fastest speed anywhere in the graph, which is what keeps A*'s
         # straight-line heuristic admissible.

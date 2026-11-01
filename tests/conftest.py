@@ -7,7 +7,7 @@ import random
 import numpy as np
 import pytest
 
-from fastroute.graph import RoadNetwork
+from fastroute.graph import RoadNetwork, haversine_m
 from fastroute.speeds import CLASS_INDEX
 
 
@@ -50,7 +50,9 @@ def grid_network(rows: int, cols: int, seed: int = 0, oneway_share: float = 0.2)
     src, dst, length, cls = [], [], [], []
 
     def add(u: int, v: int) -> None:
-        seg = 100 * rng.uniform(0.8, 1.3)
+        # Roads bend, so a segment is at least as long as the straight line
+        # between its ends; never shorter, or geometric heuristics break.
+        seg = haversine_m(*coords[u], *coords[v]) * rng.uniform(1.0, 1.3)
         kind = CLASS_INDEX[rng.choice(classes)]
         directions = [(u, v), (v, u)]
         if rng.random() < oneway_share:

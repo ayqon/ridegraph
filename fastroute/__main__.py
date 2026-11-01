@@ -105,7 +105,9 @@ def cmd_route(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="fastroute", description="Quickest-route search on real road networks.")
+    parser = argparse.ArgumentParser(
+        prog="fastroute", description="Quickest-route search on real road networks."
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("fetch", help="download drivable roads from OpenStreetMap")

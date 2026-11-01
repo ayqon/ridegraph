@@ -10,14 +10,19 @@ implementation.
 
 | Algorithm | Nodes settled (mean) | vs Dijkstra | Query time (median) | vs Dijkstra |
 |---|---:|---:|---:|---:|
-| Dijkstra | 7,752 | 1.0x | 9.67 ms | 1.0x |
-| Bidirectional Dijkstra | 5,222 | 1.5x | 9.13 ms | 0.9x |
-| A\* | 3,476 | 2.2x | 6.09 ms | 1.2x |
-| **Contraction Hierarchies** | **318** | **24.3x** | **2.42 ms** | **4.1x** |
+| Dijkstra | 37,822 | 1.0x | 44.94 ms | 1.0x |
+| Bidirectional Dijkstra | 24,840 | 1.5x | 39.44 ms | 1.0x |
+| A\* | 23,705 | 1.6x | 40.62 ms | 0.9x |
+| **Contraction Hierarchies** | **97** | **389.5x** | **1.21 ms** | **38.0x** |
 
-<sub>100 random queries on a 14,400-node synthetic street grid
-(`python -m fastroute bench --grid 120 --queries 100`). London results land
-with the next milestone.</sub>
+<sub>200 random queries on central London (72,636 intersections, 127,286
+directed road segments, Paddington to Whitechapel, King's Cross to Vauxhall),
+every answer verified against Dijkstra. Reproduce with
+`python -m fastroute bench`.</sub>
+
+Oxford Circus to Waterloo, for example, comes out at 8 min 04 s over 3.45 km
+with every algorithm. Contraction Hierarchies finds it after looking at 117
+intersections; Dijkstra looks at 27,278.
 
 > **Status:** milestones 1 to 3 of 6 are done: road graph, travel-time model,
 > Dijkstra, bidirectional search, A\* and Contraction Hierarchies. Traffic and
@@ -90,7 +95,21 @@ ball of the city. The implementation includes lazy priority updates during
 ordering, bounded witness searches, stall-on-demand at query time, and
 recursive unpacking of shortcuts back into real road segments.
 
-### 4. Measuring fairly
+### 4. What the London numbers show
+
+* **Contraction Hierarchies work because real roads are hierarchical.** On a
+  uniform synthetic grid the reduction in search work is 24x; on London it
+  is 389x, with preprocessing adding fewer shortcuts (121k) than the map has
+  road segments. Main roads naturally end up at the top of the ranking.
+* **A\* barely helps in a city.** Its estimate assumes the fastest road
+  speed in a straight line, but London's average route speed is about half
+  of that, so the search still covers a wide ellipse. This is why production
+  engines rely on preprocessing rather than on geometric heuristics.
+* **Bidirectional search halves the work in theory but not the time in
+  Python**, because juggling two frontiers costs interpreter overhead that
+  eats most of the saving.
+
+### 5. Measuring fairly
 
 Benchmarks report **nodes settled** alongside wall-clock time. Settled nodes
 measure the work each algorithm does, independent of language; Python

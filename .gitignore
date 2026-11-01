@@ -1,0 +1,10 @@
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
+build/
+dist/
+
+# Raw OSM downloads are large and reproducible with `python -m fastroute fetch`.
+data/raw/

@@ -24,7 +24,7 @@ from pathlib import Path
 
 import numpy as np
 
-from .speeds import ROAD_CLASSES, free_flow_speed_kph, travel_time_s
+from .speeds import DEFAULT_SPEED_KPH, LIMIT_REALISATION, ROAD_CLASSES
 
 EARTH_RADIUS_M = 6_371_008.8
 
@@ -43,7 +43,8 @@ class RoadNetwork:
     """Raw directed road segments, before any cost model is applied.
 
     Two-way streets appear as two edges, one per direction.
-    ``maxspeed_kph`` is NaN where OSM has no usable limit.
+    ``maxspeed_kph`` is NaN where OSM has no usable limit. ``traffic_signals``
+    marks nodes with lights; networks saved before it existed load as all-False.
     """
 
     node_ids: np.ndarray  # int64, OSM node ids
@@ -54,9 +55,14 @@ class RoadNetwork:
     length_m: np.ndarray  # float32
     road_class: np.ndarray  # int8, index into ROAD_CLASSES
     maxspeed_kph: np.ndarray  # float32
+    traffic_signals: np.ndarray | None = None  # bool per node
 
     def __post_init__(self) -> None:
         n, m = len(self.node_ids), len(self.src)
+        if self.traffic_signals is None:
+            object.__setattr__(self, "traffic_signals", np.zeros(n, dtype=bool))
+        elif len(self.traffic_signals) != n:
+            raise ValueError("traffic_signals must have one entry per node")
         if not (len(self.lat) == len(self.lon) == n):
             raise ValueError("node arrays must have equal length")
         for name in ("dst", "length_m", "road_class", "maxspeed_kph"):
@@ -86,6 +92,7 @@ class RoadNetwork:
             length_m=self.length_m,
             road_class=self.road_class,
             maxspeed_kph=self.maxspeed_kph,
+            traffic_signals=self.traffic_signals,
         )
 
     @classmethod
@@ -97,16 +104,17 @@ class RoadNetwork:
 EdgeCost = Callable[[RoadNetwork], np.ndarray]
 
 
+def free_flow_speeds_kph(network: RoadNetwork) -> np.ndarray:
+    """Free-flow speed per edge, vectorised (same rule as ``speeds.free_flow_speed_kph``)."""
+    defaults = np.array([DEFAULT_SPEED_KPH[c] for c in ROAD_CLASSES], dtype=np.float64)
+    limits = network.maxspeed_kph.astype(np.float64)
+    from_limit = np.maximum(5.0, limits * LIMIT_REALISATION)
+    return np.where(np.isnan(limits), defaults[network.road_class], from_limit)
+
+
 def free_flow_cost(network: RoadNetwork) -> np.ndarray:
     """Seconds per edge at free-flow speed (no traffic)."""
-    costs = np.empty(network.num_edges, dtype=np.float64)
-    for i in range(network.num_edges):
-        limit = float(network.maxspeed_kph[i])
-        speed = free_flow_speed_kph(
-            ROAD_CLASSES[network.road_class[i]], None if math.isnan(limit) else limit
-        )
-        costs[i] = travel_time_s(float(network.length_m[i]), speed)
-    return costs
+    return network.length_m.astype(np.float64) / (free_flow_speeds_kph(network) / 3.6)
 
 
 class Graph:

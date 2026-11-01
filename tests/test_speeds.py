@@ -46,3 +46,24 @@ def test_posted_limit_is_discounted() -> None:
 
 def test_travel_time() -> None:
     assert travel_time_s(1000, 36) == pytest.approx(100)
+
+
+def test_vectorised_speeds_match_scalar_rule() -> None:
+    import math
+
+    import numpy as np
+
+    from fastroute.graph import free_flow_speeds_kph
+    from fastroute.speeds import ROAD_CLASSES
+    from fastroute.synthetic import grid_network
+
+    network = grid_network(8, 8, seed=1)
+    limits = np.where(np.arange(network.num_edges) % 3 == 0, 48.0, np.nan).astype(np.float32)
+    network = type(network)(**{**network.__dict__, "maxspeed_kph": limits})
+    vector = free_flow_speeds_kph(network)
+    for i in range(network.num_edges):
+        limit = float(limits[i])
+        expected = free_flow_speed_kph(
+            ROAD_CLASSES[network.road_class[i]], None if math.isnan(limit) else limit
+        )
+        assert vector[i] == pytest.approx(expected)

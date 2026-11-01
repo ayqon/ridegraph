@@ -44,6 +44,11 @@ def is_drivable(tags: Mapping[str, str]) -> bool:
     return tags.get("oneway") not in _ONEWAY_SKIP
 
 
+def has_traffic_signals(tags: Mapping[str, str]) -> bool:
+    """Lights a car must stop at: junction signals or signalled pedestrian crossings."""
+    return tags.get("highway") == "traffic_signals" or tags.get("crossing") == "traffic_signals"
+
+
 def directions(tags: Mapping[str, str]) -> tuple[bool, bool]:
     """``(forward, backward)``: which ways along the node list a car may travel."""
     oneway = tags.get("oneway", "").lower()
@@ -64,10 +69,13 @@ def network_from_overpass(
     """Build a ``RoadNetwork`` from an Overpass JSON response."""
     elements: Iterable[Mapping[str, Any]] = payload.get("elements", [])
     coords: dict[int, tuple[float, float]] = {}
+    signals: set[int] = set()
     ways: list[Mapping[str, Any]] = []
     for el in elements:
         if el.get("type") == "node":
             coords[int(el["id"])] = (float(el["lat"]), float(el["lon"]))
+            if has_traffic_signals(el.get("tags", {})):
+                signals.add(int(el["id"]))
         elif el.get("type") == "way" and is_drivable(el.get("tags", {})):
             ways.append(el)
 
@@ -118,6 +126,9 @@ def network_from_overpass(
         length_m=np.array(length, dtype=np.float32),
         road_class=np.array(road_class, dtype=np.int8),
         maxspeed_kph=np.array(maxspeed, dtype=np.float32),
+        traffic_signals=np.fromiter(
+            (i in signals for i in ids.tolist()), dtype=bool, count=len(ids)
+        ),
     )
     return keep_largest_scc(network) if largest_component else network
 
@@ -192,4 +203,5 @@ def keep_largest_scc(network: RoadNetwork) -> RoadNetwork:
         length_m=network.length_m[edge_keep],
         road_class=network.road_class[edge_keep],
         maxspeed_kph=network.maxspeed_kph[edge_keep],
+        traffic_signals=network.traffic_signals[keep],
     )

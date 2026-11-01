@@ -84,15 +84,64 @@ def cmd_info(args: argparse.Namespace) -> int:
     return 0
 
 
+ALGORITHMS = ("ch", "astar", "bidirectional", "dijkstra")
+
+
+def _load_ch(network_path: Path):
+    from .ch import ContractionHierarchy
+
+    ch_path = _ch_path(network_path)
+    if not ch_path.exists():
+        raise SystemExit(f"{ch_path} not found: run `python -m fastroute contract` first")
+    return ContractionHierarchy.load(ch_path)
+
+
+def _ch_path(network_path: Path) -> Path:
+    return network_path.with_suffix(".ch.npz")
+
+
+def cmd_contract(args: argparse.Namespace) -> int:
+    from .ch import ContractionHierarchy
+    from .graph import Graph, RoadNetwork
+
+    graph = Graph(RoadNetwork.load(args.network))
+
+    def progress(done: int, total: int) -> None:
+        print(f"\r  contracted {done:,}/{total:,} nodes", end="", file=sys.stderr, flush=True)
+
+    ch = ContractionHierarchy.build(graph, progress=progress)
+    print(file=sys.stderr)
+    out = _ch_path(args.network)
+    ch.save(out)
+    print(
+        f"Contracted {graph.num_nodes:,} nodes in {ch.build_seconds:.1f}s, "
+        f"{ch.num_shortcuts:,} shortcuts ({ch.num_shortcuts / graph.num_edges:.2f}x original "
+        f"edges) -> {out}"
+    )
+    return 0
+
+
 def cmd_route(args: argparse.Namespace) -> int:
+    from .astar import astar
+    from .bidirectional import bidirectional_dijkstra
     from .dijkstra import dijkstra
     from .graph import Graph, RoadNetwork
 
     graph = Graph(RoadNetwork.load(args.network))
     s = graph.nearest_node(*args.origin)
     t = graph.nearest_node(*args.destination)
+    if args.algorithm == "ch":
+        search = _load_ch(args.network).query
+    else:
+        fn = {"astar": astar, "bidirectional": bidirectional_dijkstra, "dijkstra": dijkstra}[
+            args.algorithm
+        ]
+
+        def search(a: int, b: int):
+            return fn(graph, a, b)
+
     started = time.perf_counter()
-    route = dijkstra(graph, s, t)
+    route = search(s, t)
     elapsed_ms = (time.perf_counter() - started) * 1000
     if not route.found:
         print("No route found.")
@@ -101,6 +150,28 @@ def cmd_route(args: argparse.Namespace) -> int:
     minutes, seconds = divmod(round(route.seconds), 60)
     print(f"{route.algorithm}: {minutes} min {seconds:02d} s, {km:.2f} km")
     print(f"  {len(route.path):,} nodes on path, {route.settled:,} settled, {elapsed_ms:.1f} ms")
+    return 0
+
+
+def cmd_bench(args: argparse.Namespace) -> int:
+    from . import bench
+    from .ch import ContractionHierarchy
+    from .graph import Graph, RoadNetwork
+
+    if args.grid:
+        from .synthetic import grid_network
+
+        graph = Graph(grid_network(args.grid, args.grid, seed=args.seed))
+        print(f"Synthetic {args.grid}x{args.grid} grid, contracting...", file=sys.stderr)
+        ch = ContractionHierarchy.build(graph)
+    else:
+        graph = Graph(RoadNetwork.load(args.network))
+        ch = _load_ch(args.network)
+    print(
+        f"{graph.num_nodes:,} nodes, {graph.num_edges:,} edges, {args.queries} random queries\n",
+        file=sys.stderr,
+    )
+    print(bench.to_markdown(bench.run(graph, ch, queries=args.queries, seed=args.seed)))
     return 0
 
 
@@ -135,7 +206,19 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("origin", type=_parse_point, help="lat,lon")
     p.add_argument("destination", type=_parse_point, help="lat,lon")
     p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
+    p.add_argument("--algorithm", "-a", choices=ALGORITHMS, default="ch")
     p.set_defaults(func=cmd_route)
+
+    p = sub.add_parser("contract", help="preprocess the network into a Contraction Hierarchy")
+    p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
+    p.set_defaults(func=cmd_contract)
+
+    p = sub.add_parser("bench", help="compare all algorithms on random queries")
+    p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
+    p.add_argument("--grid", type=int, help="use a synthetic N x N grid instead")
+    p.add_argument("--queries", type=int, default=200)
+    p.add_argument("--seed", type=int, default=0)
+    p.set_defaults(func=cmd_bench)
 
     args = parser.parse_args(argv)
     return args.func(args)

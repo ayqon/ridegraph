@@ -149,6 +149,7 @@ def export(
     raw: dict | None = None,
     name: str = "Central London",
     eta_trips: int = 0,
+    dispatch_days: int = 0,
     presets: tuple[Preset, ...] = PRESETS,
     log: Callable[[str], None] = lambda msg: print(msg, file=sys.stderr),
 ) -> dict[str, object]:
@@ -242,5 +243,52 @@ def export(
             "interval": result.interval,
             "importance": result.importance[:8],
         }
+    if dispatch_days:
+        manifest["dispatch"] = export_dispatch(network, hierarchies, out_dir, dispatch_days, log)
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=1))
     return manifest
+
+
+def export_dispatch(
+    network: RoadNetwork,
+    hierarchies: dict[float, ContractionHierarchy],
+    out_dir: Path,
+    days: int,
+    log: Callable[[str], None],
+) -> dict[str, object]:
+    """Simulate ride dispatch on the morning peak and save a replay for the map."""
+    from .demand import DemandWorld, forecast_markdown, train_forecaster
+    from .dispatch import DispatchConfig, average, compare, replay_json, results_markdown
+
+    started = time.perf_counter()
+    config = DispatchConfig()
+    ch = hierarchies[8.0]  # the morning-peak hierarchy the map also uses
+    world = DemandWorld(network)
+    log("  training the demand forecast")
+    forecast = train_forecaster(world)
+    log(forecast_markdown(forecast.metrics))
+    results = [
+        compare(world, 1000 + k, ch, config, forecast.model_json, history=forecast.historical_mean)
+        for k in range(days)
+    ]
+    summary = average(results)
+    log(f"  dispatch over {days} simulated mornings, {config.drivers} drivers:")
+    log(results_markdown(summary))
+    log(
+        "  repositioning minutes per driver: "
+        + ", ".join(f"{p} {m['repositioning_min_per_driver']:.1f}" for p, m in summary.items())
+    )
+    (out_dir / "dispatch.json").write_text(
+        json.dumps(replay_json(results[0], config), separators=(",", ":"))
+    )
+    log(f"  dispatch export {time.perf_counter() - started:.0f}s")
+    return {
+        "file": "dispatch.json",
+        "preset": "0800",
+        "days": days,
+        "summary": summary,
+        "forecast": forecast.metrics,
+        "centres": [
+            {"name": c.name, "kind": c.kind, "x_km": c.x_km, "y_km": c.y_km} for c in world.centres
+        ],
+    }

@@ -72,10 +72,15 @@ def hungarian(cost: np.ndarray) -> list[tuple[int, int]]:
 
 
 def optimal_matches(cost: np.ndarray, limit: float) -> list[tuple[int, int]]:
-    """Minimum total cost matching that never uses a pair above ``limit``."""
+    """Minimum total cost matching that never uses a pair above ``limit``.
+
+    Pairs over the limit (or infinite) cost ``FORBIDDEN``, so the assignment
+    first matches as many pairs as it can, then minimises their total.
+    """
     cost = np.asarray(cost, dtype=np.float64)
-    allowed = np.where(cost <= limit, cost, FORBIDDEN)
-    return [(i, j) for i, j in hungarian(allowed) if cost[i, j] <= limit]
+    ok = np.isfinite(cost) & (cost <= limit)
+    allowed = np.where(ok, cost, FORBIDDEN)
+    return [(i, j) for i, j in hungarian(allowed) if ok[i, j]]
 
 
 def greedy_matches(cost: np.ndarray, limit: float) -> list[tuple[int, int]]:

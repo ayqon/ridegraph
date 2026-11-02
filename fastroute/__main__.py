@@ -287,7 +287,14 @@ def cmd_export_web(args: argparse.Namespace) -> int:
     else:
         print(f"{args.raw} not found; exporting without rivers", file=sys.stderr)
     print(f"Exporting {network.num_nodes:,}-node network to {args.out}", file=sys.stderr)
-    export(network, args.out, raw=raw, name=args.name, eta_trips=args.eta_trips)
+    export(
+        network,
+        args.out,
+        raw=raw,
+        name=args.name,
+        eta_trips=args.eta_trips,
+        dispatch_days=args.dispatch_days,
+    )
     return 0
 
 
@@ -317,6 +324,37 @@ def cmd_eta_train(args: argparse.Namespace) -> int:
     if args.out:
         args.out.write_text(json.dumps(result.model_json, separators=(",", ":")))
         print(f"\nSaved model to {args.out}", file=sys.stderr)
+    return 0
+
+
+def cmd_dispatch(args: argparse.Namespace) -> int:
+    from .ch import ContractionHierarchy
+    from .demand import DemandWorld, forecast_markdown, train_forecaster
+    from .dispatch import DispatchConfig, average, compare, results_markdown
+    from .graph import csr_sorted
+    from .router import Router, Scenario
+
+    network = csr_sorted(_load_network(args.network))
+    config = DispatchConfig(drivers=args.drivers, start_hour=args.start, hours=args.hours)
+    print("Building the hierarchy and training the demand forecast...", file=sys.stderr)
+    ch = ContractionHierarchy.build(Router(network, Scenario(hour=args.start + 1)).graph)
+    world = DemandWorld(network, peak_per_min=args.demand)
+    forecast = train_forecaster(world)
+    print("Demand forecast on held-out days:\n" + forecast_markdown(forecast.metrics) + "\n")
+    results = [
+        compare(
+            world,
+            1000 + k,
+            ch,
+            config,
+            forecast.model_json,
+            history=forecast.historical_mean,
+            log=lambda m: print(m, file=sys.stderr),
+        )
+        for k in range(args.days)
+    ]
+    print(f"Dispatch, {args.drivers} drivers, averaged over {args.days} simulated mornings:")
+    print(results_markdown(average(results)))
     return 0
 
 
@@ -384,6 +422,15 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--out", type=Path, help="save the gradient-boosted model as JSON")
     p.set_defaults(func=cmd_eta_train)
 
+    p = sub.add_parser("dispatch", help="simulate ride dispatch and compare policies")
+    p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
+    p.add_argument("--drivers", type=int, default=115)
+    p.add_argument("--demand", type=float, default=4.0, help="peak ride requests per minute")
+    p.add_argument("--start", type=float, default=7.0, help="hour the simulated window starts")
+    p.add_argument("--hours", type=float, default=3.0)
+    p.add_argument("--days", type=int, default=6, help="simulated mornings to average over")
+    p.set_defaults(func=cmd_dispatch)
+
     p = sub.add_parser("export-web", help="export graph and hierarchies for the map demo")
     p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
     p.add_argument("--out", type=Path, default=Path("web/data"))
@@ -393,6 +440,12 @@ def main(argv: list[str] | None = None) -> int:
         type=int,
         default=20_000,
         help="simulated trips to train the ETA model on (0 to skip; needs scikit-learn)",
+    )
+    p.add_argument(
+        "--dispatch-days",
+        type=int,
+        default=6,
+        help="simulated mornings for the dispatch comparison (0 to skip; needs scikit-learn)",
     )
     p.add_argument("--name", default="Central London")
     p.set_defaults(func=cmd_export_web)

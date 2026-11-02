@@ -184,6 +184,24 @@ export class Atlas {
     this.invalidate();
   }
 
+  /** Frame a set of junctions, e.g. a trip on a small screen. */
+  fitNodes(nodes, pad = 48) {
+    if (!nodes.length) return;
+    let x0 = Infinity;
+    let x1 = -Infinity;
+    let y0 = Infinity;
+    let y1 = -Infinity;
+    for (const i of nodes) {
+      x0 = Math.min(x0, this.X[i]);
+      x1 = Math.max(x1, this.X[i]);
+      y0 = Math.min(y0, this.Y[i]);
+      y1 = Math.max(y1, this.Y[i]);
+    }
+    const scale = Math.min((this.width - 2 * pad) / Math.max(x1 - x0, 1), (this.height - 2 * pad) / Math.max(y1 - y0, 1));
+    this.view = { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, scale: Math.min(this.maxScale, Math.max(this.minScale, scale)) };
+    this.invalidate();
+  }
+
   // ------------------------------------------------------------- interaction
 
   on(event, fn) {

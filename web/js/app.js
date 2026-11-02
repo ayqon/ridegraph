@@ -503,6 +503,11 @@ async function main() {
   placePins();
   drawRulers();
   run({ animate: true });
+  // On a phone the whole city is too small to read; open on the trip instead.
+  if (atlas.width < 700 && state.results) {
+    const r = state.results[state.method];
+    if (r?.found) atlas.fitNodes(r.junctions, 56);
+  }
   document.body.dataset.ready = "true";
   window.fastroute = { engine, atlas, state }; // for debugging and automated checks
 }

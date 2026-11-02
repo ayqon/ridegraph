@@ -1,16 +1,24 @@
 # fastroute
 
-Quickest-route search on a real road network, built from first principles.
+Quickest-route search and learned arrival times on a real road network,
+built from first principles.
 
 **[Try the live map →](https://ayqon.github.io/fastroute/)** Click two points in
 central London, pick a time of day, and watch how much of the city each
-algorithm searches before it finds the route.
+algorithm searches before it finds the route, then compare the router's ETA
+with a machine-learned one.
 
-Ride-hailing and maps apps answer "what is the fastest way from A to B?"
-millions of times a second. This project rebuilds that core on OpenStreetMap
-data for central London: the routing algorithms are implemented by hand, not
-called from a library, and every one is tested against a reference
-implementation.
+Ride-hailing and maps apps answer "what is the fastest way from A to B, and
+when will I get there?" millions of times a second. This project rebuilds both
+halves on OpenStreetMap data for central London:
+
+* **Routing.** Dijkstra, bidirectional search, A\* and Contraction
+  Hierarchies, implemented by hand rather than called from a library, with
+  rush-hour traffic and turn costs, every one tested against a reference.
+* **Learned ETA.** The approach behind Uber's DeepETA: keep the routing
+  engine, and train a model on observed trips to correct its estimate.
+  Gradient-boosted trees cut the error on held-out London trips from 64% to
+  8%, and run live in the browser.
 
 | Algorithm | Nodes settled (mean) | vs Dijkstra | Query time (median) | vs Dijkstra |
 |---|---:|---:|---:|---:|
@@ -28,9 +36,17 @@ Oxford Circus to Waterloo, for example, comes out at 8 min 04 s over 3.45 km
 with every algorithm. Contraction Hierarchies finds it after looking at 117
 intersections; Dijkstra looks at 27,278.
 
-> **Status:** milestones 1 to 5 of 6 are done: road graph, four search
-> algorithms, rush-hour traffic and turn costs, and the live map. The ETA
-> model is next ([roadmap](#roadmap)).
+| ETA model, on 4,000 held-out London trips | Mean abs. error | 90th pct. error | Within 10% |
+|---|---:|---:|---:|
+| Router alone | 64.3% | 74.0% | 0% |
+| Router × one global factor | 18.8% | 39.5% | 34% |
+| Ridge regression | 10.8% | 23.0% | 58% |
+| Neural network (MLP, 64×64) | 8.8% | 18.5% | 68% |
+| **Gradient-boosted trees** | **8.1%** | **16.9%** | **72%** |
+
+<sub>Trained on 16,000 of 20,000 simulated trips; see
+[the learned ETA](#5-the-learned-eta) for how the trips are generated and
+why. Reproduce with `python -m fastroute eta-train`.</sub>
 
 ## How it works
 
@@ -136,7 +152,51 @@ $ python -m fastroute eta <from> <to> --turns
 
 <sub>Synthetic street grid; London output lands with the next data refresh.</sub>
 
-### 5. The live map
+### 5. The learned ETA
+
+The router's estimate is only as good as its model of road speeds. It cannot
+know that lights on a particular corridor hold you for half a minute at
+8:30, that one junction always queues, or that the evening peak arrives later
+than the timetable. Production ride-hailing systems therefore keep the
+routing engine and learn the **residual**: given a route and a moment, how
+far off will the engine be? `fastroute/eta.py` follows that design.
+
+**Features** are things a production system knows when the trip is
+requested: the router's ETA, route length, straight-line distance and
+detour, the share of the route on main roads, B roads and side streets, the
+number of left, right, sharp and U-turns and of traffic lights on the route,
+time of day (as a point on a circle, so 23:59 sits next to 00:00), weekday or
+weekend, and where the route starts, ends and passes through.
+
+**The target** is `log(observed time / router ETA)`, so the model learns a
+multiplicative correction and large and small trips weigh evenly.
+
+**Observed trips.** Real trip logs for London are not public, so the
+pipeline generates them, and it is open about it. A `World` is a hidden
+ground truth that differs from the router the way a real city would:
+congestion hotspots around a few busy junctions, a rush hour that peaks
+later and harder than the router assumes, main roads that clog more than
+modelled, waits at right turns and traffic lights that grow with traffic,
+occasional incidents and day-to-day noise. 20,000 trips between random
+points at random times are routed with Contraction Hierarchies and timed in
+that world. Nothing in the features reads the world directly; the models
+have to infer its effects from routes and outcomes.
+
+**Results** are measured on trips the models never saw (table above). The
+router alone is badly optimistic in central London, mostly because it knows
+nothing about traffic lights, which the gradient-boosted model ranks as its
+most useful feature, followed by route length and time of day. One global
+correction factor helps, a linear model helps more, and both non-linear
+models capture the interactions (lights cost more at peak; hotspots matter
+only when the route passes through them). Gradient-boosted trees win and,
+being a few hundred small trees, are also the easiest to ship.
+
+**In the browser.** The trees export to JSON, and `web/js/eta.js` computes the
+same features and walks the same trees. A test runs it under Node and
+requires its features and predictions to match Python's to nine decimal
+places.
+
+### 6. The live map
 
 The demo in `web/` runs entirely in the browser, with no server:
 
@@ -154,11 +214,22 @@ The demo in `web/` runs entirely in the browser, with no server:
   city while Contraction Hierarchies touches a few hundred junctions
   scattered up the road hierarchy. All four methods run on every trip, with
   junctions examined and query time side by side.
+* **Turn costs on demand.** A switch charges for turns and traffic lights.
+  The browser rebuilds the edge-expanded turn graph from per-manoeuvre turn
+  kinds in the export, numbered exactly as the Python one, and the trip
+  summary lists the right and left turns, U-turns and lights on the route.
+  Contraction Hierarchies are switched off in this mode: an edge-based
+  hierarchy for London would add around 20 MB per time of day, so turn-aware
+  hierarchies live in the Python tool instead.
+* **Learned ETA beside the router's.** Every trip shows both estimates, and
+  a model card shows each model's error on held-out trips and the features
+  the model leans on.
 * **Built and deployed by CI.** On each push, a workflow downloads central
   London from OpenStreetMap (cached between runs), builds the graph,
-  contracts it for each preset and publishes `web/` to GitHub Pages.
+  contracts it for each preset, trains the ETA model and publishes `web/` to
+  GitHub Pages.
 
-### 6. What the London numbers show
+### 7. What the London numbers show
 
 * **Contraction Hierarchies work because real roads are hierarchical.** On a
   uniform synthetic grid the reduction in search work is 24x; on London it
@@ -172,7 +243,7 @@ The demo in `web/` runs entirely in the browser, with no server:
   Python**, because juggling two frontiers costs interpreter overhead that
   eats most of the saving.
 
-### 7. Measuring fairly
+### 8. Measuring fairly
 
 Benchmarks report **nodes settled** alongside wall-clock time. Settled nodes
 measure the work each algorithm does, independent of language; Python
@@ -184,7 +255,7 @@ benchmark run doubles as a correctness check.
 ## Quick start
 
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[dev]"     # or ".[ml]" for just the ETA model extras
 
 python -m fastroute fetch      # download central London from OpenStreetMap
 python -m fastroute build      # turn it into a routing graph
@@ -204,6 +275,9 @@ python -m fastroute eta 51.5154,-0.1410 51.5033,-0.1196 --turns
 # Contraction Hierarchies need preprocessing per scenario
 python -m fastroute contract --at 08:30 --turns
 python -m fastroute bench --at 08:30 --turns
+
+# Simulate trips, train and compare ETA models
+python -m fastroute eta-train --trips 20000 --out data/eta-model.json
 ```
 
 On Windows PowerShell 5, run the commands one per line (it does not support
@@ -233,7 +307,16 @@ loops, parallel edges, unreachable targets, OSM tag parsing, component
 pruning, hierarchy rank invariants, witness behaviour, save/load round
 trips, rush-hour route changes, left versus right turn costs (and their swap
 for right-hand traffic), traffic lights, free bends, U-turns, and the
-turn-expanded graph matching the plain one when penalties are zero. CI runs lint, formatting and tests on Python 3.10, 3.12 and 3.13.
+turn-expanded graph matching the plain one when penalties are zero.
+
+The ETA model has its own checks: features agree with the router's own trip
+times and lengths, the simulated world is reproducible and slower than the
+router at peak, the exported trees reproduce scikit-learn's predictions, and
+the learned model beats both the router and a global factor. Two Node tests
+hold the browser to the Python implementation: all routing algorithms, with
+and without turn costs, and the ETA features and predictions.
+
+CI runs lint, formatting and the full suite on Python 3.10, 3.12 and 3.13.
 
 ## Roadmap
 
@@ -242,7 +325,7 @@ turn-expanded graph matching the plain one when penalties are zero. CI runs lint
 - [x] **Contraction Hierarchies:** node ordering, witness search, shortcuts, upward query, path unpacking
 - [x] **Traffic and turns:** time-of-day speed profiles, edge-expanded graph with turn and traffic-light costs
 - [x] **Live map:** in-browser routing on a street-atlas render of the graph, animating each algorithm's search
-- [ ] **ETA model:** learning a correction to graph ETAs, the approach used in production ride-hailing
+- [x] **Learned ETA:** simulated observed trips, route features, ridge, MLP and gradient-boosted trees, shipped to the browser
 
 ## Data
 

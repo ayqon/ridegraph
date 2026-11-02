@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write # to push the private site-preview branch
   pages: write
   id-token: write
 
@@ -43,15 +43,20 @@ jobs:
       - name: Export graph, hierarchies and learned ETA model for the browser
         run: python -m fastroute export-web --out web/data --eta-trips 20000
 
-      # A plain copy of the built site, so it can be previewed privately
-      # before the repository is public and Pages is switched on.
-      - uses: actions/upload-artifact@v4
-        with:
-          name: site-preview
-          path: |
-            web
-            !web/test
-          retention-days: 14
+      # The built site, data included, on its own branch, so it can be
+      # previewed privately before the repository is public and Pages is on.
+      - name: Save the built site to the site-preview branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          rm -rf /tmp/site && cp -r web /tmp/site && rm -rf /tmp/site/test
+          cd /tmp/site
+          git init -q -b site-preview
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -qm "Site preview built from ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:site-preview
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web

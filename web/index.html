@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>fastroute · Quickest routes across central London</title>
+    <meta
+      name="description"
+      content="Click two points in central London and watch Dijkstra, A*, bidirectional search and Contraction Hierarchies find the quickest route through rush-hour traffic."
+    />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23ffd21f'/%3E%3Cpath d='M7 25 L14 12 L19 18 L25 7' stroke='%23111' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;800&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    />
+    <link rel="stylesheet" href="css/app.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <aside class="cover" aria-label="Route controls">
+        <header class="masthead">
+          <h1 class="wordmark">fastroute</h1>
+          <p class="place" id="place">Central London</p>
+          <p class="lede">
+            Quickest routes over London's real road network, and how much of the city each
+            algorithm searches to find them.
+          </p>
+        </header>
+
+        <section class="trip" aria-live="polite" aria-atomic="true">
+          <p class="trip-eta" id="eta">Loading map…</p>
+          <p class="trip-meta" id="trip-meta">&nbsp;</p>
+        </section>
+
+        <fieldset class="group">
+          <legend>Time of day</legend>
+          <div class="presets" id="presets"></div>
+        </fieldset>
+
+        <fieldset class="group">
+          <legend>
+            Search method
+            <span class="legend-note">junctions examined</span>
+          </legend>
+          <div class="methods" id="methods"></div>
+          <p class="method-note" id="method-note"></p>
+          <button type="button" class="replay" id="replay" disabled>Replay search</button>
+        </fieldset>
+
+        <footer class="colophon">
+          <p>
+            Traffic is a modelled weekday pattern, not live data. Road data ©
+            <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.
+          </p>
+          <p><a href="https://github.com/ayqon/fastroute">How it works, with code and benchmarks</a></p>
+        </footer>
+      </aside>
+
+      <section class="atlas" aria-label="Map of central London">
+        <canvas class="ruler ruler-top" id="ruler-top" aria-hidden="true"></canvas>
+        <canvas class="ruler ruler-left" id="ruler-left" aria-hidden="true"></canvas>
+        <div class="corner" aria-hidden="true"></div>
+        <div class="sheet" id="sheet">
+          <button type="button" class="pin pin-a" id="pin-a" aria-label="Start point A. Use arrow keys to move." hidden>A</button>
+          <button type="button" class="pin pin-b" id="pin-b" aria-label="Destination B. Use arrow keys to move." hidden>B</button>
+          <div class="zoom">
+            <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
+            <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
+          </div>
+          <p class="hint" id="hint">Click to place A, then B. Drag a pin to move it.</p>
+          <div class="key" aria-label="Map key">
+            <span><i class="sw sw-trunk"></i>Primary route</span>
+            <span><i class="sw sw-primary"></i>A road</span>
+            <span><i class="sw sw-secondary"></i>B road</span>
+            <span><i class="dot dot-f"></i>Searched from A</span>
+            <span><i class="dot dot-b"></i>Searched from B</span>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

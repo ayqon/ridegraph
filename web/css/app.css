@@ -1,0 +1,546 @@
+/* fastroute map demo. A street-atlas look: the controls are the atlas cover,
+   the map is a page with its grid letters and numbers around the edge. */
+
+:root {
+  --cover: #ffd21f;
+  --ink: #111111;
+  --ink-soft: #3b3a33;
+  --land: #e5e7e3;
+  --paper: #ffffff;
+  --search-a: #1b3a8c;
+  --search-b: #a3268f;
+  --a-road: #e3404a;
+  --b-road: #f4a524;
+  --primary-route: #3a9d65;
+
+  --display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --body: "Barlow", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+
+  --ruler: 24px;
+  --panel: 380px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--ink);
+  color: var(--ink);
+  font: 400 15px/1.45 var(--body);
+}
+
+a {
+  color: inherit;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: var(--panel) 1fr;
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* ------------------------------------------------------------ cover */
+
+.cover {
+  background: var(--cover);
+  padding: 24px 26px 18px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  border-right: 3px solid var(--ink);
+}
+
+.wordmark {
+  margin: 0;
+  font: 800 68px/0.82 var(--display);
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+.place {
+  margin: 6px 0 0;
+  display: inline-block;
+  background: var(--ink);
+  color: var(--cover);
+  font: 600 15px/1 var(--display);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 6px 9px 5px;
+}
+
+.lede {
+  margin: 12px 0 0;
+  max-width: 34ch;
+  color: var(--ink-soft);
+}
+
+.trip {
+  border: 3px solid var(--ink);
+  background: var(--paper);
+  padding: 12px 14px 10px;
+}
+
+.trip-eta {
+  margin: 0;
+  font: 800 48px/0.95 var(--display);
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.trip-eta small {
+  font-size: 0.5em;
+  font-weight: 600;
+  letter-spacing: 0;
+  margin: 0 0.25em 0 0.05em;
+}
+
+.trip-meta {
+  margin: 8px 0 0;
+  font: 400 13px/1.4 var(--mono);
+  color: var(--ink-soft);
+}
+
+.group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+legend {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  width: 100%;
+  padding: 0 0 8px;
+  font: 600 15px/1 var(--display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.legend-note {
+  font: 400 11px/1 var(--mono);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-soft);
+}
+
+.presets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.preset,
+.method {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+
+.preset input,
+.method input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.preset span {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border: 2px solid var(--ink);
+  padding: 8px 10px 7px;
+  font: 600 16px/1 var(--display);
+  background: transparent;
+}
+
+.preset time {
+  font: 500 12px/1 var(--mono);
+}
+
+.preset input:checked + span {
+  background: var(--ink);
+  color: var(--cover);
+}
+
+.preset input:focus-visible + span,
+.method input:focus-visible + .method-row {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.methods {
+  display: grid;
+  border-top: 2px solid var(--ink);
+}
+
+.method-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 12px;
+  padding: 7px 0 6px;
+  border-bottom: 1px solid rgba(17, 17, 17, 0.35);
+}
+
+.method-name {
+  font: 600 18px/1.1 var(--display);
+}
+
+.method-name::before {
+  content: "";
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 8px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  vertical-align: 1px;
+}
+
+.method input:checked + .method-row .method-name::before {
+  background: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--cover);
+}
+
+.method-count {
+  font: 500 13px/1.3 var(--mono);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.method-bar {
+  grid-column: 1 / -1;
+  height: 6px;
+  background: rgba(17, 17, 17, 0.12);
+  position: relative;
+}
+
+.method-bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  min-width: 2px;
+  background: var(--ink);
+  transition: width 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.method input:not(:checked) + .method-row .method-bar i {
+  background: rgba(17, 17, 17, 0.45);
+}
+
+.method-time {
+  grid-column: 1 / -1;
+  font: 400 11px/1.3 var(--mono);
+  color: var(--ink-soft);
+}
+
+.method-note {
+  margin: 10px 0 0;
+  color: var(--ink-soft);
+}
+
+.replay {
+  margin-top: 12px;
+  width: 100%;
+  border: 0;
+  background: var(--ink);
+  color: var(--cover);
+  font: 600 17px/1 var(--display);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 13px 14px 12px;
+  cursor: pointer;
+}
+
+.replay:hover:not(:disabled) {
+  background: var(--ink-soft);
+}
+
+.replay:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.colophon {
+  margin-top: auto;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+.colophon p {
+  margin: 0 0 6px;
+}
+
+.colophon a {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------ atlas page */
+
+.atlas {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--ruler) 1fr;
+  grid-template-rows: var(--ruler) 1fr;
+  background: var(--ink);
+  min-height: 0;
+}
+
+.ruler {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ruler-top {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.ruler-left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.corner {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.sheet {
+  grid-column: 2;
+  grid-row: 2;
+  position: relative;
+  overflow: hidden;
+  background: var(--land);
+  min-height: 0;
+  touch-action: none;
+}
+
+.sheet canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.atlas-overlay {
+  cursor: crosshair;
+}
+
+.atlas-overlay.is-panning {
+  cursor: grabbing;
+}
+
+.pin {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  width: 30px;
+  height: 30px;
+  margin: -38px 0 0 -15px;
+  border: 0;
+  padding: 0;
+  background: var(--ink);
+  color: var(--cover);
+  font: 800 19px/30px var(--display);
+  cursor: grab;
+  touch-action: none;
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.25);
+}
+
+/* The pin's point: a small square stem down to the exact location. */
+.pin::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 3px;
+  height: 8px;
+  margin-left: -1.5px;
+  background: var(--ink);
+}
+
+.pin-b {
+  background: var(--cover);
+  color: var(--ink);
+  outline: 3px solid var(--ink);
+  outline-offset: -3px;
+}
+
+.pin:active {
+  cursor: grabbing;
+}
+
+.pin:focus-visible {
+  outline: 3px solid var(--search-a);
+  outline-offset: 2px;
+}
+
+.zoom {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  z-index: 3;
+  display: grid;
+  border: 2px solid var(--ink);
+}
+
+.zoom button {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  background: var(--paper);
+  font: 600 22px/1 var(--display);
+  cursor: pointer;
+}
+
+.zoom button + button {
+  border-top: 2px solid var(--ink);
+}
+
+.zoom button:hover {
+  background: var(--cover);
+}
+
+.hint {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  z-index: 2;
+  margin: 0;
+  padding: 7px 10px 6px;
+  background: var(--ink);
+  color: var(--paper);
+  font: 500 13px/1 var(--display);
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+
+.key {
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  max-width: calc(100% - 28px);
+  padding: 8px 11px 7px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 2px solid var(--ink);
+  font: 500 13px/1.2 var(--display);
+  pointer-events: none;
+}
+
+.key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sw {
+  width: 18px;
+  height: 6px;
+  display: inline-block;
+}
+
+.sw-trunk {
+  background: var(--primary-route);
+}
+.sw-primary {
+  background: var(--a-road);
+}
+.sw-secondary {
+  background: var(--b-road);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot-f {
+  background: var(--search-a);
+}
+.dot-b {
+  background: var(--search-b);
+}
+
+.error {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  text-align: center;
+  font: 600 20px/1.3 var(--display);
+}
+
+/* ------------------------------------------------------------ small screens */
+
+@media (max-width: 860px) {
+  .layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: 62vh auto;
+    grid-template-rows: 62dvh auto;
+    height: auto;
+  }
+
+  .atlas {
+    grid-row: 1;
+  }
+
+  .cover {
+    grid-row: 2;
+    border-right: 0;
+    border-top: 3px solid var(--ink);
+    overflow: visible;
+    padding: 20px 16px 20px;
+  }
+
+  .wordmark {
+    font-size: 58px;
+  }
+
+  .lede {
+    max-width: none;
+  }
+
+  .trip-eta {
+    font-size: 44px;
+  }
+
+  .key {
+    display: none;
+  }
+
+  .hint {
+    font-size: 12px;
+    right: 62px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .method-bar i {
+    transition: none;
+  }
+}

@@ -1,0 +1,59 @@
+name: Deploy map demo
+
+on:
+  push:
+    branches: [main]
+    paths: ["web/**", "fastroute/**", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e .
+
+      # Reuse the OpenStreetMap download between deploys so the shared
+      # Overpass servers are only queried when the query itself changes.
+      - name: Restore OpenStreetMap download
+        id: osm
+        uses: actions/cache@v4
+        with:
+          path: data/raw
+          key: osm-central-london-${{ hashFiles('fastroute/overpass.py') }}
+      - name: Download central London
+        if: steps.osm.outputs.cache-hit != 'true'
+        run: python -m fastroute fetch
+
+      - name: Build routing graph
+        run: python -m fastroute build
+      - name: Export graph and hierarchies for the browser
+        run: python -m fastroute export-web --out web/data
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

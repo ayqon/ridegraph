@@ -60,3 +60,17 @@ def test_javascript_engine_matches_python(tmp_path) -> None:
     assert proc.returncode == 0, proc.stdout + proc.stderr
     summary = json.loads(proc.stdout)
     assert summary["checked"] == len(cases) * 4
+
+
+def test_river_lines_are_extracted() -> None:
+    from fastroute.web_export import river_lines
+
+    payload = {
+        "elements": [
+            {"type": "node", "id": 1, "lat": 51.50, "lon": -0.12},
+            {"type": "node", "id": 2, "lat": 51.51, "lon": -0.11},
+            {"type": "way", "id": 9, "nodes": [1, 2], "tags": {"waterway": "river"}},
+            {"type": "way", "id": 8, "nodes": [1, 2], "tags": {"highway": "primary"}},
+        ]
+    }
+    assert river_lines(payload) == [[[51.5, -0.12], [51.51, -0.11]]]

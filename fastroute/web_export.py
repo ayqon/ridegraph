@@ -104,10 +104,32 @@ def ch_arrays(ch: ContractionHierarchy) -> dict[str, np.ndarray]:
     }
 
 
+def river_lines(payload: dict) -> list[list[list[float]]]:
+    """River centrelines from an Overpass response, as ``[[lat, lon], ...]`` polylines."""
+    coords: dict[int, tuple[float, float]] = {}
+    rivers = []
+    for el in payload.get("elements", []):
+        if el.get("type") == "node":
+            coords[int(el["id"])] = (float(el["lat"]), float(el["lon"]))
+        elif el.get("type") == "way" and el.get("tags", {}).get("waterway") == "river":
+            rivers.append(el)
+    lines = []
+    for way in rivers:
+        line = [
+            [round(coords[n][0], 6), round(coords[n][1], 6)]
+            for n in way.get("nodes", [])
+            if n in coords
+        ]
+        if len(line) >= 2:
+            lines.append(line)
+    return lines
+
+
 def export(
     network: RoadNetwork,
     out_dir: Path,
     *,
+    raw: dict | None = None,
     name: str = "Central London",
     presets: tuple[Preset, ...] = PRESETS,
     log: Callable[[str], None] = lambda msg: print(msg, file=sys.stderr),
@@ -158,6 +180,7 @@ def export(
             "sensitivity": list(DEFAULT_PROFILE.sensitivity),
         },
         "graph": {"file": "graph.bin.gz", "arrays": layout},
+        "rivers": river_lines(raw) if raw else [],
         "presets": preset_entries,
     }
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=1))

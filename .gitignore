@@ -8,3 +8,6 @@ dist/
 
 # Raw OSM downloads are large and reproducible with `python -m fastroute fetch`.
 data/raw/
+
+# Built by CI from OpenStreetMap: python -m fastroute export-web
+web/data/

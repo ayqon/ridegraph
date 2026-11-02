@@ -280,8 +280,14 @@ def cmd_export_web(args: argparse.Namespace) -> int:
     from .web_export import export
 
     network = _load_network(args.network)
+    raw = None
+    if args.raw.exists():
+        with gzip.open(args.raw, "rb") as fh:
+            raw = json.load(fh)
+    else:
+        print(f"{args.raw} not found; exporting without rivers", file=sys.stderr)
     print(f"Exporting {network.num_nodes:,}-node network to {args.out}", file=sys.stderr)
-    export(network, args.out, name=args.name)
+    export(network, args.out, raw=raw, name=args.name)
     return 0
 
 
@@ -345,6 +351,7 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("export-web", help="export graph and hierarchies for the map demo")
     p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
     p.add_argument("--out", type=Path, default=Path("web/data"))
+    p.add_argument("--raw", type=Path, default=DEFAULT_RAW, help="raw OSM download, for rivers")
     p.add_argument("--name", default="Central London")
     p.set_defaults(func=cmd_export_web)
 

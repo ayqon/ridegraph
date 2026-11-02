@@ -2,6 +2,10 @@
 
 Quickest-route search on a real road network, built from first principles.
 
+**[Try the live map →](https://ayqon.github.io/fastroute/)** Click two points in
+central London, pick a time of day, and watch how much of the city each
+algorithm searches before it finds the route.
+
 Ride-hailing and maps apps answer "what is the fastest way from A to B?"
 millions of times a second. This project rebuilds that core on OpenStreetMap
 data for central London: the routing algorithms are implemented by hand, not
@@ -24,9 +28,9 @@ Oxford Circus to Waterloo, for example, comes out at 8 min 04 s over 3.45 km
 with every algorithm. Contraction Hierarchies finds it after looking at 117
 intersections; Dijkstra looks at 27,278.
 
-> **Status:** milestones 1 to 4 of 6 are done: road graph, four search
-> algorithms, rush-hour traffic and turn costs. The live map demo is next
-> ([roadmap](#roadmap)).
+> **Status:** milestones 1 to 5 of 6 are done: road graph, four search
+> algorithms, rush-hour traffic and turn costs, and the live map. The ETA
+> model is next ([roadmap](#roadmap)).
 
 ## How it works
 
@@ -132,7 +136,29 @@ $ python -m fastroute eta <from> <to> --turns
 
 <sub>Synthetic street grid; London output lands with the next data refresh.</sub>
 
-### 5. What the London numbers show
+### 5. The live map
+
+The demo in `web/` runs entirely in the browser, with no server:
+
+* **Same data, same answers.** `python -m fastroute export-web` writes the
+  graph and one Contraction Hierarchy per time-of-day preset as compact,
+  gzipped binary arrays. `web/js/engine.js` is a direct port of the four
+  algorithms, and a test runs it under Node and requires exact agreement
+  with the Python router on every preset.
+* **The map is the graph.** Rather than a tile server's picture of London,
+  the page draws the very network being searched, styled like a street
+  atlas: roads coloured by class, the Thames, and a lettered grid so routes
+  read as "5C to 9I".
+* **Search you can see.** Every settled junction lights up its streets in
+  the colour of the side that reached it, so Dijkstra visibly floods the
+  city while Contraction Hierarchies touches a few hundred junctions
+  scattered up the road hierarchy. All four methods run on every trip, with
+  junctions examined and query time side by side.
+* **Built and deployed by CI.** On each push, a workflow downloads central
+  London from OpenStreetMap (cached between runs), builds the graph,
+  contracts it for each preset and publishes `web/` to GitHub Pages.
+
+### 6. What the London numbers show
 
 * **Contraction Hierarchies work because real roads are hierarchical.** On a
   uniform synthetic grid the reduction in search work is 24x; on London it
@@ -146,7 +172,7 @@ $ python -m fastroute eta <from> <to> --turns
   Python**, because juggling two frontiers costs interpreter overhead that
   eats most of the saving.
 
-### 6. Measuring fairly
+### 7. Measuring fairly
 
 Benchmarks report **nodes settled** alongside wall-clock time. Settled nodes
 measure the work each algorithm does, independent of language; Python
@@ -184,6 +210,13 @@ On Windows PowerShell 5, run the commands one per line (it does not support
 `&&`). `fetch` uses shared public OpenStreetMap servers that are sometimes
 busy; it retries and falls back across mirrors automatically.
 
+To run the map locally after `fetch` and `build`:
+
+```bash
+python -m fastroute export-web
+python -m http.server -d web 8000   # then open http://localhost:8000
+```
+
 No map data handy? `python -m fastroute bench --grid 120` runs the comparison
 on a synthetic street grid.
 
@@ -208,7 +241,7 @@ turn-expanded graph matching the plain one when penalties are zero. CI runs lint
 - [x] **A\* and bidirectional search:** admissible straight-line heuristic, meet-in-the-middle stopping rule
 - [x] **Contraction Hierarchies:** node ordering, witness search, shortcuts, upward query, path unpacking
 - [x] **Traffic and turns:** time-of-day speed profiles, edge-expanded graph with turn and traffic-light costs
-- [ ] **Live demo:** in-browser routing on a map, animating the nodes each algorithm explores
+- [x] **Live map:** in-browser routing on a street-atlas render of the graph, animating each algorithm's search
 - [ ] **ETA model:** learning a correction to graph ETAs, the approach used in production ride-hailing
 
 ## Data

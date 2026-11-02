@@ -358,6 +358,52 @@ def cmd_dispatch(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_reach(args: argparse.Namespace) -> int:
+    from .graph import Graph
+    from .reach import reach
+    from .traffic import traffic_cost
+
+    network = _load_network(args.network)
+    times = [args.at if args.at is not None else 8.0, args.compare]
+    print(
+        f"Area {'from which you can reach' if args.arriving else 'reachable from'} "
+        f"{args.point[0]:.4f},{args.point[1]:.4f}:"
+    )
+    header = "          " + "".join(f"{b:>9} min" for b in args.bands)
+    print(header)
+    for hour in times:
+        graph = Graph(network, traffic_cost(hour))
+        origin = graph.nearest_node(*args.point)
+        r = reach(graph, origin, tuple(args.bands), arriving=args.arriving)
+        h, mnt = divmod(round(hour * 60), 60)
+        cells = "".join(f"{a:>9.1f} km²" for a in r.area_km2)
+        print(f"  {h:02d}:{mnt:02d}  {cells}")
+    return 0
+
+
+def cmd_tour(args: argparse.Namespace) -> int:
+    from .ch import ContractionHierarchy
+    from .graph import Graph
+    from .tour import plan
+    from .traffic import traffic_cost
+
+    if len(args.stops) < 3:
+        raise SystemExit("Give a depot and at least two stops.")
+    network = _load_network(args.network)
+    hour = args.at if args.at is not None else 10.0
+    graph = Graph(network, traffic_cost(hour))
+    ch = ContractionHierarchy.build(graph)
+    stops = [graph.nearest_node(*p) for p in args.stops]
+    result = plan(ch, stops, return_to_start=not args.open)
+    print(f"{len(stops) - 1} stops from the depot, {'one way' if args.open else 'round trip'}:")
+    worst = max(result.seconds.values())
+    for name, secs in result.seconds.items():
+        order = " > ".join(str(i) for i in result.orders[name])
+        saving = 100 * (1 - secs / worst)
+        print(f"  {name:<28} {_format_duration(secs):>14}  {saving:4.0f}% shorter   {order}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="fastroute", description="Quickest-route search on real road networks."
@@ -421,6 +467,22 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--out", type=Path, help="save the gradient-boosted model as JSON")
     p.set_defaults(func=cmd_eta_train)
+
+    p = sub.add_parser("reach", help="area reachable within a time budget")
+    p.add_argument("point", type=_parse_point, help="lat,lon")
+    p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
+    p.add_argument("--bands", type=int, nargs="+", default=[10, 20, 30], metavar="MIN")
+    p.add_argument("--arriving", action="store_true", help="journeys into the point")
+    p.add_argument("--compare", type=float, default=3.0, help="hour to compare with")
+    _add_scenario_args(p)
+    p.set_defaults(func=cmd_reach)
+
+    p = sub.add_parser("tour", help="best order to visit several stops")
+    p.add_argument("stops", type=_parse_point, nargs="+", help="lat,lon (depot first)")
+    p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
+    p.add_argument("--open", action="store_true", help="end at the last stop")
+    _add_scenario_args(p)
+    p.set_defaults(func=cmd_tour)
 
     p = sub.add_parser("dispatch", help="simulate ride dispatch and compare policies")
     p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)

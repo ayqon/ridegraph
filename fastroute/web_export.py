@@ -220,6 +220,12 @@ def export(
             f"{best['mape_pct']:.1f}% mean error on held-out trips, "
             f"{time.perf_counter() - started:.0f}s"
         )
+        from .eta import metrics_markdown
+
+        log(metrics_markdown(result.metrics))
+        log(
+            "  most useful features: " + ", ".join(f"{n} {v:.3f}" for n, v in result.importance[:8])
+        )
         manifest["eta"] = {
             "file": "eta-model.json",
             "trips": result.trips,

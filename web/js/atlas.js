@@ -379,6 +379,40 @@ export class Atlas {
     this.drawOverlay();
   }
 
+  /** Grid squares of the map, in world coordinates, with their centres as lat/lon. */
+  gridCells() {
+    const { min, max } = this.bounds;
+    const cells = [];
+    for (let x = min[0]; x < max[0]; x += this.gridStep) {
+      for (let y = max[1]; y > min[1]; y -= this.gridStep) {
+        const x1 = Math.min(x + this.gridStep, max[0]);
+        const y0 = Math.max(y - this.gridStep, min[1]);
+        cells.push({ x0: x, y0, x1, y1: y, centre: this.toLatLon((x + x1) / 2, (y0 + y) / 2) });
+      }
+    }
+    return cells;
+  }
+
+  /** Shade grid squares by value (null clears). Darker means slower. */
+  setHeat(cells) {
+    this.heat = cells;
+    this.drawOverlay();
+  }
+
+  drawHeat(ctx) {
+    if (!this.heat || !this.heat.length) return;
+    const values = this.heat.map((c) => c.value);
+    const lo = Math.min(...values);
+    const hi = Math.max(...values);
+    for (const c of this.heat) {
+      const t = hi > lo ? (c.value - lo) / (hi - lo) : 0.5;
+      const [ax, ay] = this.toScreen(c.x0, c.y1);
+      const [bx, by] = this.toScreen(c.x1, c.y0);
+      ctx.fillStyle = `rgba(17, 17, 17, ${(0.04 + 0.5 * t ** 1.4).toFixed(3)})`;
+      ctx.fillRect(ax, ay, bx - ax, by - ay);
+    }
+  }
+
   setRoute(path) {
     this.route = path;
     this.drawOverlay();
@@ -463,6 +497,9 @@ export class Atlas {
     const d = this.dpr;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.overlay.width, this.overlay.height);
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+    this.drawHeat(ctx);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     if (this.trace && this.revealed) ctx.drawImage(this.paintTrace(), 0, 0);
     ctx.setTransform(d, 0, 0, d, 0, 0);
     this.drawLandmarks(ctx);

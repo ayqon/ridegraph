@@ -93,6 +93,12 @@ def test_arrival_window_is_calibrated(trained) -> None:
     assert len(trained.model_json["reference"]) == len(FEATURES)
 
 
+def test_model_recovers_hidden_hotspots(trained) -> None:
+    # The model is never shown the hotspots; its map of slow areas should still
+    # line up with them.
+    assert trained.interval["learned_hotspot_r"] > 0.3
+
+
 def test_conformal_margin_reaches_target_coverage() -> None:
     from fastroute.eta import conformal_margin
 

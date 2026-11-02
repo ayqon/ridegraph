@@ -125,6 +125,7 @@ function buildControls() {
   }
   presets.addEventListener("change", async (ev) => {
     await selectPreset(ev.target.value);
+    updateHeat();
     run({ animate: true });
   });
 
@@ -260,7 +261,29 @@ function showLearnedEta(r) {
   if (!learned) return;
   $("learned-eta").innerHTML = formatEta(learned.seconds).replaceAll("<small>", " ").replaceAll("</small>", " ").trim();
   const change = Math.round((learned.seconds / r.seconds - 1) * 100);
-  $("learned-delta").textContent = `${change >= 0 ? "+" : ""}${change}% on the router's estimate`;
+  const parts = [`${change >= 0 ? "+" : ""}${change}% on the router's estimate`];
+  if (learned.low !== null) {
+    const lo = Math.max(1, Math.round(learned.low / 60));
+    const hi = Math.max(lo, Math.round(learned.high / 60));
+    parts.unshift(lo === hi ? `usually about ${lo} min` : `usually ${lo} to ${hi} min`);
+  }
+  $("learned-delta").textContent = parts.join(" · ");
+}
+
+// ------------------------------------------------------------------ learned slowdown layer
+
+function updateHeat() {
+  if (!state.heat || !etaModel) {
+    atlas.setHeat(null);
+    $("key-heat").hidden = true;
+    return;
+  }
+  const cells = atlas.gridCells().map((c) => ({ ...c, value: etaModel.slowdownAt(c.centre.lat, c.centre.lon) }));
+  atlas.setHeat(cells);
+  const values = cells.map((c) => c.value);
+  const pct = (v) => `${v >= 1 ? "+" : ""}${Math.round((v - 1) * 100)}%`;
+  $("heat-range").textContent = `Learned slowdown at ${state.preset.label.toLowerCase()}: ${pct(Math.min(...values))} to ${pct(Math.max(...values))} on the router`;
+  $("key-heat").hidden = false;
 }
 
 function buildModelCard() {
@@ -461,6 +484,15 @@ async function main() {
       const res = await fetch(`data/${engine.manifest.eta.file}`);
       if (res.ok) etaModel = new EtaModel(await res.json(), engine);
       buildModelCard();
+      if (etaModel?.model.reference) {
+        const toggle = $("heat-toggle");
+        toggle.hidden = false;
+        toggle.addEventListener("click", () => {
+          state.heat = !state.heat;
+          toggle.setAttribute("aria-pressed", String(state.heat));
+          updateHeat();
+        });
+      }
     } catch (err) {
       console.warn("The learned ETA model didn't load; showing router ETAs only.", err);
     }

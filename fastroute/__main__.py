@@ -307,6 +307,10 @@ def cmd_eta_train(args: argparse.Namespace) -> int:
         f"calibration), {iv['below_pct']:.1f}% faster, {iv['above_pct']:.1f}% "
         f"slower; mean width {iv['mean_width_pct']:.0f}% of the ETA"
     )
+    print(
+        "Learned slowdown map vs the hidden hotspots it was never shown: "
+        f"r = {iv['learned_hotspot_r']:.2f}"
+    )
     print("\nMost useful features (permutation importance):")
     for name, value in result.importance[:8]:
         print(f"  {name:<15} {value:.3f}")

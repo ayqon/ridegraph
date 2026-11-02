@@ -567,6 +567,40 @@ legend {
   background: var(--cover);
 }
 
+.layer-toggle {
+  position: absolute;
+  right: 14px;
+  top: 100px;
+  z-index: 3;
+  border: 2px solid var(--ink);
+  background: var(--paper);
+  font: 600 14px/1 var(--display);
+  letter-spacing: 0.04em;
+  padding: 8px 10px 7px;
+  cursor: pointer;
+}
+
+.layer-toggle:hover {
+  background: var(--cover);
+}
+
+.layer-toggle[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--cover);
+}
+
+.key-heat {
+  flex-basis: 100%;
+}
+
+.ramp {
+  display: inline-block;
+  width: 70px;
+  height: 8px;
+  background: linear-gradient(90deg, rgba(17, 17, 17, 0.04), rgba(17, 17, 17, 0.54));
+  border: 1px solid rgba(17, 17, 17, 0.4);
+}
+
 .hint {
   position: absolute;
   left: 14px;

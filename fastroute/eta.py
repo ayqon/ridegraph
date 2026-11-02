@@ -229,14 +229,23 @@ class World:
         ex = (mid_lon - self.ctx.lon0) * self.ctx.km_per_deg_lon
         ey = (mid_lat - self.ctx.lat0) * KM_PER_DEG_LAT
         field_ = np.zeros(net.num_edges)
+        self.spots: list[tuple[float, float, float, float]] = []
         for c in centres:
             cx = (float(net.lon[c]) - self.ctx.lon0) * self.ctx.km_per_deg_lon
             cy = (float(net.lat[c]) - self.ctx.lat0) * KM_PER_DEG_LAT
             radius = rng.uniform(0.4, 1.1)
             strength = rng.uniform(0.3, 0.8)
+            self.spots.append((cx, cy, radius, strength))
             field_ += strength * np.exp(-((ex - cx) ** 2 + (ey - cy) ** 2) / (2 * radius**2))
         self.hotspot_field = field_
         self.group_extra_arr = np.asarray(self.group_extra)[self.ctx.group]
+
+    def field_at(self, x_km: float, y_km: float) -> float:
+        """Hidden hotspot intensity at a point (km from the network's centre)."""
+        return sum(
+            s * math.exp(-((x_km - cx) ** 2 + (y_km - cy) ** 2) / (2 * r**2))
+            for cx, cy, r, s in self.spots
+        )
 
     def level(self, hour: float, weekend: bool) -> float:
         return min(
@@ -513,7 +522,50 @@ def train(
     model_json["conformal_margin"] = margin
     # A typical trip, used by the map to ask "how slow would a trip through here be?"
     model_json["reference"] = [float(v) for v in np.median(Xtr, axis=0)]
+    interval["learned_hotspot_r"] = learned_hotspot_correlation(model_json, ctx, world)
     return EtaResult(metrics, importance, gbdt, len(data.y), model_json, interval, quantile_models)
+
+
+def slowdown_at(
+    model_json: dict[str, object], x_km: float, y_km: float, hour: float, weekend: bool
+) -> float:
+    """Model's expected slowdown for a typical trip placed at a point (as in the map)."""
+    names = list(model_json["features"])  # type: ignore[arg-type]
+    x = np.array(model_json["reference"], dtype=np.float64)  # type: ignore[arg-type]
+    angle = 2 * math.pi * hour / 24
+    values = {
+        "origin_x_km": x_km,
+        "origin_y_km": y_km,
+        "dest_x_km": x_km,
+        "dest_y_km": y_km,
+        "mid_x_km": x_km,
+        "mid_y_km": y_km,
+        "hour_sin": math.sin(angle),
+        "hour_cos": math.cos(angle),
+        "weekend": float(weekend),
+    }
+    for name, value in values.items():
+        x[names.index(name)] = value
+    return math.exp(predict_from_json(model_json, x))
+
+
+def learned_hotspot_correlation(
+    model_json: dict[str, object], ctx: RouteContext, world: World, *, hour: float = 8.5
+) -> float:
+    """Pearson correlation between the model's slowdown map and the hidden hotspots.
+
+    The model never sees the hotspots; a strong correlation means it recovered
+    where they are from trip outcomes alone.
+    """
+    net = ctx.network
+    xs = (net.lon - ctx.lon0) * ctx.km_per_deg_lon
+    ys = (net.lat - ctx.lat0) * KM_PER_DEG_LAT
+    learned, hidden = [], []
+    for gx in np.arange(xs.min() + 0.25, xs.max(), 0.5):
+        for gy in np.arange(ys.min() + 0.25, ys.max(), 0.5):
+            learned.append(math.log(slowdown_at(model_json, gx, gy, hour, False)))
+            hidden.append(world.field_at(gx, gy))
+    return float(np.corrcoef(learned, hidden)[0, 1])
 
 
 def conformal_margin(

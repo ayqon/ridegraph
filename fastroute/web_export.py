@@ -232,6 +232,9 @@ def export(
             f"10th-90th percentile range (target 80%; {iv['uncalibrated_coverage_pct']:.1f}% "
             f"before calibration), mean width {iv['mean_width_pct']:.0f}%"
         )
+        log(
+            f"  learned slowdown map vs hidden hotspots at 08:30: r = {iv['learned_hotspot_r']:.2f}"
+        )
         manifest["eta"] = {
             "file": "eta-model.json",
             "trips": result.trips,

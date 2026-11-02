@@ -99,6 +99,9 @@
             <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
             <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
           </div>
+          <button type="button" class="layer-toggle" id="heat-toggle" aria-pressed="false" hidden>
+            Learned slowdown
+          </button>
           <p class="hint" id="hint">Click to place A, then B. Drag a pin to move it.</p>
           <div class="key" aria-label="Map key">
             <span><i class="sw sw-trunk"></i>Primary route</span>
@@ -106,6 +109,9 @@
             <span><i class="sw sw-secondary"></i>B road</span>
             <span><i class="dot dot-f"></i>Searched from A</span>
             <span><i class="dot dot-b"></i>Searched from B</span>
+            <span class="key-heat" id="key-heat" hidden>
+              <i class="ramp"></i><span id="heat-range"></span>
+            </span>
           </div>
         </div>
       </section>

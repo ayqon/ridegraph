@@ -314,6 +314,75 @@ class ContractionHierarchy:
             hierarchy_path.append(node)
         return Route(source, target, self.unpack(hierarchy_path), best, settled, "ch")
 
+    # ------------------------------------------------------------ many-to-many
+
+    def upward_search(self, start: int, *, backward: bool = False) -> dict[int, float]:
+        """Exhaustive search up the hierarchy from ``start``, with stall-on-demand.
+
+        Returns the settled, unstalled nodes and their distances. Every quickest
+        route meets at a node that both ends' upward searches settle correctly,
+        which is what makes bucket-based many-to-many queries work.
+        """
+        up = (self.up_first, self.up_head, self.up_weight)
+        down = (self.down_first, self.down_tail, self.down_weight)
+        first, adj, w = down if backward else up
+        s_first, s_adj, s_w = up if backward else down
+        dist = {start: 0.0}
+        heap = [(0.0, start)]
+        done: dict[int, float] = {}
+        seen: set[int] = set()
+        while heap:
+            d, u = heapq.heappop(heap)
+            if u in seen:
+                continue
+            seen.add(u)
+            if any(
+                dist.get(s_adj[e], math.inf) + s_w[e] < d for e in range(s_first[u], s_first[u + 1])
+            ):
+                continue  # stalled: reached sub-optimally, cannot be a meeting point
+            done[u] = d
+            for e in range(first[u], first[u + 1]):
+                v = adj[e]
+                nd = d + w[e]
+                if nd < dist.get(v, math.inf):
+                    dist[v] = nd
+                    heapq.heappush(heap, (nd, v))
+        return done
+
+    def target_buckets(self, targets: list[int]) -> dict[int, list[tuple[int, float]]]:
+        """Backward upward searches from each target, filed by the node they reach."""
+        buckets: dict[int, list[tuple[int, float]]] = {}
+        for j, t in enumerate(targets):
+            for v, d in self.upward_search(t, backward=True).items():
+                buckets.setdefault(v, []).append((j, d))
+        return buckets
+
+    def many_to_many(
+        self,
+        sources: list[int],
+        targets: list[int],
+        buckets: dict[int, list[tuple[int, float]]] | None = None,
+    ) -> np.ndarray:
+        """Travel time from every source to every target (``inf`` if unreachable).
+
+        Bucket-based many-to-many (Knopp et al., 2007): one backward upward
+        search per target files its distances in buckets at the nodes it
+        reaches; one forward upward search per source then reads the buckets
+        of the nodes it reaches. Cost grows with sources + targets, not their
+        product, which is what lets a dispatcher price every driver against
+        every waiting rider at once. Reuse ``buckets`` when targets repeat.
+        """
+        if buckets is None:
+            buckets = self.target_buckets(targets)
+        out = np.full((len(sources), len(targets)), math.inf)
+        for i, s in enumerate(sources):
+            row = out[i]
+            for v, d in self.upward_search(s).items():
+                for j, dt in buckets.get(v, ()):
+                    if d + dt < row[j]:
+                        row[j] = d + dt
+        return out
+
     # ------------------------------------------------------------ unpacking
 
     def _middle(self, a: int, b: int) -> int:

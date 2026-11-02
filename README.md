@@ -1,7 +1,7 @@
 # fastroute
 
-Quickest-route search, learned arrival times and ride dispatch on a real
-road network, built from first principles.
+Quickest routes, travel-time maps, delivery rounds, learned arrival times
+and ride dispatch on a real road network, built from first principles.
 
 **[Try the live map →](https://ayqon.github.io/fastroute/)** Click two points in
 central London, pick a time of day, and watch how much of the city each
@@ -15,6 +15,12 @@ halves on OpenStreetMap data for central London:
 * **Routing.** Dijkstra, bidirectional search, A\* and Contraction
   Hierarchies, implemented by hand rather than called from a library, with
   rush-hour traffic and turn costs, every one tested against a reference.
+* **Everyday tools on the same engine.** A travel-time map shades
+  everywhere reachable in 10, 20 and 30 minutes from (or to) any point,
+  at rush hour and at night: from Oxford Circus, 20 minutes at 8am covers
+  46.6 km², 74% of what it covers at 3am. A delivery planner finds the best
+  order for up to a dozen stops: eight drops around central London take
+  1 h 07 min in the optimal order, 49% less than in the order entered.
 * **Ride dispatch.** Every 30 seconds, price every free driver against every
   waiting rider with one many-to-many query and assign them optimally with
   the Hungarian algorithm; move idle drivers ahead of demand predicted by a
@@ -233,7 +239,42 @@ same features and walks the same trees. A test runs it under Node and
 requires its features and predictions to match Python's to nine decimal
 places.
 
-### 6. Ride dispatch and demand forecasting
+### 6. Travel-time maps and delivery rounds
+
+**Travel-time maps** (`fastroute/reach.py`) answer "where can I get to in 20
+minutes from here?", or, for someone choosing where to live, "from where can
+I get *to* my office in 20 minutes?". It is a single-source search that
+settles junctions in time order and stops at the budget, run on the reverse
+graph for journeys into a point. Reachable area is counted over 250 m
+squares. From Holborn, 10 minutes reaches 12.2 km² at 08:00 against
+36.6 km² at 03:00: rush hour shrinks a 10-minute radius to a third.
+
+**Delivery rounds** (`fastroute/tour.py`) find the best order to visit a
+list of stops, the travelling salesman problem on one-way streets, where
+A to B and B to A take different times:
+
+1. One many-to-many Contraction Hierarchies query prices every stop against
+   every other at the chosen time of day.
+2. **Held-Karp** dynamic programming finds the provably best order, instant
+   up to about a dozen stops.
+3. Nearest-next-stop construction plus **2-opt and Or-opt** improvement give
+   a fast heuristic for comparison and for larger jobs, re-costing whole
+   tours on each move because reversing a stretch of an asymmetric tour
+   changes its cost.
+
+| Eight drops from Holborn, midday, round trip | Time |
+|---|---:|
+| In the order entered | 2 h 07 min |
+| Nearest next stop | 1 h 20 min |
+| Nearest next stop + 2-opt/Or-opt | 1 h 05 min |
+| **Optimal (Held-Karp)** | **1 h 05 min** |
+
+```bash
+python -m fastroute reach 51.5174,-0.1200 --at 08:00
+python -m fastroute tour 51.5174,-0.1200 51.5308,-0.1238 51.5033,-0.1145 ...
+```
+
+### 7. Ride dispatch and demand forecasting
 
 Routing exists to answer a business question: which driver should take this
 ride? `fastroute/dispatch.py` simulates a fleet over the 07:00 to 10:00
@@ -294,7 +335,7 @@ actually building today. Better forecasts do not automatically mean
 proportionally better decisions; the repositioning rule is where the next
 gains would come from.
 
-### 7. The live map
+### 8. The live map
 
 The demo in `web/` runs entirely in the browser, with no server:
 
@@ -323,6 +364,11 @@ The demo in `web/` runs entirely in the browser, with no server:
   calibrated arrival window; a model card gives each model's error on
   held-out trips and the features the model leans on, and a map layer shades
   the city by the slowdown the model learned for the chosen time.
+* **Four modes.** *Plan a route*, *Travel-time map* (click anywhere; leaving
+  or arriving; each band compared with 3am), *Deliveries* (click to add up
+  to 12 stops; every ordering method compared, the best drawn and
+  numbered) and *Dispatch rides*. The browser runs the same algorithms as
+  Python, held to them by Node tests.
 * **Dispatch you can watch.** A *Dispatch rides* mode replays a simulated
   morning: cars coloured by what they are doing move along their real
   routes, riders wait and are collected, and all four methods' running
@@ -334,7 +380,7 @@ The demo in `web/` runs entirely in the browser, with no server:
   contracts it for each preset, trains the ETA model and publishes `web/` to
   GitHub Pages.
 
-### 8. What the London numbers show
+### 9. What the London numbers show
 
 * **Contraction Hierarchies work because real roads are hierarchical.** On a
   uniform synthetic grid the reduction in search work is 24x; on London it
@@ -348,7 +394,7 @@ The demo in `web/` runs entirely in the browser, with no server:
   Python**, because juggling two frontiers costs interpreter overhead that
   eats most of the saving.
 
-### 9. Measuring fairly
+### 10. Measuring fairly
 
 Benchmarks report **nodes settled** alongside wall-clock time. Settled nodes
 measure the work each algorithm does, independent of language; Python
@@ -443,6 +489,7 @@ CI runs lint, formatting and the full suite on Python 3.10, 3.12 and 3.13.
 - [x] **Contraction Hierarchies:** node ordering, witness search, shortcuts, upward query, path unpacking
 - [x] **Traffic and turns:** time-of-day speed profiles, edge-expanded graph with turn and traffic-light costs
 - [x] **Live map:** in-browser routing on a street-atlas render of the graph, animating each algorithm's search
+- [x] **Travel-time maps and delivery rounds:** bounded one-to-all from or to a point, Held-Karp and 2-opt/Or-opt on asymmetric matrices
 - [x] **Ride dispatch and demand forecasting:** many-to-many CH, Hungarian matching, ML demand forecast, repositioning, simulated and replayed
 - [x] **Learned ETA:** simulated observed trips, route features, ridge, MLP and gradient-boosted trees, calibrated arrival windows, a learned congestion map, shipped to the browser
 

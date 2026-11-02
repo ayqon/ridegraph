@@ -70,6 +70,7 @@ FEATURES: tuple[str, ...] = (
 # secondary..tertiary_link, everything smaller.
 MAJOR, MID = range(0, 6), range(6, 10)
 KM_PER_DEG_LAT = 111.32
+LIGHT_SET_GAP_M = 60.0
 
 
 def class_group(road_class: np.ndarray) -> np.ndarray:
@@ -133,6 +134,22 @@ class RouteContext:
             int(self.turn_kind[self.m_start[a] + (b - first[head[a]])]) for a, b in pairwise(edges)
         ]
 
+    def light_sets(self, path: list[int], edges: list[int]) -> int:
+        """Sets of traffic lights a route passes.
+
+        OpenStreetMap often tags lights on each approach to a junction and on
+        nearby crossings, so signal nodes closer than ``LIGHT_SET_GAP_M`` along
+        the route count as one set.
+        """
+        count = 0
+        since = math.inf
+        for i in range(1, len(path) - 1):
+            since += float(self.length_m[edges[i - 1]])
+            if self.signals[path[i]] and since >= LIGHT_SET_GAP_M:
+                count += 1
+                since = 0.0
+        return count
+
     def features(self, path: list[int], hour: float, weekend: bool) -> np.ndarray:
         times = self.edge_times(hour, weekend)
         edges = self.path_edges(path, times)
@@ -156,7 +173,7 @@ class RouteContext:
             float(net.lat[a]), float(net.lon[a]), float(net.lat[b]), float(net.lon[b])
         )
         kinds = self.turns_along(edges)
-        lights = sum(1 for v in path[1:-1] if self.signals[v])
+        lights = self.light_sets(path, edges)
         angle = 2 * math.pi * hour / 24
         ox, oy = self.xy_km(a)
         dx, dy = self.xy_km(b)
@@ -203,18 +220,18 @@ class World:
     seed: int = 0
     hotspots: int = 7
     peak_shift_h: float = 0.5  # real peaks arrive this much later than the router assumes
-    peak_gain: float = 1.15
-    group_extra: tuple[float, float, float] = (0.18, 0.08, 0.02)  # extra peak slowdown per group
+    peak_gain: float = 1.1
+    group_extra: tuple[float, float, float] = (0.10, 0.05, 0.0)  # extra peak slowdown per group
     turn_wait_s: dict[int, float] = field(
         default_factory=lambda: {
-            Turn.LEFT: 5.0,
-            Turn.RIGHT: 14.0,
-            Turn.SHARP_LEFT: 9.0,
-            Turn.SHARP_RIGHT: 18.0,
-            Turn.U_TURN: 35.0,
+            Turn.LEFT: 2.0,
+            Turn.RIGHT: 6.0,
+            Turn.SHARP_LEFT: 6.0,
+            Turn.SHARP_RIGHT: 10.0,
+            Turn.U_TURN: 25.0,
         }
     )
-    incident_rate: float = 0.04
+    incident_rate: float = 0.03
     noise_sigma: float = 0.06
 
     def __post_init__(self) -> None:
@@ -234,7 +251,7 @@ class World:
             cx = (float(net.lon[c]) - self.ctx.lon0) * self.ctx.km_per_deg_lon
             cy = (float(net.lat[c]) - self.ctx.lat0) * KM_PER_DEG_LAT
             radius = rng.uniform(0.4, 1.1)
-            strength = rng.uniform(0.3, 0.8)
+            strength = rng.uniform(0.15, 0.45)
             self.spots.append((cx, cy, radius, strength))
             field_ += strength * np.exp(-((ex - cx) ** 2 + (ey - cy) ** 2) / (2 * radius**2))
         self.hotspot_field = field_
@@ -270,10 +287,12 @@ class World:
             wait = self.turn_wait_s.get(kind, 0.0)
             if wait:
                 total += wait * rng.uniform(0.5, 1.5)
-        if len(path) > 2:
-            lights = int(self.ctx.signals[np.asarray(path[1:-1], dtype=np.int64)].sum())
-            mean_wait = 12 + 18 * level
-            total += float(rng.uniform(0, 2 * mean_wait, size=lights).sum())
+        # Each set of lights: stopped more often at peak, and for longer.
+        sets = self.ctx.light_sets(path, edges)
+        if sets:
+            stopped = rng.random(sets) < 0.25 + 0.3 * level
+            waits = rng.uniform(5, 20 + 15 * level, size=sets)
+            total += float(waits[stopped].sum())
         if rng.random() < self.incident_rate:
             total *= rng.uniform(1.2, 1.8)
         return total * float(np.exp(rng.normal(0, self.noise_sigma)))

@@ -523,8 +523,9 @@ export class Atlas {
   }
 
   drawLandmarks(ctx) {
-    if (this.view.scale < 0.09) return;
-    ctx.font = "600 11px 'Barlow Condensed', 'Arial Narrow', sans-serif";
+    if (this.view.scale < 0.03) return;
+    const size = this.view.scale < 0.09 ? 10.5 : 12;
+    ctx.font = `600 ${size}px 'Barlow Condensed', 'Arial Narrow', sans-serif`;
     ctx.textBaseline = "middle";
     for (const l of this.landmarks) {
       const [x, y] = this.toScreen(...l.xy);

@@ -25,6 +25,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html,
 body {
   margin: 0;
@@ -56,17 +60,17 @@ a {
 
 .cover {
   background: var(--cover);
-  padding: 24px 26px 18px;
+  padding: 22px 24px 16px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
   border-right: 3px solid var(--ink);
 }
 
 .wordmark {
   margin: 0;
-  font: 800 68px/0.82 var(--display);
+  font: 800 60px/0.82 var(--display);
   letter-spacing: -0.02em;
   text-transform: uppercase;
 }
@@ -96,7 +100,7 @@ a {
 
 .trip-eta {
   margin: 0;
-  font: 800 48px/0.95 var(--display);
+  font: 800 44px/0.95 var(--display);
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
 }

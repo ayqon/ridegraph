@@ -7,6 +7,7 @@
 import { TURN } from "./engine.js";
 
 const KM_PER_DEG_LAT = 111.32;
+const LIGHT_SET_GAP_M = 60;
 const EARTH_RADIUS_M = 6371008.8;
 const RAD = Math.PI / 180;
 
@@ -76,8 +77,17 @@ export class EtaModel {
       const kind = e.turn_kind[this.mStart[from] + (edges[i] - e.first_out[e.head[from]])];
       if (kind in counts) counts[kind]++;
     }
+    // Sets of lights: signal nodes closer than 60 m along the route count once
+    // (same rule as RouteContext.light_sets in fastroute/eta.py).
     let lights = 0;
-    for (let i = 1; i < path.length - 1; i++) if (e.signals[path[i]]) lights++;
+    let since = Infinity;
+    for (let i = 1; i < path.length - 1; i++) {
+      since += e.length_m[edges[i - 1]];
+      if (e.signals[path[i]] && since >= LIGHT_SET_GAP_M) {
+        lights++;
+        since = 0;
+      }
+    }
 
     const angle = (2 * Math.PI * e.hour) / 24;
     const [ox, oy] = this.xyKm(a);

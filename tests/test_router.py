@@ -59,8 +59,9 @@ def test_cli_scenarios_end_to_end(tmp_path, capsys) -> None:
     net = ["--network", str(network)]
 
     # A hierarchy is specific to its scenario, and the error says how to build it.
-    with pytest.raises(SystemExit, match="contract --at 08:30 --turns"):
-        main(["route", A, B, *net, "--at", "08:30", "--turns"])
+    # Without a saved hierarchy the route still comes back, with a hint.
+    assert main(["route", A, B, *net, "--at", "08:30", "--turns"]) == 0
+    assert "--at 08:30 --turns` once" in capsys.readouterr().err
     assert main(["contract", *net, "--at", "08:30", "--turns"]) == 0
     assert (tmp_path / "grid.0830wd-turns.ch.npz").exists()
 

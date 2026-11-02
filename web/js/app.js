@@ -410,7 +410,7 @@ function onMapClick({ lat, lon }) {
   }
   if (state.mode === "tour") {
     if (tour.stops.length >= MAX_STOPS) {
-      $("tour-meta").textContent = `Up to ${MAX_STOPS} stops: remove one to add another.`;
+      showHint(`Up to ${MAX_STOPS} stops. Remove one to add another.`);
       return;
     }
     tour.stops.push(engine.nearest(lat, lon));
@@ -935,6 +935,19 @@ const DEFAULT_TOUR = [
   [51.5055, -0.0865],
 ];
 const MAX_STOPS = 12;
+let hintTimer = 0;
+
+function showHint(text) {
+  const el = $("hint");
+  const before = el.dataset.normal ?? el.textContent;
+  el.dataset.normal = before;
+  el.textContent = text;
+  clearTimeout(hintTimer);
+  hintTimer = setTimeout(() => {
+    if (el.textContent === text) el.textContent = el.dataset.normal;
+    delete el.dataset.normal;
+  }, 2500);
+}
 const BEST_ORDER = ["Optimal (Held-Karp)", "Improved (2-opt + Or-opt)"];
 const tour = { stops: [], returnToStart: true, preset: "1300", built: false, plan: null, best: null, legs: [] };
 
@@ -998,7 +1011,7 @@ function computeTour() {
   tour.plan = null;
   tour.legs = [];
   tour.best = null;
-  if (tour.stops.length >= 3) {
+  if (tour.stops.length >= 2) {
     const m = engine.manyToMany(tour.stops, tour.stops);
     tour.plan = planTour(m, tour.returnToStart);
     tour.best = BEST_ORDER.find((k) => tour.plan.orders[k]);
@@ -1031,7 +1044,7 @@ function updateTourPanel() {
   $("tour-clear").hidden = n === 0;
   if (!tour.plan) {
     $("tour-total").textContent = n ? "Add stops" : "No stops";
-    $("tour-meta").textContent = `Click the map to add ${n === 0 ? "a depot and at least two stops" : `${3 - n} more stop${3 - n === 1 ? "" : "s"}`}.`;
+    $("tour-meta").textContent = n === 0 ? "Click the map to add a depot, then at least one stop." : "Click the map to add a stop to deliver to.";
     $("tour-methods").innerHTML = "";
     return;
   }
@@ -1039,7 +1052,8 @@ function updateTourPanel() {
   const entered = tour.plan.seconds["As entered"];
   $("tour-total").innerHTML = formatLong(best);
   const saving = Math.round(100 * (1 - best / entered));
-  $("tour-meta").textContent = `${n - 1} drops from the depot · ${tour.returnToStart ? "round trip" : "one way"} · ${presetById(tour.preset).label.toLowerCase()} traffic · ${saving}% shorter than the order you entered`;
+  const verdict = saving >= 1 ? `${saving}% shorter than the order you entered` : n > 2 ? "the order you entered is already the best" : "only one way to do it";
+  $("tour-meta").textContent = `${n - 1} drop${n === 2 ? "" : "s"} from the depot · ${tour.returnToStart ? "round trip" : "one way"} · ${presetById(tour.preset).label.toLowerCase()} traffic · ${verdict}`;
   const most = Math.max(...Object.values(tour.plan.seconds));
   $("tour-methods").innerHTML = Object.entries(tour.plan.seconds)
     .map(([name, secs]) => {
@@ -1049,7 +1063,7 @@ function updateTourPanel() {
         <span class="method-name">${name}</span>
         <span class="method-count">${formatLong(secs).replaceAll("<small>", " ").replaceAll("</small>", "")}</span>
         <span class="method-bar"><i style="width:${(100 * secs) / most}%"></i></span>
-        <span class="method-time">${name === "As entered" ? "the order you added them" : `${pct}% shorter than as entered`}</span>
+        <span class="method-time">${name === "As entered" ? "the order you added them" : pct >= 1 ? `${pct}% shorter than as entered` : pct <= -1 ? `${-pct}% longer than as entered` : "same as entered"}</span>
       </span></div>`;
     })
     .join("");

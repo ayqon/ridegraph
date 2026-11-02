@@ -38,3 +38,29 @@ def test_cli_end_to_end(tmp_path, capsys) -> None:
     assert len(times) == 4 and len(set(times)) == 1  # all algorithms agree
 
     assert main(["bench", "--network", str(network_path), "--queries", "10"]) == 0
+
+
+def test_cli_falls_back_without_a_hierarchy_and_rejects_off_map_points(tmp_path, capsys) -> None:
+    import pytest
+
+    network_path = tmp_path / "grid.npz"
+    grid_network(12, 12, seed=4).save(network_path)
+    args = ["--network", str(network_path)]
+    assert main(["route", "51.515,-0.12", "51.5249,-0.1041", "--at", "08:00", *args]) == 0
+    captured = capsys.readouterr()
+    assert " min " in captured.out
+    assert f"contract --network {network_path} --at 08:00" in captured.err
+    with pytest.raises(SystemExit, match="from the nearest road"):
+        main(["route", "10,10", "51.5249,-0.1041", *args])
+
+
+def test_cli_reach_and_tour(tmp_path, capsys) -> None:
+    network_path = tmp_path / "grid.npz"
+    grid_network(12, 12, seed=4).save(network_path)
+    args = ["--network", str(network_path)]
+    assert main(["reach", "51.515,-0.12", "--bands", "2", "4", *args]) == 0
+    assert main(["tour", "51.515,-0.12", "51.5249,-0.1041", *args]) == 0
+    out = capsys.readouterr().out
+    assert "1 stop from the depot" in out
+    assert main(["tour", "51.515,-0.12", "51.5249,-0.1041", "51.52,-0.11", "--open", *args]) == 0
+    assert "Optimal (Held-Karp)" in capsys.readouterr().out

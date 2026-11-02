@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
+import math
 import sys
 import time
 from pathlib import Path
@@ -28,6 +29,27 @@ def _parse_point(text: str) -> tuple[float, float]:
     except ValueError as exc:
         raise argparse.ArgumentTypeError(f"expected 'lat,lon', got {text!r}") from exc
     return lat, lon
+
+
+MAX_SNAP_M = 500.0
+
+
+def _snap(network, point: tuple[float, float]) -> int:
+    """Nearest junction to a coordinate, refusing points off the map."""
+    import numpy as np
+
+    lat, lon = point
+    dx = np.radians(network.lon - lon) * math.cos(math.radians(lat))
+    dy = np.radians(network.lat - lat)
+    d2 = dx * dx + dy * dy
+    node = int(np.argmin(d2))
+    metres = math.sqrt(float(d2[node])) * 6_371_000
+    if metres > MAX_SNAP_M:
+        raise SystemExit(
+            f"{lat:.4f},{lon:.4f} is {metres / 1000:,.1f} km from the nearest road in this "
+            "network. Pick a point inside the area you fetched."
+        )
+    return node
 
 
 def _require(path: Path, how_to_make: str) -> Path:
@@ -90,7 +112,7 @@ ALGORITHMS = ("ch", "astar", "bidirectional", "dijkstra")
 ETA_TIMES = ("03:00", "07:00", "08:00", "10:00", "13:00", "16:00", "17:30", "19:00", "22:00")
 
 
-def _add_scenario_args(p: argparse.ArgumentParser) -> None:
+def _add_scenario_args(p: argparse.ArgumentParser, *, turns: bool = True) -> None:
     from .traffic import parse_time
 
     def time_arg(text: str) -> float:
@@ -101,7 +123,8 @@ def _add_scenario_args(p: argparse.ArgumentParser) -> None:
 
     p.add_argument("--at", type=time_arg, metavar="HH:MM", help="time of day for traffic")
     p.add_argument("--weekend", action="store_true", help="use the weekend traffic curve")
-    p.add_argument("--turns", action="store_true", help="charge for turns and traffic lights")
+    if turns:
+        p.add_argument("--turns", action="store_true", help="charge for turns and traffic lights")
 
 
 def _scenario(args: argparse.Namespace):
@@ -122,15 +145,22 @@ def _load_network(path: Path):
     return RoadNetwork.load(_require(path, "build"))
 
 
-def _load_ch(network_path: Path, scenario):
+def _contract_command(network_path: Path, scenario) -> str:
+    flags = _scenario_flags(scenario)
+    if Path(network_path) != DEFAULT_NETWORK:
+        flags.insert(0, f"--network {network_path}")
+    return " ".join(["python -m fastroute contract", *flags])
+
+
+def _load_ch(network_path: Path, scenario, *, required: bool = True):
     from .ch import ContractionHierarchy
 
     path = _ch_path(network_path, scenario)
     if not path.exists():
-        flags = " ".join(_scenario_flags(scenario))
-        raise SystemExit(
-            f"{path} not found. Run `python -m fastroute contract {flags}`.".replace("  ", " ")
-        )
+        if required:
+            command = _contract_command(network_path, scenario)
+            raise SystemExit(f"{path} not found. Run `{command}`.")
+        return None
     return ContractionHierarchy.load(path)
 
 
@@ -186,12 +216,21 @@ def cmd_route(args: argparse.Namespace) -> int:
 
     scenario = _scenario(args)
     router = Router(_load_network(args.network), scenario)
-    ch = _load_ch(args.network, scenario) if args.algorithm == "ch" else None
-    s = router.nearest(*args.origin)
-    t = router.nearest(*args.destination)
+    s = _snap(router.roads.network, args.origin)
+    t = _snap(router.roads.network, args.destination)
+    algorithm = args.algorithm
+    ch = _load_ch(args.network, scenario, required=False) if algorithm == "ch" else None
+    if algorithm == "ch" and ch is None:
+        algorithm = "bidirectional"
+        print(
+            f"No saved hierarchy for {scenario.label()}, so searching with bidirectional "
+            f"Dijkstra. Run `{_contract_command(args.network, scenario)}` once for "
+            "instant queries.",
+            file=sys.stderr,
+        )
 
     started = time.perf_counter()
-    trip = router.trip(s, t, args.algorithm, ch)
+    trip = router.trip(s, t, algorithm, ch)
     elapsed_ms = (time.perf_counter() - started) * 1000
     if not trip.found:
         print("No route found.")
@@ -218,8 +257,8 @@ def cmd_eta(args: argparse.Namespace) -> int:
     network = _load_network(args.network)
     turn_graph = TurnGraph(network) if args.turns else None
     lookup = Graph(network)
-    s = lookup.nearest_node(*args.origin)
-    t = lookup.nearest_node(*args.destination)
+    s = _snap(lookup.network, args.origin)
+    t = _snap(lookup.network, args.destination)
 
     first = None
     rows = []
@@ -365,6 +404,7 @@ def cmd_reach(args: argparse.Namespace) -> int:
 
     network = _load_network(args.network)
     times = [args.at if args.at is not None else 8.0, args.compare]
+    origin = _snap(network, args.point)
     print(
         f"Area {'from which you can reach' if args.arriving else 'reachable from'} "
         f"{args.point[0]:.4f},{args.point[1]:.4f}:"
@@ -372,8 +412,7 @@ def cmd_reach(args: argparse.Namespace) -> int:
     header = "          " + "".join(f"{b:>9} min" for b in args.bands)
     print(header)
     for hour in times:
-        graph = Graph(network, traffic_cost(hour))
-        origin = graph.nearest_node(*args.point)
+        graph = Graph(network, traffic_cost(hour, weekend=args.weekend))
         r = reach(graph, origin, tuple(args.bands), arriving=args.arriving)
         h, mnt = divmod(round(hour * 60), 60)
         cells = "".join(f"{a:>9.1f} km²" for a in r.area_km2)
@@ -387,20 +426,25 @@ def cmd_tour(args: argparse.Namespace) -> int:
     from .tour import plan
     from .traffic import traffic_cost
 
-    if len(args.stops) < 3:
-        raise SystemExit("Give a depot and at least two stops.")
+    if len(args.stops) < 2:
+        raise SystemExit("Give a depot and at least one stop.")
     network = _load_network(args.network)
-    hour = args.at if args.at is not None else 10.0
-    graph = Graph(network, traffic_cost(hour))
+    stops = [_snap(network, p) for p in args.stops]
+    hour = args.at if args.at is not None else 13.0
+    graph = Graph(network, traffic_cost(hour, weekend=args.weekend))
     ch = ContractionHierarchy.build(graph)
-    stops = [graph.nearest_node(*p) for p in args.stops]
     result = plan(ch, stops, return_to_start=not args.open)
-    print(f"{len(stops) - 1} stops from the depot, {'one way' if args.open else 'round trip'}:")
-    worst = max(result.seconds.values())
+    n = len(stops) - 1
+    print(
+        f"{n} stop{'s' if n != 1 else ''} from the depot, "
+        f"{'one way' if args.open else 'round trip'}:"
+    )
+    entered = result.seconds["As entered"]
     for name, secs in result.seconds.items():
         order = " > ".join(str(i) for i in result.orders[name])
-        saving = 100 * (1 - secs / worst)
-        print(f"  {name:<28} {_format_duration(secs):>14}  {saving:4.0f}% shorter   {order}")
+        change = 100 * (secs / entered - 1) if entered > 0 else 0.0
+        vs = "same as entered" if abs(change) < 0.5 else f"{change:+.0f}% vs entered"
+        print(f"  {name:<28} {_format_duration(secs):>14}  {vs:<16}  {order}")
     return 0
 
 
@@ -474,14 +518,14 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--bands", type=int, nargs="+", default=[10, 20, 30], metavar="MIN")
     p.add_argument("--arriving", action="store_true", help="journeys into the point")
     p.add_argument("--compare", type=float, default=3.0, help="hour to compare with")
-    _add_scenario_args(p)
+    _add_scenario_args(p, turns=False)
     p.set_defaults(func=cmd_reach)
 
     p = sub.add_parser("tour", help="best order to visit several stops")
     p.add_argument("stops", type=_parse_point, nargs="+", help="lat,lon (depot first)")
     p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
     p.add_argument("--open", action="store_true", help="end at the last stop")
-    _add_scenario_args(p)
+    _add_scenario_args(p, turns=False)
     p.set_defaults(func=cmd_tour)
 
     p = sub.add_parser("dispatch", help="simulate ride dispatch and compare policies")

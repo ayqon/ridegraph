@@ -37,18 +37,28 @@ def test_javascript_engine_matches_python(tmp_path) -> None:
     rng = random.Random(5)
     cases = []
     for preset in PRESETS:
-        router = Router(network, Scenario(hour=preset.hour))
-        for _ in range(25):
-            s, t = rng.randrange(network.num_nodes), rng.randrange(network.num_nodes)
-            trip = router.trip(s, t, "dijkstra")
-            cases.append(
-                {
+        for turns in (False, True):
+            router = Router(network, Scenario(hour=preset.hour, turns=turns))
+            for _ in range(15):
+                s, t = rng.randrange(network.num_nodes), rng.randrange(network.num_nodes)
+                trip = router.trip(s, t, "dijkstra")
+                case = {
                     "preset": preset.id,
+                    "turns": turns,
                     "s": s,
                     "t": t,
                     "seconds": trip.seconds if trip.found else None,
                 }
-            )
+                if turns and trip.found:
+                    m = trip.manoeuvres
+                    case["manoeuvres"] = {
+                        "left": m["left"],
+                        "right": m["right"],
+                        "sharp": m["sharp left"] + m["sharp right"],
+                        "uturn": m["u turn"],
+                        "lights": m["traffic lights"],
+                    }
+                cases.append(case)
     cases_path = tmp_path / "cases.json"
     cases_path.write_text(json.dumps(cases))
     proc = subprocess.run(
@@ -59,7 +69,9 @@ def test_javascript_engine_matches_python(tmp_path) -> None:
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     summary = json.loads(proc.stdout)
-    assert summary["checked"] == len(cases) * 4
+    # Four algorithms without turns; CH is not offered with turns in the browser.
+    plain = sum(1 for c in cases if not c["turns"])
+    assert summary["checked"] == plain * 4 + (len(cases) - plain) * 3
 
 
 def test_river_lines_are_extracted() -> None:

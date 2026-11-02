@@ -412,13 +412,22 @@ export class Atlas {
     const { nodes, sides } = t;
     const from = this.painted.count;
     const to = this.revealed;
-    const asDots = nodes.length < 2000;
+    const asDots = nodes.length < 2000 && !t.turns;
     const e = this.engine;
     for (let side = 0; side < 2; side++) {
       ctx.beginPath();
       for (let i = from; i < to; i++) {
         if (sides[i] !== side) continue;
         const u = nodes[i];
+        if (t.turns) {
+          // With turn costs the search settles road segments, so paint the segment.
+          if (u >= e.m) continue;
+          const [ax, ay] = this.nodeScreen(e.edgeSrc[u]);
+          const [bx, by] = this.nodeScreen(e.head[u]);
+          ctx.moveTo(ax, ay);
+          ctx.lineTo(bx, by);
+          continue;
+        }
         const [x, y] = this.nodeScreen(u);
         if (asDots) {
           ctx.moveTo(x + 3.5, y);

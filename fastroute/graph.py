@@ -101,6 +101,26 @@ class RoadNetwork:
             return cls(**{key: data[key] for key in data.files})
 
 
+def csr_sorted(network: RoadNetwork) -> RoadNetwork:
+    """The same network with edges stored in CSR order (stably sorted by source).
+
+    After this, an edge's index in the network equals its index in ``Graph``,
+    so edge-indexed data (turn graphs, exports) lines up without remapping.
+    """
+    order = np.argsort(network.src, kind="stable")
+    return RoadNetwork(
+        node_ids=network.node_ids,
+        lat=network.lat,
+        lon=network.lon,
+        src=network.src[order],
+        dst=network.dst[order],
+        length_m=network.length_m[order],
+        road_class=network.road_class[order],
+        maxspeed_kph=network.maxspeed_kph[order],
+        traffic_signals=network.traffic_signals,
+    )
+
+
 EdgeCost = Callable[[RoadNetwork], np.ndarray]
 
 

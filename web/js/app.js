@@ -51,7 +51,7 @@ const $ = (id) => document.getElementById(id);
 const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const number = new Intl.NumberFormat("en-GB");
 
-const state = { a: null, b: null, method: "ch", preset: null, results: null, animation: 0 };
+const state = { a: null, b: null, method: "ch", preset: null, turns: false, results: null, animation: 0 };
 let engine;
 let atlas;
 
@@ -122,6 +122,17 @@ function buildControls() {
   showMethodNote();
 
   $("replay").addEventListener("click", play);
+  $("turns").addEventListener("change", (ev) => {
+    state.turns = ev.target.checked;
+    engine.setTurns(state.turns);
+    if (!state.turns && state.method === "astar" && state.switchedFromCh) {
+      state.method = "ch";
+      document.querySelector("input[name=method][value=ch]").checked = true;
+      showMethodNote();
+    }
+    state.switchedFromCh = false;
+    run({ animate: true });
+  });
   $("zoom-in").addEventListener("click", () => atlas.zoomAt(1.6));
   $("zoom-out").addEventListener("click", () => atlas.zoomAt(1 / 1.6));
 }
@@ -143,17 +154,32 @@ function showMethodNote() {
 function run({ animate }) {
   if (state.a === null || state.b === null) return;
   const results = {};
-  for (const id of ALGORITHMS) results[id] = engine.route(id, state.a, state.b);
+  const available = ALGORITHMS.filter((id) => id !== "ch" || engine.chAvailable);
+  for (const id of available) results[id] = engine.route(id, state.a, state.b);
   state.results = results;
 
-  const most = Math.max(...ALGORITHMS.map((id) => results[id].settled));
+  const most = Math.max(...available.map((id) => results[id].settled));
+  // With turn costs, searches settle road segments rather than junctions.
+  $("effort-label").textContent = state.turns ? "road segments examined" : "junctions examined";
   for (const id of ALGORITHMS) {
     const r = results[id];
-    document.querySelector(`[data-count="${id}"]`).textContent = number.format(r.settled);
-    document.querySelector(`[data-bar="${id}"]`).style.width = `${(100 * r.settled) / most}%`;
-    document.querySelector(`[data-time="${id}"]`).textContent = `found in ${formatMs(r.ms)}`;
+    const row = document.querySelector(`input[name=method][value=${id}]`);
+    row.disabled = !r;
+    row.closest(".method").classList.toggle("is-unavailable", !r);
+    document.querySelector(`[data-count="${id}"]`).textContent = r ? number.format(r.settled) : "–";
+    document.querySelector(`[data-bar="${id}"]`).style.width = r ? `${(100 * r.settled) / most}%` : "0";
+    document.querySelector(`[data-time="${id}"]`).textContent = r
+      ? `found in ${formatMs(r.ms)}`
+      : "needs its own preprocessing with turn costs; try it in the Python tool";
   }
 
+  if (!results[state.method]) {
+    // Contraction Hierarchies are off with turn costs; fall back, and return once they are back.
+    state.switchedFromCh = true;
+    state.method = "astar";
+    document.querySelector(`input[name=method][value=astar]`).checked = true;
+    showMethodNote();
+  }
   const r = results[state.method];
   if (!r.found) {
     $("eta").textContent = "No route";
@@ -162,14 +188,16 @@ function run({ animate }) {
     $("eta").innerHTML = formatEta(r.seconds);
     const from = atlas.gridRef(atlas.X[state.a], atlas.Y[state.a]);
     const to = atlas.gridRef(atlas.X[state.b], atlas.Y[state.b]);
-    $("trip-meta").textContent = `${(r.metres / 1000).toFixed(2)} km · ${from} to ${to} · ${state.preset.label.toLowerCase()} traffic`;
+    const parts = [`${(r.metres / 1000).toFixed(2)} km`, `${from} to ${to}`, `${state.preset.label.toLowerCase()} traffic`];
+    if (r.manoeuvres) parts.push(describeManoeuvres(r.manoeuvres));
+    $("trip-meta").textContent = parts.join(" · ");
   }
   $("replay").disabled = false;
   if (animate) play();
   else {
     cancelAnimationFrame(state.animation);
     atlas.setTrace(r.trace);
-    atlas.setRoute(r.path);
+    atlas.setRoute(r.junctions);
   }
 }
 
@@ -181,7 +209,7 @@ function play() {
   const total = r.trace.nodes.length;
   if (reducedMotion.matches || total === 0) {
     atlas.setTrace(r.trace);
-    atlas.setRoute(r.path);
+    atlas.setRoute(r.junctions);
     return;
   }
   atlas.setRoute(null);
@@ -192,9 +220,21 @@ function play() {
     const eased = 1 - (1 - t) ** 2;
     atlas.setTrace(r.trace, Math.max(1, Math.round(total * eased)));
     if (t < 1) state.animation = requestAnimationFrame(step);
-    else atlas.setRoute(r.path);
+    else atlas.setRoute(r.junctions);
   };
   state.animation = requestAnimationFrame(step);
+}
+
+function describeManoeuvres(m) {
+  const count = (n, one, many) => (n ? `${n} ${n === 1 ? one : many}` : null);
+  const parts = [
+    count(m.right, "right turn", "right turns"),
+    count(m.left, "left turn", "left turns"),
+    count(m.sharp, "sharp turn", "sharp turns"),
+    count(m.uturn, "U-turn", "U-turns"),
+    count(m.lights, "set of lights", "sets of lights"),
+  ].filter(Boolean);
+  return parts.length ? parts.join(", ") : "no turns or lights";
 }
 
 function clearTrip(message) {

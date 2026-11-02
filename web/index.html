@@ -37,12 +37,20 @@
         <fieldset class="group">
           <legend>Time of day</legend>
           <div class="presets" id="presets"></div>
+          <label class="switch">
+            <input type="checkbox" id="turns" />
+            <span class="switch-track" aria-hidden="true"></span>
+            <span class="switch-text">
+              Charge for turns and traffic lights
+              <small>Right turns wait for oncoming traffic; lights add an average wait.</small>
+            </span>
+          </label>
         </fieldset>
 
         <fieldset class="group">
           <legend>
             Search method
-            <span class="legend-note">junctions examined</span>
+            <span class="legend-note" id="effort-label">junctions examined</span>
           </legend>
           <div class="methods" id="methods"></div>
           <p class="method-note" id="method-note"></p>

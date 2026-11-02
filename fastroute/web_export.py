@@ -27,10 +27,11 @@ from pathlib import Path
 import numpy as np
 
 from .ch import ContractionHierarchy
-from .graph import Graph, RoadNetwork
+from .graph import Graph, RoadNetwork, csr_sorted
 from .router import Router, Scenario
 from .speeds import ROAD_CLASSES
 from .traffic import DEFAULT_PROFILE
+from .turns import UK_PENALTIES, Turn, TurnGraph, TurnPenalties, penalty_seconds
 
 FORMAT_VERSION = 1
 
@@ -76,8 +77,10 @@ def _write(path: Path, blob: bytes) -> int:
 
 
 def graph_arrays(network: RoadNetwork) -> dict[str, np.ndarray]:
+    """Graph arrays for a network already in CSR order (see ``csr_sorted``)."""
     graph = Graph(network)
-    order = np.argsort(network.src, kind="stable")
+    turns = TurnGraph(network)
+    order = np.arange(network.num_edges)
     return {
         # float64: A*'s heuristic must not overshoot by coordinate rounding.
         "lat": network.lat.astype(np.float64),
@@ -87,6 +90,10 @@ def graph_arrays(network: RoadNetwork) -> dict[str, np.ndarray]:
         "freeflow_s": np.array(graph.weight, dtype=np.float64),
         "length_m": network.length_m[order].astype(np.float32),
         "road_class": network.road_class[order].astype(np.uint8),
+        # Turn kind of every manoeuvre (segment followed by a segment leaving its
+        # head), in TurnGraph order; the browser rebuilds the turn graph from it.
+        "turn_kind": turns.turn_kind[: turns.num_manoeuvres].astype(np.uint8),
+        "signals": np.asarray(network.traffic_signals, dtype=np.uint8),
     }
 
 
@@ -101,6 +108,16 @@ def ch_arrays(ch: ContractionHierarchy) -> dict[str, np.ndarray]:
         "down_tail": np.array(ch.down_tail, dtype=np.int32),
         "down_weight": np.array(ch.down_weight, dtype=np.float32),
         "down_middle": np.array(ch.down_middle, dtype=np.int32),
+    }
+
+
+def turn_penalty_table(penalties: TurnPenalties = UK_PENALTIES) -> dict[str, object]:
+    """Seconds per turn kind (indexed by ``Turn``) and per set of traffic lights."""
+    kinds = np.arange(len(Turn), dtype=np.int8)
+    return {
+        "kinds": [t.name.lower() for t in Turn],
+        "seconds": penalty_seconds(kinds, penalties).tolist(),
+        "signals_s": penalties.traffic_signals_s,
     }
 
 
@@ -135,6 +152,7 @@ def export(
     log: Callable[[str], None] = lambda msg: print(msg, file=sys.stderr),
 ) -> dict[str, object]:
     out_dir.mkdir(parents=True, exist_ok=True)
+    network = csr_sorted(network)
     blob, layout = _pack(graph_arrays(network))
     size = _write(out_dir / "graph.bin.gz", blob)
     log(f"  graph: {network.num_nodes:,} nodes, {network.num_edges:,} edges, {size / 1e6:.2f} MB")
@@ -180,6 +198,7 @@ def export(
             "sensitivity": list(DEFAULT_PROFILE.sensitivity),
         },
         "graph": {"file": "graph.bin.gz", "arrays": layout},
+        "turns": turn_penalty_table(),
         "rivers": river_lines(raw) if raw else [],
         "presets": preset_entries,
     }

@@ -3,13 +3,17 @@
 // The same module runs under Node for the test suite, which checks every
 // algorithm here against the Python implementation on identical data.
 //
-// Every search records the order in which it settles nodes, which is what
-// the map animates: the honest picture of how much work each algorithm does.
+// Searches run on a "graph" object: either the plain road graph (nodes are
+// junctions) or the turn-expanded graph (nodes are road segments, edges are
+// manoeuvres), which is rebuilt here from the exported turn kinds exactly as
+// fastroute/turns.py builds it. Every search records the order in which it
+// settles nodes, which is what the map animates.
 
 const DTYPES = { float32: Float32Array, float64: Float64Array, int32: Int32Array, uint8: Uint8Array };
 const EARTH_RADIUS_M = 6371008.8;
 const ASTAR_SAFETY = 0.9999; // matches fastroute/astar.py
 const NO_MIDDLE = -1;
+export const TURN = { NONE: 0, STRAIGHT: 1, LEFT: 2, RIGHT: 3, SHARP_LEFT: 4, SHARP_RIGHT: 5, U_TURN: 6 };
 
 export function viewArrays(buffer, layout) {
   const out = {};
@@ -155,6 +159,33 @@ class Trace {
   }
 }
 
+/** Incoming-edge index for a CSR graph, for searches that run backwards. */
+function addReverse(g) {
+  const { n, first_out: first, head } = g;
+  const m = head.length;
+  const firstIn = new Int32Array(n + 1);
+  for (let e = 0; e < m; e++) firstIn[head[e] + 1]++;
+  for (let i = 0; i < n; i++) firstIn[i + 1] += firstIn[i];
+  const fill = firstIn.slice(0, n);
+  g.first_in = firstIn;
+  g.tail = new Int32Array(m);
+  g.inEdge = new Int32Array(m);
+  for (let u = 0; u < n; u++) {
+    for (let e = first[u]; e < first[u + 1]; e++) {
+      const p = fill[head[e]]++;
+      g.tail[p] = u;
+      g.inEdge[p] = e;
+    }
+  }
+  g.weight = new Float64Array(m);
+  g.inWeight = new Float64Array(m);
+  g.sides = [new Side(n), new Side(n)];
+  g.hCache = new Float64Array(n);
+  g.hSeen = new Int32Array(n);
+  g.hGen = 0;
+  return g;
+}
+
 export class Engine {
   constructor(manifest, graphBuffer) {
     this.manifest = manifest;
@@ -162,28 +193,21 @@ export class Engine {
     const n = (this.n = manifest.nodes);
     const m = (this.m = manifest.edges);
 
-    // Incoming edges, for searches that run backwards from the target.
-    const firstIn = new Int32Array(n + 1);
-    for (let e = 0; e < m; e++) firstIn[this.head[e] + 1]++;
-    for (let i = 0; i < n; i++) firstIn[i + 1] += firstIn[i];
-    const fill = firstIn.slice(0, n);
-    this.first_in = firstIn;
-    this.tail = new Int32Array(m);
-    this.inEdge = new Int32Array(m);
-    for (let u = 0; u < n; u++) {
-      for (let e = this.first_out[u]; e < this.first_out[u + 1]; e++) {
-        const p = fill[this.head[e]]++;
-        this.tail[p] = u;
-        this.inEdge[p] = e;
-      }
-    }
+    this.edgeSrc = new Int32Array(m);
+    for (let u = 0; u < n; u++) for (let e = this.first_out[u]; e < this.first_out[u + 1]; e++) this.edgeSrc[e] = u;
 
-    this.weight = new Float64Array(m);
-    this.inWeight = new Float64Array(m);
-    this.sides = [new Side(n), new Side(n)];
-    this.hCache = new Float64Array(n);
-    this.hSeen = new Int32Array(n);
-    this.hGen = 0;
+    this.roads = addReverse({
+      kind: "roads",
+      n,
+      first_out: this.first_out,
+      head: this.head,
+      lat: this.lat,
+      lon: this.lon,
+      edgeLength: this.length_m,
+    });
+    this.graph = this.roads;
+    this.turnGraph = null;
+    this.turns = false;
     this.hierarchies = new Map();
     this.ch = null;
     this.setTime(manifest.presets[0]?.hour ?? 3);
@@ -203,16 +227,22 @@ export class Engine {
   setTime(hour, weekend = false) {
     const level = this.congestion(hour, weekend);
     const factor = this.manifest.traffic.sensitivity.map((s) => 1 - s * level);
-    let maxSpeed = 0;
-    for (let e = 0; e < this.m; e++) {
-      const w = this.freeflow_s[e] / factor[this.road_class[e]];
-      this.weight[e] = w;
-      if (w > 0) maxSpeed = Math.max(maxSpeed, this.length_m[e] / w);
-    }
-    for (let p = 0; p < this.m; p++) this.inWeight[p] = this.weight[this.inEdge[p]];
-    this.maxSpeed = maxSpeed;
+    const w = this.roads.weight;
+    for (let e = 0; e < this.m; e++) w[e] = this.freeflow_s[e] / factor[this.road_class[e]];
     this.hour = hour;
     this.weekend = weekend;
+    this.finishWeights(this.roads);
+    if (this.turnGraph) this.weighTurnGraph();
+  }
+
+  finishWeights(g) {
+    let maxSpeed = 0;
+    const { weight, edgeLength } = g;
+    for (let e = 0; e < weight.length; e++) {
+      if (weight[e] > 0) maxSpeed = Math.max(maxSpeed, edgeLength[e] / weight[e]);
+    }
+    for (let p = 0; p < weight.length; p++) g.inWeight[p] = weight[g.inEdge[p]];
+    g.maxSpeed = maxSpeed;
   }
 
   /** Switch to a preset time, loading its Contraction Hierarchy on first use. */
@@ -223,6 +253,113 @@ export class Engine {
     this.setTime(preset.hour);
     this.ch = this.hierarchies.get(preset.id);
     this.preset = preset;
+  }
+
+  // ---------------------------------------------------------------- turns
+
+  /**
+   * Build the edge-expanded graph, numbered exactly like fastroute/turns.py:
+   * segments 0..m-1 (CSR edge ids), start(x) = m + x, end(x) = m + n + x.
+   */
+  buildTurnGraph() {
+    const { n, m, first_out: first, head, edgeSrc } = this;
+    const N = m + 2 * n;
+    const degree = (x) => first[x + 1] - first[x];
+    // Manoeuvres out of segment i are numbered from mStart[i], in CSR order of head[i].
+    const mStart = new Int32Array(m + 1);
+    for (let i = 0; i < m; i++) mStart[i + 1] = mStart[i] + degree(head[i]);
+    if (mStart[m] !== this.turn_kind.length) throw new Error("turn data does not match the graph");
+
+    const outFirst = new Int32Array(N + 1);
+    for (let i = 0; i < m; i++) outFirst[i + 1] = degree(head[i]) + 1;
+    for (let x = 0; x < n; x++) outFirst[m + x + 1] = degree(x) + 1;
+    for (let v = 0; v < N; v++) outFirst[v + 1] += outFirst[v];
+    const E = outFirst[N];
+    const to = new Int32Array(E);
+    const target = new Int32Array(E); // road segment whose travel time the edge includes, or -1
+    const penalty = new Float64Array(E);
+    const kind = new Uint8Array(E);
+    const { seconds, signals_s: signalWait } = this.manifest.turns;
+
+    let e = 0;
+    for (let i = 0; i < m; i++) {
+      const via = head[i];
+      for (let k = 0; k < degree(via); k++) {
+        const j = first[via] + k;
+        const turn = this.turn_kind[mStart[i] + k];
+        to[e] = j;
+        target[e] = j;
+        kind[e] = turn;
+        penalty[e] = seconds[turn] + (this.signals[via] ? signalWait : 0);
+        e++;
+      }
+      to[e] = m + n + via; // arrive: segment -> end(head)
+      target[e++] = -1;
+    }
+    for (let x = 0; x < n; x++) {
+      for (let j = first[x]; j < first[x + 1]; j++) {
+        to[e] = j; // depart: start(x) -> segment leaving x
+        target[e++] = j;
+      }
+      to[e] = m + n + x; // trip to the same place
+      target[e++] = -1;
+    }
+
+    const lat = new Float64Array(N);
+    const lon = new Float64Array(N);
+    for (let i = 0; i < m; i++) {
+      lat[i] = this.lat[head[i]];
+      lon[i] = this.lon[head[i]];
+    }
+    lat.set(this.lat, m);
+    lon.set(this.lon, m);
+    lat.set(this.lat, m + n);
+    lon.set(this.lon, m + n);
+    const edgeLength = new Float64Array(E);
+    for (let k = 0; k < E; k++) edgeLength[k] = target[k] >= 0 ? this.length_m[target[k]] : 0;
+
+    this.turnGraph = addReverse({
+      kind: "turns",
+      n: N,
+      first_out: outFirst,
+      head: to,
+      lat,
+      lon,
+      edgeLength,
+      target,
+      penalty,
+      turnKind: kind,
+      mStart,
+      edgeSrc,
+    });
+    this.weighTurnGraph();
+  }
+
+  weighTurnGraph() {
+    const g = this.turnGraph;
+    const w = this.roads.weight;
+    for (let e = 0; e < g.weight.length; e++) {
+      g.weight[e] = (g.target[e] >= 0 ? w[g.target[e]] : 0) + g.penalty[e];
+    }
+    this.finishWeights(g);
+  }
+
+  setTurns(on) {
+    if (on && !this.turnGraph) this.buildTurnGraph();
+    this.turns = on;
+    this.graph = on ? this.turnGraph : this.roads;
+  }
+
+  /** Graph nodes to search between for two junctions. */
+  endpoints(a, b) {
+    return this.turns ? [this.m + a, this.m + this.n + b] : [a, b];
+  }
+
+  /** Junction a graph node stands for. */
+  junction(v) {
+    if (!this.turns) return v;
+    if (v < this.m) return this.head[v];
+    return (v - this.m) % this.n;
   }
 
   // ---------------------------------------------------------------- helpers
@@ -243,36 +380,52 @@ export class Engine {
     return best;
   }
 
-  edgeBetween(u, v) {
+  static edgeBetween(g, u, v) {
     let best = -1;
     let bestW = Infinity;
-    for (let e = this.first_out[u]; e < this.first_out[u + 1]; e++) {
-      if (this.head[e] === v && this.weight[e] < bestW) {
+    for (let e = g.first_out[u]; e < g.first_out[u + 1]; e++) {
+      if (g.head[e] === v && g.weight[e] < bestW) {
         best = e;
-        bestW = this.weight[e];
+        bestW = g.weight[e];
       }
     }
-    if (best < 0) throw new Error(`no road from ${u} to ${v}`);
+    if (best < 0) throw new Error(`no edge from ${u} to ${v}`);
     return best;
   }
 
-  measure(path) {
-    let seconds = 0;
-    let metres = 0;
-    for (let i = 1; i < path.length; i++) {
-      const e = this.edgeBetween(path[i - 1], path[i]);
-      seconds += this.weight[e];
-      metres += this.length_m[e];
-    }
-    return { seconds, metres };
+  /** Cheapest road segment between two junctions at the current time. */
+  roadBetween(u, v) {
+    return Engine.edgeBetween(this.roads, u, v);
   }
 
   result(algorithm, path, trace, started) {
     const ms = performance.now() - started;
-    const { nodes, sides } = trace.done();
-    if (!path) return { algorithm, found: false, path: [], seconds: Infinity, metres: 0, settled: nodes.length, ms, trace: { nodes, sides } };
-    const { seconds, metres } = this.measure(path);
-    return { algorithm, found: true, path, seconds, metres, settled: nodes.length, ms, trace: { nodes, sides } };
+    const t = { ...trace.done(), turns: this.turns };
+    const base = { algorithm, settled: t.nodes.length, ms, trace: t, turns: this.turns };
+    if (!path) return { ...base, found: false, path: [], junctions: [], seconds: Infinity, metres: 0 };
+    const g = this.graph;
+    let seconds = 0;
+    let metres = 0;
+    const manoeuvres = { left: 0, right: 0, sharp: 0, uturn: 0, lights: 0 };
+    for (let i = 1; i < path.length; i++) {
+      const e = Engine.edgeBetween(g, path[i - 1], path[i]);
+      seconds += g.weight[e];
+      metres += g.edgeLength[e];
+      if (this.turns && path[i - 1] < this.m && path[i] < this.m) {
+        const k = g.turnKind[e];
+        if (k === TURN.LEFT) manoeuvres.left++;
+        else if (k === TURN.RIGHT) manoeuvres.right++;
+        else if (k === TURN.SHARP_LEFT || k === TURN.SHARP_RIGHT) manoeuvres.sharp++;
+        else if (k === TURN.U_TURN) manoeuvres.uturn++;
+        if (this.signals[this.head[path[i - 1]]]) manoeuvres.lights++;
+      }
+    }
+    const junctions = [];
+    for (const v of path) {
+      const x = this.junction(v);
+      if (junctions[junctions.length - 1] !== x) junctions.push(x);
+    }
+    return { ...base, found: true, path, junctions, seconds, metres, manoeuvres: this.turns ? manoeuvres : null };
   }
 
   static unwind(parent, from, to) {
@@ -290,9 +443,10 @@ export class Engine {
   dijkstra(s, t) {
     const started = performance.now();
     const trace = new Trace();
-    const S = this.sides[0];
+    const g = this.graph;
+    const S = g.sides[0];
     S.reset();
-    const { first_out: first, head, weight } = this;
+    const { first_out: first, head, weight } = g;
     S.set(s, 0, -1);
     S.heap.push(0, s);
     while (S.heap.size) {
@@ -321,7 +475,8 @@ export class Engine {
       trace.push(s, 0);
       return this.result("bidirectional", [s], trace, started);
     }
-    const [F, B] = this.sides;
+    const g = this.graph;
+    const [F, B] = g.sides;
     F.reset();
     B.reset();
     F.set(s, 0, -1);
@@ -329,8 +484,8 @@ export class Engine {
     F.heap.push(0, s);
     B.heap.push(0, t);
     const adj = [
-      [this.first_out, this.head, this.weight],
-      [this.first_in, this.tail, this.inWeight],
+      [g.first_out, g.head, g.weight],
+      [g.first_in, g.tail, g.inWeight],
     ];
     let best = Infinity;
     let meeting = -1;
@@ -360,11 +515,11 @@ export class Engine {
       }
     }
     if (meeting < 0) return this.result("bidirectional", null, trace, started);
-    return this.result("bidirectional", this.joinPaths(s, t, meeting), trace, started);
+    return this.result("bidirectional", this.joinPaths(g, s, t, meeting), trace, started);
   }
 
-  joinPaths(s, t, meeting) {
-    const [F, B] = this.sides;
+  joinPaths(g, s, t, meeting) {
+    const [F, B] = g.sides;
     const path = Engine.unwind(F.parent, s, meeting);
     let node = meeting;
     while (node !== t) {
@@ -377,12 +532,12 @@ export class Engine {
   astar(s, t) {
     const started = performance.now();
     const trace = new Trace();
-    const S = this.sides[0];
+    const g = this.graph;
+    const S = g.sides[0];
     S.reset();
-    this.hGen++;
-    const { first_out: first, head, weight, lat, lon, hCache, hSeen } = this;
-    const gen = this.hGen;
-    const scale = this.maxSpeed > 0 ? (ASTAR_SAFETY * 2 * EARTH_RADIUS_M) / this.maxSpeed : 0;
+    const gen = ++g.hGen;
+    const { first_out: first, head, weight, lat, lon, hCache, hSeen } = g;
+    const scale = g.maxSpeed > 0 ? (ASTAR_SAFETY * 2 * EARTH_RADIUS_M) / g.maxSpeed : 0;
     const rad = Math.PI / 180;
     const tLat = lat[t] * rad;
     const tLon = lon[t] * rad;
@@ -419,16 +574,22 @@ export class Engine {
     return this.result("astar", null, trace, started);
   }
 
+  /** Whether Contraction Hierarchies can answer in the current mode. */
+  get chAvailable() {
+    return Boolean(this.ch) && !this.turns;
+  }
+
   ch_query(s, t) {
     const started = performance.now();
     const trace = new Trace();
     const ch = this.ch;
-    if (!ch) throw new Error("No Contraction Hierarchy loaded for this time of day.");
+    if (!this.chAvailable) throw new Error("Contraction Hierarchies are not available in this mode.");
     if (s === t) {
       trace.push(s, 0);
       return this.result("ch", [s], trace, started);
     }
-    const [F, B] = this.sides;
+    const g = this.roads;
+    const [F, B] = g.sides;
     F.reset();
     B.reset();
     F.set(s, 0, -1);
@@ -480,7 +641,7 @@ export class Engine {
       }
     }
     if (meeting < 0) return this.result("ch", null, trace, started);
-    return this.result("ch", this.unpack(this.joinPaths(s, t, meeting)), trace, started);
+    return this.result("ch", this.unpack(this.joinPaths(g, s, t, meeting)), trace, started);
   }
 
   middle(a, b) {
@@ -519,7 +680,9 @@ export class Engine {
     return path;
   }
 
-  route(algorithm, s, t) {
+  /** Quickest route between two junctions, in the current mode. */
+  route(algorithm, a, b) {
+    const [s, t] = this.endpoints(a, b);
     switch (algorithm) {
       case "dijkstra":
         return this.dijkstra(s, t);

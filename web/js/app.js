@@ -1,5 +1,32 @@
 import { loadEngine, ALGORITHMS } from "./engine.js";
 import { Atlas } from "./atlas.js";
+import { EtaModel } from "./eta.js";
+
+const FEATURE_NAMES = {
+  graph_eta_s: "the router's estimate",
+  log_graph_eta: "the router's estimate",
+  length_km: "route length",
+  crow_km: "straight-line distance",
+  detour: "how indirect the route is",
+  share_major: "time on main roads",
+  share_mid: "time on B roads",
+  share_minor: "time on side streets",
+  n_left: "left turns",
+  n_right: "right turns",
+  n_sharp: "sharp turns",
+  n_uturn: "U-turns",
+  n_lights: "traffic lights",
+  n_segments: "number of road segments",
+  hour_sin: "time of day",
+  hour_cos: "time of day",
+  weekend: "weekday or weekend",
+  origin_x_km: "where it starts",
+  origin_y_km: "where it starts",
+  dest_x_km: "where it ends",
+  dest_y_km: "where it ends",
+  mid_x_km: "where it passes through",
+  mid_y_km: "where it passes through",
+};
 
 const METHODS = {
   dijkstra: {
@@ -54,6 +81,7 @@ const number = new Intl.NumberFormat("en-GB");
 const state = { a: null, b: null, method: "ch", preset: null, turns: false, results: null, animation: 0 };
 let engine;
 let atlas;
+let etaModel = null;
 
 function formatEta(seconds) {
   const total = Math.round(seconds);
@@ -192,6 +220,7 @@ function run({ animate }) {
     if (r.manoeuvres) parts.push(describeManoeuvres(r.manoeuvres));
     $("trip-meta").textContent = parts.join(" · ");
   }
+  showLearnedEta(r);
   $("replay").disabled = false;
   if (animate) play();
   else {
@@ -225,6 +254,35 @@ function play() {
   state.animation = requestAnimationFrame(step);
 }
 
+function showLearnedEta(r) {
+  const learned = etaModel && r.found ? etaModel.predict(r.junctions) : null;
+  $("learned").hidden = !learned;
+  if (!learned) return;
+  $("learned-eta").innerHTML = formatEta(learned.seconds).replaceAll("<small>", " ").replaceAll("</small>", " ").trim();
+  const change = Math.round((learned.seconds / r.seconds - 1) * 100);
+  $("learned-delta").textContent = `${change >= 0 ? "+" : ""}${change}% on the router's estimate`;
+}
+
+function buildModelCard() {
+  const info = engine.manifest.eta;
+  if (!info) return;
+  $("model-card").hidden = false;
+  $("model-trips").textContent = number.format(info.trips);
+  const rows = Object.entries(info.metrics).map(([name, m]) => {
+    const best = name === "Gradient-boosted trees";
+    const label = name.replace("Graph ETA (router only)", "Router alone").replace("Graph ETA x global factor", "Router × one factor");
+    return `<tr class="${best ? "is-best" : ""}"><td>${label}</td><td>${m.mape_pct.toFixed(1)}%</td><td>${Math.round(m.within_10_pct)}%</td></tr>`;
+  });
+  $("model-metrics").innerHTML = rows.join("");
+  const names = [];
+  for (const [feature] of info.importance) {
+    const name = FEATURE_NAMES[feature] ?? feature;
+    if (!names.includes(name)) names.push(name);
+    if (names.length === 4) break;
+  }
+  $("model-features").textContent = names.join(", ");
+}
+
 function describeManoeuvres(m) {
   const count = (n, one, many) => (n ? `${n} ${n === 1 ? one : many}` : null);
   const parts = [
@@ -244,6 +302,7 @@ function clearTrip(message) {
   atlas.setRoute(null);
   $("eta").textContent = message;
   $("trip-meta").innerHTML = "&nbsp;";
+  $("learned").hidden = true;
   $("replay").disabled = true;
   for (const id of ALGORITHMS) {
     document.querySelector(`[data-count="${id}"]`).textContent = "–";
@@ -397,6 +456,15 @@ async function main() {
   atlas.on("click", onMapClick);
   buildControls();
   bindPins();
+  if (engine.manifest.eta) {
+    try {
+      const res = await fetch(`data/${engine.manifest.eta.file}`);
+      if (res.ok) etaModel = new EtaModel(await res.json(), engine);
+      buildModelCard();
+    } catch (err) {
+      console.warn("The learned ETA model didn't load; showing router ETAs only.", err);
+    }
+  }
 
   await selectPreset(DEFAULT_PRESET);
   [state.a, state.b] = defaultEnds();

@@ -276,6 +276,15 @@ def cmd_bench(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_export_web(args: argparse.Namespace) -> int:
+    from .web_export import export
+
+    network = _load_network(args.network)
+    print(f"Exporting {network.num_nodes:,}-node network to {args.out}", file=sys.stderr)
+    export(network, args.out, name=args.name)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="fastroute", description="Quickest-route search on real road networks."
@@ -332,6 +341,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--seed", type=int, default=0)
     _add_scenario_args(p)
     p.set_defaults(func=cmd_bench)
+
+    p = sub.add_parser("export-web", help="export graph and hierarchies for the map demo")
+    p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
+    p.add_argument("--out", type=Path, default=Path("web/data"))
+    p.add_argument("--name", default="Central London")
+    p.set_defaults(func=cmd_export_web)
 
     args = parser.parse_args(argv)
     return args.func(args)

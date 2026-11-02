@@ -17,8 +17,8 @@ halves on OpenStreetMap data for central London:
   rush-hour traffic and turn costs, every one tested against a reference.
 * **Learned ETA.** The approach behind Uber's DeepETA: keep the routing
   engine, and train a model on observed trips to correct its estimate.
-  Gradient-boosted trees cut the error on held-out London trips from 64% to
-  8%, give each trip a calibrated arrival window, and run live in the
+  Gradient-boosted trees cut the error on held-out London trips from 28% to
+  7%, give each trip a calibrated arrival window, and run live in the
   browser, where a map layer shows the congestion the model discovered.
 
 | Algorithm | Nodes settled (mean) | vs Dijkstra | Query time (median) | vs Dijkstra |
@@ -39,15 +39,15 @@ intersections; Dijkstra looks at 27,278.
 
 | ETA model, on 4,000 held-out London trips | Mean abs. error | 90th pct. error | Within 10% |
 |---|---:|---:|---:|
-| Router alone | 64.3% | 74.0% | 0% |
-| Router × one global factor | 18.8% | 39.5% | 34% |
-| Ridge regression | 10.8% | 23.0% | 58% |
-| Neural network (MLP, 64×64) | 8.8% | 18.5% | 68% |
-| **Gradient-boosted trees** | **8.1%** | **16.9%** | **72%** |
+| Router alone | 27.5% | 38.5% | 2% |
+| Router × one global factor | 10.1% | 20.3% | 58% |
+| Ridge regression | 7.6% | 15.5% | 74% |
+| Neural network (MLP, 64×64) | 7.3% | 14.4% | 75% |
+| **Gradient-boosted trees** | **6.8%** | **13.8%** | **78%** |
 
-* **Arrival window:** the 10th to 90th percentile range contains **78.7%** of
-  held-out trips against an 80% target (73.2% before conformal calibration).
-* **What it discovered:** its map of slow areas correlates at **r = 0.77**
+* **Arrival window:** the 10th to 90th percentile range contains **81.0%** of
+  held-out trips against an 80% target (77.4% before conformal calibration).
+* **What it discovered:** its map of slow areas correlates at **r = 0.83**
   with congestion hotspots it was never shown.
 
 <sub>Trained on 16,000 of 20,000 simulated trips; see
@@ -189,22 +189,30 @@ that world. Nothing in the features reads the world directly; the models
 have to infer its effects from routes and outcomes.
 
 **Results** are measured on trips the models never saw (table above). The
-router alone is badly optimistic in central London, mostly because it knows
-nothing about traffic lights, which the gradient-boosted model ranks as its
-most useful feature, followed by route length and time of day. One global
-correction factor helps, a linear model helps more, and both non-linear
-models capture the interactions (lights cost more at peak; hotspots matter
-only when the route passes through them). Gradient-boosted trees win and,
-being a few hundred small trees, are also the easiest to ship.
+simulated city is calibrated to central London: trips average about 21 km/h
+at night, 14 at midday and 11 at the peaks. The router alone is optimistic
+by about 28%, mostly because it knows nothing about traffic lights or about
+when the peaks really arrive. Time of day is the model's most useful
+signal, followed by where the route runs, weekday or weekend, length and
+the number of sets of lights. One global factor helps, a linear model helps
+more, and both non-linear models capture the interactions (lights cost more
+at peak; hotspots matter only when the route passes through them).
+Gradient-boosted trees win and, being a few hundred small trees, are also
+the easiest to ship.
+
+**Traffic lights in OpenStreetMap** are often tagged on each approach to a
+junction and on nearby crossings, about 10 points per km of central London
+route. Signal nodes within 60 m along a route therefore count as one set
+(about 4 per km), both in the simulation and in the model's features.
 
 **Arrival windows.** A single number hides how much trips vary, so two more
 gradient-boosted models predict the 10th and 90th percentiles, and each trip
 gets a range such as "usually 25 to 36 min". Quantile models alone tend to be
-overconfident (73% coverage on London against an 80% target), so the window
+overconfident (77% coverage on London against an 80% target), so the window
 is calibrated with **conformalized quantile regression**: part of the
 training set is held back, the models' misses on it are measured, and the
 window is widened by exactly the margin that gives 80% coverage on new trips.
-On held-out London trips it lands at 78.7%, with misses split evenly above
+On held-out London trips it lands at 81.0%, with misses split evenly above
 and below.
 
 **What the model learned.** The hidden hotspots are never shown to the model,
@@ -212,7 +220,7 @@ yet it should find them, since trips through them run slow. The map's
 *Learned slowdown* layer asks the model how far off the router a typical
 trip through each grid square would be at the chosen time, and shades the
 square accordingly. Against the hidden hotspot field this map correlates at
-r = 0.77 on London (0.91 on a synthetic grid): the model has located the
+r = 0.83 on London (0.91 on a synthetic grid): the model has located the
 congestion from trip outcomes alone.
 
 **In the browser.** The trees export to JSON, and `web/js/eta.js` computes the

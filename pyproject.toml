@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "fastroute"
 version = "0.1.0"
-description = "Quickest-route search on real road networks: Dijkstra, A* and Contraction Hierarchies from first principles."
+description = "Quickest-route search on real road networks, from Dijkstra to Contraction Hierarchies, with traffic, turn costs and a learned ETA model."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
@@ -13,7 +13,8 @@ authors = [{ name = "Ioannis Konstantinou" }]
 dependencies = ["numpy>=1.24"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "networkx>=3", "ruff>=0.5"]
+ml = ["scikit-learn>=1.3"]
+dev = ["pytest>=8", "networkx>=3", "ruff>=0.5", "scikit-learn>=1.3"]
 
 [project.scripts]
 fastroute = "fastroute.__main__:main"

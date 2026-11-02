@@ -287,7 +287,25 @@ def cmd_export_web(args: argparse.Namespace) -> int:
     else:
         print(f"{args.raw} not found; exporting without rivers", file=sys.stderr)
     print(f"Exporting {network.num_nodes:,}-node network to {args.out}", file=sys.stderr)
-    export(network, args.out, raw=raw, name=args.name)
+    export(network, args.out, raw=raw, name=args.name, eta_trips=args.eta_trips)
+    return 0
+
+
+def cmd_eta_train(args: argparse.Namespace) -> int:
+    from .eta import metrics_markdown, train
+
+    network = _load_network(args.network)
+    print(f"Training ETA models on {args.trips:,} simulated trips", file=sys.stderr)
+    result = train(
+        network, trips=args.trips, seed=args.seed, log=lambda m: print(m, file=sys.stderr)
+    )
+    print(metrics_markdown(result.metrics))
+    print("\nMost useful features (permutation importance):")
+    for name, value in result.importance[:8]:
+        print(f"  {name:<15} {value:.3f}")
+    if args.out:
+        args.out.write_text(json.dumps(result.model_json, separators=(",", ":")))
+        print(f"\nSaved model to {args.out}", file=sys.stderr)
     return 0
 
 
@@ -348,10 +366,23 @@ def main(argv: list[str] | None = None) -> int:
     _add_scenario_args(p)
     p.set_defaults(func=cmd_bench)
 
+    p = sub.add_parser("eta-train", help="train and compare learned ETA models")
+    p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
+    p.add_argument("--trips", type=int, default=20_000)
+    p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--out", type=Path, help="save the gradient-boosted model as JSON")
+    p.set_defaults(func=cmd_eta_train)
+
     p = sub.add_parser("export-web", help="export graph and hierarchies for the map demo")
     p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
     p.add_argument("--out", type=Path, default=Path("web/data"))
     p.add_argument("--raw", type=Path, default=DEFAULT_RAW, help="raw OSM download, for rivers")
+    p.add_argument(
+        "--eta-trips",
+        type=int,
+        default=20_000,
+        help="simulated trips to train the ETA model on (0 to skip; needs scikit-learn)",
+    )
     p.add_argument("--name", default="Central London")
     p.set_defaults(func=cmd_export_web)
 

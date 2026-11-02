@@ -148,6 +148,7 @@ def export(
     *,
     raw: dict | None = None,
     name: str = "Central London",
+    eta_trips: int = 0,
     presets: tuple[Preset, ...] = PRESETS,
     log: Callable[[str], None] = lambda msg: print(msg, file=sys.stderr),
 ) -> dict[str, object]:
@@ -158,10 +159,12 @@ def export(
     log(f"  graph: {network.num_nodes:,} nodes, {network.num_edges:,} edges, {size / 1e6:.2f} MB")
 
     preset_entries = []
+    hierarchies: dict[float, ContractionHierarchy] = {}
     for preset in presets:
         started = time.perf_counter()
         router = Router(network, Scenario(hour=preset.hour))
         ch = ContractionHierarchy.build(router.graph)
+        hierarchies[preset.hour] = ch
         ch_blob, ch_layout = _pack(ch_arrays(ch))
         filename = f"ch-{preset.id}.bin.gz"
         size = _write(out_dir / filename, ch_blob)
@@ -202,5 +205,26 @@ def export(
         "rivers": river_lines(raw) if raw else [],
         "presets": preset_entries,
     }
+    if eta_trips:
+        from .eta import train
+
+        log(f"  training the ETA model on {eta_trips:,} simulated trips")
+        started = time.perf_counter()
+        result = train(network, trips=eta_trips, hierarchies=hierarchies, log=log)
+        (out_dir / "eta-model.json").write_text(
+            json.dumps(result.model_json, separators=(",", ":"))
+        )
+        best = result.metrics["Gradient-boosted trees"]
+        log(
+            f"  ETA model: {len(result.model_json['trees'])} trees, "
+            f"{best['mape_pct']:.1f}% mean error on held-out trips, "
+            f"{time.perf_counter() - started:.0f}s"
+        )
+        manifest["eta"] = {
+            "file": "eta-model.json",
+            "trips": result.trips,
+            "metrics": result.metrics,
+            "importance": result.importance[:8],
+        }
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=1))
     return manifest

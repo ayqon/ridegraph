@@ -18,7 +18,8 @@ halves on OpenStreetMap data for central London:
 * **Learned ETA.** The approach behind Uber's DeepETA: keep the routing
   engine, and train a model on observed trips to correct its estimate.
   Gradient-boosted trees cut the error on held-out London trips from 64% to
-  8%, and run live in the browser.
+  8%, give each trip a calibrated arrival window, and run live in the
+  browser, where a map layer shows the congestion the model discovered.
 
 | Algorithm | Nodes settled (mean) | vs Dijkstra | Query time (median) | vs Dijkstra |
 |---|---:|---:|---:|---:|
@@ -43,6 +44,11 @@ intersections; Dijkstra looks at 27,278.
 | Ridge regression | 10.8% | 23.0% | 58% |
 | Neural network (MLP, 64×64) | 8.8% | 18.5% | 68% |
 | **Gradient-boosted trees** | **8.1%** | **16.9%** | **72%** |
+
+* **Arrival window:** the 10th to 90th percentile range contains **78.7%** of
+  held-out trips against an 80% target (73.2% before conformal calibration).
+* **What it discovered:** its map of slow areas correlates at **r = 0.77**
+  with congestion hotspots it was never shown.
 
 <sub>Trained on 16,000 of 20,000 simulated trips; see
 [the learned ETA](#5-the-learned-eta) for how the trips are generated and
@@ -191,6 +197,24 @@ models capture the interactions (lights cost more at peak; hotspots matter
 only when the route passes through them). Gradient-boosted trees win and,
 being a few hundred small trees, are also the easiest to ship.
 
+**Arrival windows.** A single number hides how much trips vary, so two more
+gradient-boosted models predict the 10th and 90th percentiles, and each trip
+gets a range such as "usually 25 to 36 min". Quantile models alone tend to be
+overconfident (73% coverage on London against an 80% target), so the window
+is calibrated with **conformalized quantile regression**: part of the
+training set is held back, the models' misses on it are measured, and the
+window is widened by exactly the margin that gives 80% coverage on new trips.
+On held-out London trips it lands at 78.7%, with misses split evenly above
+and below.
+
+**What the model learned.** The hidden hotspots are never shown to the model,
+yet it should find them, since trips through them run slow. The map's
+*Learned slowdown* layer asks the model how far off the router a typical
+trip through each grid square would be at the chosen time, and shades the
+square accordingly. Against the hidden hotspot field this map correlates at
+r = 0.77 on London (0.91 on a synthetic grid): the model has located the
+congestion from trip outcomes alone.
+
 **In the browser.** The trees export to JSON, and `web/js/eta.js` computes the
 same features and walks the same trees. A test runs it under Node and
 requires its features and predictions to match Python's to nine decimal
@@ -221,9 +245,10 @@ The demo in `web/` runs entirely in the browser, with no server:
   Contraction Hierarchies are switched off in this mode: an edge-based
   hierarchy for London would add around 20 MB per time of day, so turn-aware
   hierarchies live in the Python tool instead.
-* **Learned ETA beside the router's.** Every trip shows both estimates, and
-  a model card shows each model's error on held-out trips and the features
-  the model leans on.
+* **Learned ETA beside the router's.** Every trip shows both estimates and a
+  calibrated arrival window; a model card gives each model's error on
+  held-out trips and the features the model leans on, and a map layer shades
+  the city by the slowdown the model learned for the chosen time.
 * **Built and deployed by CI.** On each push, a workflow downloads central
   London from OpenStreetMap (cached between runs), builds the graph,
   contracts it for each preset, trains the ETA model and publishes `web/` to
@@ -312,7 +337,10 @@ turn-expanded graph matching the plain one when penalties are zero.
 The ETA model has its own checks: features agree with the router's own trip
 times and lengths, the simulated world is reproducible and slower than the
 router at peak, the exported trees reproduce scikit-learn's predictions, and
-the learned model beats both the router and a global factor. Two Node tests
+the learned model beats both the router and a global factor, the calibrated
+window reaches its target coverage, the conformal margin fixes a
+deliberately overconfident interval, and the learned slowdown map lines up
+with the hidden hotspots. Two Node tests
 hold the browser to the Python implementation: all routing algorithms, with
 and without turn costs, and the ETA features and predictions.
 
@@ -325,7 +353,7 @@ CI runs lint, formatting and the full suite on Python 3.10, 3.12 and 3.13.
 - [x] **Contraction Hierarchies:** node ordering, witness search, shortcuts, upward query, path unpacking
 - [x] **Traffic and turns:** time-of-day speed profiles, edge-expanded graph with turn and traffic-light costs
 - [x] **Live map:** in-browser routing on a street-atlas render of the graph, animating each algorithm's search
-- [x] **Learned ETA:** simulated observed trips, route features, ridge, MLP and gradient-boosted trees, shipped to the browser
+- [x] **Learned ETA:** simulated observed trips, route features, ridge, MLP and gradient-boosted trees, calibrated arrival windows, a learned congestion map, shipped to the browser
 
 ## Data
 

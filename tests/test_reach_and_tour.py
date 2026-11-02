@@ -97,3 +97,48 @@ def test_plan_on_a_road_network(graph) -> None:
     # The matrix is real travel time: check a few entries against Dijkstra.
     for i, j in [(0, 1), (3, 5), (7, 2)]:
         assert result.matrix[i, j] == pytest.approx(one_to_all(graph, stops[i])[stops[j]])
+
+
+def test_browser_matches_python(tmp_path) -> None:
+    import json
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    from fastroute.graph import csr_sorted
+    from fastroute.router import Router, Scenario
+    from fastroute.web_export import export
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+    network = grid_network(16, 16, seed=8, oneway_share=0.3)
+    export(network, tmp_path, log=lambda m: None)
+    router = Router(csr_sorted(network), Scenario(hour=8.0))
+    ch = ContractionHierarchy.build(router.graph)
+    rng = random.Random(9)
+    reach_cases = []
+    for arriving in (False, True):
+        for _ in range(4):
+            o = rng.randrange(network.num_nodes)
+            t = times_within(router.graph, o, 240, arriving=arriving)
+            reach_cases.append({"origin": o, "budget": 240, "arriving": arriving, "times": t})
+    tours = []
+    for return_to_start in (True, False):
+        stops = rng.sample(range(network.num_nodes), 7)
+        p = plan(ch, stops, return_to_start=return_to_start)
+        tours.append(
+            {
+                "stops": stops,
+                "return_to_start": return_to_start,
+                "matrix": p.matrix.tolist(),
+                "seconds": p.seconds,
+            }
+        )
+    cases = tmp_path / "cases.json"
+    cases.write_text(json.dumps({"preset": "0800", "reach": reach_cases, "tours": tours}))
+    script = Path(__file__).resolve().parent.parent / "web/test/check_reach_tour.mjs"
+    proc = subprocess.run(
+        [node, str(script), str(tmp_path), str(cases)], capture_output=True, text=True, timeout=120
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr

@@ -688,6 +688,112 @@ export class Engine {
     return path;
   }
 
+  // ---------------------------------------------------------------- reach
+
+  /**
+   * Seconds from (or, if ``arriving``, to) ``origin`` for every junction within
+   * ``budget`` on the plain road graph. Returns a Float64Array (Infinity where
+   * unreached) and the reached junctions in time order.
+   */
+  timesWithin(origin, budget, arriving = false) {
+    const g = this.roads;
+    const [first, adj, w] = arriving ? [g.first_in, g.tail, g.inWeight] : [g.first_out, g.head, g.weight];
+    const S = g.sides[0];
+    S.reset();
+    S.set(origin, 0, -1);
+    S.heap.push(0, origin);
+    const times = new Float64Array(this.n).fill(Infinity);
+    const order = [];
+    while (S.heap.size) {
+      const u = S.heap.pop();
+      const d = S.heap.lastKey;
+      if (S.isDone(u)) continue;
+      if (d > budget) break;
+      S.markDone(u);
+      times[u] = d;
+      order.push(u);
+      for (let e = first[u]; e < first[u + 1]; e++) {
+        const v = adj[e];
+        const nd = d + w[e];
+        if (nd <= budget && nd < S.get(v)) {
+          S.set(v, nd, u);
+          S.heap.push(nd, v);
+        }
+      }
+    }
+    return { times, order };
+  }
+
+  // ---------------------------------------------------------------- many-to-many
+
+  /** Exhaustive upward search with stall-on-demand (as ContractionHierarchy.upward_search). */
+  upwardSearch(start, backward = false) {
+    const ch = this.ch;
+    const [first, adj, w] = backward
+      ? [ch.down_first, ch.down_tail, ch.down_weight]
+      : [ch.up_first, ch.up_head, ch.up_weight];
+    const [sf, sa, sw] = backward
+      ? [ch.up_first, ch.up_head, ch.up_weight]
+      : [ch.down_first, ch.down_tail, ch.down_weight];
+    const S = this.roads.sides[backward ? 1 : 0];
+    S.reset();
+    S.set(start, 0, -1);
+    S.heap.push(0, start);
+    const found = [];
+    while (S.heap.size) {
+      const u = S.heap.pop();
+      const d = S.heap.lastKey;
+      if (S.isDone(u)) continue;
+      S.markDone(u);
+      let stalled = false;
+      for (let e = sf[u]; e < sf[u + 1]; e++) {
+        if (S.get(sa[e]) + sw[e] < d) {
+          stalled = true;
+          break;
+        }
+      }
+      if (stalled) continue;
+      found.push(u, d);
+      for (let e = first[u]; e < first[u + 1]; e++) {
+        const v = adj[e];
+        const nd = d + w[e];
+        if (nd < S.get(v)) {
+          S.set(v, nd, u);
+          S.heap.push(nd, v);
+        }
+      }
+    }
+    return found; // flat [node, dist, node, dist, ...]
+  }
+
+  /** Travel time from every source to every target via bucket-based CH (seconds). */
+  manyToMany(sources, targets) {
+    if (!this.ch) throw new Error("Contraction Hierarchies are not loaded.");
+    const buckets = new Map();
+    targets.forEach((t, j) => {
+      const found = this.upwardSearch(t, true);
+      for (let k = 0; k < found.length; k += 2) {
+        const v = found[k];
+        let list = buckets.get(v);
+        if (!list) buckets.set(v, (list = []));
+        list.push(j, found[k + 1]);
+      }
+    });
+    return sources.map((s) => {
+      const row = new Array(targets.length).fill(Infinity);
+      const found = this.upwardSearch(s, false);
+      for (let k = 0; k < found.length; k += 2) {
+        const list = buckets.get(found[k]);
+        if (!list) continue;
+        for (let q = 0; q < list.length; q += 2) {
+          const total = found[k + 1] + list[q + 1];
+          if (total < row[list[q]]) row[list[q]] = total;
+        }
+      }
+      return row;
+    });
+  }
+
   /** Quickest route between two junctions, in the current mode. */
   route(algorithm, a, b) {
     const [s, t] = this.endpoints(a, b);

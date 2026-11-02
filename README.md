@@ -1,7 +1,7 @@
 # fastroute
 
-Quickest-route search and learned arrival times on a real road network,
-built from first principles.
+Quickest-route search, learned arrival times and ride dispatch on a real
+road network, built from first principles.
 
 **[Try the live map →](https://ayqon.github.io/fastroute/)** Click two points in
 central London, pick a time of day, and watch how much of the city each
@@ -15,6 +15,11 @@ halves on OpenStreetMap data for central London:
 * **Routing.** Dijkstra, bidirectional search, A\* and Contraction
   Hierarchies, implemented by hand rather than called from a library, with
   rush-hour traffic and turn costs, every one tested against a reference.
+* **Ride dispatch.** Every 30 seconds, price every free driver against every
+  waiting rider with one many-to-many query and assign them optimally with
+  the Hungarian algorithm; move idle drivers ahead of demand predicted by a
+  forecasting model. On simulated London mornings this cuts the average
+  pickup wait from 7.3 to 6.1 minutes against nearest-driver dispatch.
 * **Learned ETA.** The approach behind Uber's DeepETA: keep the routing
   engine, and train a model on observed trips to correct its estimate.
   Gradient-boosted trees cut the error on held-out London trips from 28% to
@@ -228,7 +233,68 @@ same features and walks the same trees. A test runs it under Node and
 requires its features and predictions to match Python's to nine decimal
 places.
 
-### 6. The live map
+### 6. Ride dispatch and demand forecasting
+
+Routing exists to answer a business question: which driver should take this
+ride? `fastroute/dispatch.py` simulates a fleet over the 07:00 to 10:00
+morning peak and compares four ways of answering it, on exactly the same
+ride requests and the same starting fleet.
+
+**Demand** (`fastroute/demand.py`) comes from places with their own rhythm:
+main-line stations busy at commuting hours, the City and Holborn filling in
+the morning and emptying in the evening, Soho, Covent Garden and Shoreditch
+at night, plus requests from anywhere. Every day has its own level, its own
+surprises at each hotspot, and a couple of unannounced events (a match, a
+concert) that make one area surge for an hour or two.
+
+**Pricing every pairing at once.** Every 30 seconds the dispatcher needs the
+pickup time from every free driver to every waiting rider. Running one
+query per pair would be hundreds of searches; bucket-based **many-to-many
+Contraction Hierarchies** do it with one small upward search per driver and
+per rider, then join them through buckets at the nodes they share.
+
+**The methods compared:**
+
+* *Nearest driver.* Riders, oldest first, each take the closest free driver.
+* *Optimal matching.* The **Hungarian algorithm** (`fastroute/matching.py`)
+  assigns the whole batch at once to minimise total pickup time, with each
+  rider's cost reduced by how long they have already waited so that
+  hard-to-reach riders are not left until they give up.
+* *Optimal + repositioning.* Idle drivers also move towards neighbourhoods
+  where expected demand over the next 15 minutes most exceeds the drivers
+  already there, using either the historical average for that place and
+  time, or an **ML demand forecast**.
+
+**The forecast** is a gradient-boosted Poisson model predicting ride requests
+per 500 m square for the next 15 minutes, from the time, the place and what
+has happened so far today (the last 15 minutes and the last hour, nearby
+and city-wide). On days it never saw:
+
+| Forecast | Poisson deviance (lower is better) |
+|---|---:|
+| Same as the last 15 minutes | 3.35 |
+| Historical average for the time | 0.77 |
+| **Gradient-boosted forecast** | **0.39** |
+
+**Results**, averaged over 6 simulated London mornings with 115 drivers:
+
+| Method | Avg. wait | 90th pct. wait | Pickup drive | Gave up | Empty driving per driver |
+|---|---:|---:|---:|---:|---:|
+| Nearest driver | 7.3 min | 13.3 min | 5.8 min | 5.9% | 0 |
+| Optimal matching | 6.6 min | 12.1 min | 5.4 min | 6.2% | 0 |
+| Optimal + historical-average repositioning | 6.2 min | 11.6 min | 5.1 min | 4.9% | 16 min |
+| **Optimal + ML-forecast repositioning** | **6.1 min** | **11.3 min** | **4.9 min** | 5.0% | **12 min** |
+
+Optimal matching alone cuts waits by about 10%, and repositioning ahead of
+demand brings the total to 16%. The ML forecast halves the forecasting error
+of the historical average, but in this dispatch loop that shows up mainly as
+efficiency: it reaches the best waits while sending drivers on about a
+quarter less empty repositioning, because it moves them only where demand is
+actually building today. Better forecasts do not automatically mean
+proportionally better decisions; the repositioning rule is where the next
+gains would come from.
+
+### 7. The live map
 
 The demo in `web/` runs entirely in the browser, with no server:
 
@@ -257,12 +323,18 @@ The demo in `web/` runs entirely in the browser, with no server:
   calibrated arrival window; a model card gives each model's error on
   held-out trips and the features the model leans on, and a map layer shades
   the city by the slowdown the model learned for the chosen time.
+* **Dispatch you can watch.** A *Dispatch rides* mode replays a simulated
+  morning: cars coloured by what they are doing move along their real
+  routes, riders wait and are collected, and all four methods' running
+  averages update side by side. Only the decisions are stored; the browser
+  rebuilds every route with the same hierarchy, and a test holds each leg to
+  the duration the simulation recorded.
 * **Built and deployed by CI.** On each push, a workflow downloads central
   London from OpenStreetMap (cached between runs), builds the graph,
   contracts it for each preset, trains the ETA model and publishes `web/` to
   GitHub Pages.
 
-### 7. What the London numbers show
+### 8. What the London numbers show
 
 * **Contraction Hierarchies work because real roads are hierarchical.** On a
   uniform synthetic grid the reduction in search work is 24x; on London it
@@ -276,7 +348,7 @@ The demo in `web/` runs entirely in the browser, with no server:
   Python**, because juggling two frontiers costs interpreter overhead that
   eats most of the saving.
 
-### 8. Measuring fairly
+### 9. Measuring fairly
 
 Benchmarks report **nodes settled** alongside wall-clock time. Settled nodes
 measure the work each algorithm does, independent of language; Python
@@ -311,6 +383,9 @@ python -m fastroute bench --at 08:30 --turns
 
 # Simulate trips, train and compare ETA models
 python -m fastroute eta-train --trips 20000 --out data/eta-model.json
+
+# Simulate ride dispatch on the morning peak and compare methods
+python -m fastroute dispatch --drivers 115 --days 6
 ```
 
 On Windows PowerShell 5, run the commands one per line (it does not support
@@ -352,6 +427,13 @@ with the hidden hotspots. Two Node tests
 hold the browser to the Python implementation: all routing algorithms, with
 and without turn costs, and the ETA features and predictions.
 
+Dispatch has its own: the Hungarian algorithm against brute force on random
+matrices, many-to-many travel times against Dijkstra for every pair, demand
+following its daily rhythm and staying reproducible, forecast features never
+reading the slot they predict, the forecast beating both baselines, every
+policy running on identical requests and never exceeding the pickup limit,
+and a Node test holding the browser's replayed routes to the simulation.
+
 CI runs lint, formatting and the full suite on Python 3.10, 3.12 and 3.13.
 
 ## Roadmap
@@ -361,6 +443,7 @@ CI runs lint, formatting and the full suite on Python 3.10, 3.12 and 3.13.
 - [x] **Contraction Hierarchies:** node ordering, witness search, shortcuts, upward query, path unpacking
 - [x] **Traffic and turns:** time-of-day speed profiles, edge-expanded graph with turn and traffic-light costs
 - [x] **Live map:** in-browser routing on a street-atlas render of the graph, animating each algorithm's search
+- [x] **Ride dispatch and demand forecasting:** many-to-many CH, Hungarian matching, ML demand forecast, repositioning, simulated and replayed
 - [x] **Learned ETA:** simulated observed trips, route features, ridge, MLP and gradient-boosted trees, calibrated arrival windows, a learned congestion map, shipped to the browser
 
 ## Data

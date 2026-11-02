@@ -92,6 +92,128 @@ a {
   color: var(--ink-soft);
 }
 
+.modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 14px;
+  border: 2px solid var(--ink);
+}
+
+.modes button {
+  border: 0;
+  background: transparent;
+  padding: 9px 8px 8px;
+  font: 600 15px/1 var(--display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.modes button + button {
+  border-left: 2px solid var(--ink);
+}
+
+.modes button[aria-selected="true"] {
+  background: var(--ink);
+  color: var(--cover);
+}
+
+.mode-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.playback {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.play {
+  border: 0;
+  background: var(--ink);
+  color: var(--cover);
+  font: 600 14px/1 var(--display);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 8px 12px 7px;
+  min-width: 70px;
+  cursor: pointer;
+}
+
+.playback input[type="range"] {
+  width: 100%;
+  accent-color: var(--ink);
+}
+
+.speeds {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  font: 500 12px/1 var(--mono);
+}
+
+.speeds label {
+  position: relative;
+  cursor: pointer;
+}
+
+.speeds input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  margin: 0;
+}
+
+.speeds span {
+  display: block;
+  border: 1.5px solid var(--ink);
+  padding: 5px 7px 4px;
+}
+
+.speeds input:checked + span {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.speeds input:focus-visible + span {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.key .car {
+  width: 10px;
+  height: 10px;
+  display: inline-block;
+  border: 1.5px solid var(--ink);
+  border-radius: 2px;
+}
+
+.car-idle {
+  background: var(--paper);
+}
+.car-pickup {
+  background: var(--search-a);
+}
+.car-trip {
+  background: var(--cover);
+}
+.car-reposition {
+  background: #9a9a90;
+}
+
+.key .rider {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+  background: var(--search-b);
+}
+
 .trip {
   border: 3px solid var(--ink);
   background: var(--paper);

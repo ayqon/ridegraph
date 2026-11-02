@@ -139,3 +139,16 @@ def test_export_writes_a_consistent_replay(tmp_path) -> None:
             assert dur == pytest.approx(ch.query(u, v).seconds, abs=0.06)
             if kind != 2:
                 assert 0 <= ride < len(policy["rides"])
+
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    node = shutil.which("node")
+    if node:
+        script = Path(__file__).resolve().parent.parent / "web/test/check_dispatch.mjs"
+        proc = subprocess.run(
+            [node, str(script), str(tmp_path)], capture_output=True, text=True, timeout=120
+        )
+        assert proc.returncode == 0, proc.stdout + proc.stderr
+        assert json.loads(proc.stdout)["checked"] > 0

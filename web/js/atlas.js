@@ -538,6 +538,7 @@ export class Atlas {
       ctx.lineWidth = 3.5;
       ctx.stroke();
     }
+    if (this.extras) this.extras(ctx);
   }
 
   drawLandmarks(ctx) {

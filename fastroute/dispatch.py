@@ -61,7 +61,7 @@ WAIT_PRIORITY = 1.0
 
 @dataclass(frozen=True)
 class DispatchConfig:
-    drivers: int = 110
+    drivers: int = 115
     start_hour: float = 7.0
     hours: float = 3.0
     warmup_min: float = 20.0

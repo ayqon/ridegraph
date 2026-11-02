@@ -1,6 +1,7 @@
 import { loadEngine, ALGORITHMS } from "./engine.js";
 import { Atlas } from "./atlas.js";
 import { EtaModel } from "./eta.js";
+import { DispatchReplay, PATIENCE_S } from "./dispatch.js";
 
 const FEATURE_NAMES = {
   graph_eta_s: "the router's estimate",
@@ -398,6 +399,7 @@ function bindPins() {
 }
 
 function onMapClick({ lat, lon }) {
+  if (state.mode === "dispatch") return;
   const node = engine.nearest(lat, lon);
   if (state.a !== null && state.b === null) {
     state.b = node;
@@ -457,6 +459,233 @@ function drawRulers() {
   }
 }
 
+
+// ------------------------------------------------------------------ dispatch mode
+
+const POLICY_NOTES = {
+  nearest: "Riders, oldest first, each take the closest free driver.",
+  optimal:
+    "Every 30 seconds the Hungarian algorithm assigns the whole batch at once, minimising total pickup time and putting riders who have waited longest first.",
+  "optimal+history":
+    "Optimal matching, and idle drivers move towards neighbourhoods where riders usually appear at this time, by the historical average.",
+  "optimal+forecast":
+    "Optimal matching, and idle drivers move to where the ML forecast expects riders in the next 15 minutes, reading what has happened so far this morning.",
+};
+const SPEEDS = [30, 60, 180];
+const CAR_COLOURS = { idle: "#ffffff", pickup: "#1b3a8c", trip: "#ffd21f", reposition: "#9a9a90" };
+
+const sim = { replay: null, policy: 3, t: 0, speed: 60, playing: true, frame: 0, last: 0 };
+
+async function enterDispatch() {
+  const info = engine.manifest.dispatch;
+  if (!info) return;
+  state.mode = "dispatch";
+  setModeTabs();
+  cancelAnimationFrame(state.animation);
+  if (!sim.replay) {
+    $("clock").textContent = "Loading…";
+    const res = await fetch(`data/${info.file}`);
+    if (!res.ok) {
+      $("clock").textContent = "Replay didn't load";
+      $("dispatch-meta").textContent = "Refresh the page to try again.";
+      return;
+    }
+    const preset = engine.manifest.presets.find((p) => p.id === info.preset);
+    await engine.usePreset(preset);
+    sim.replay = new DispatchReplay(await res.json(), engine);
+    sim.playing = !reducedMotion.matches;
+    buildDispatchControls(info);
+    updatePlayButton();
+  }
+  const preset = engine.manifest.presets.find((p) => p.id === info.preset);
+  await engine.usePreset(preset);
+  engine.setTurns(false);
+  atlas.setTrace(null);
+  atlas.setRoute(null);
+  atlas.setHeat(null);
+  atlas.extras = drawDispatch;
+  for (const id of ["pin-a", "pin-b", "heat-toggle", "key-route"]) $(id).hidden = true;
+  $("key-dispatch").hidden = false;
+  $("hint").textContent = "A simulated morning of ride requests. Pick a dispatch method to watch it.";
+  sim.last = performance.now();
+  sim.frame = requestAnimationFrame(tick);
+}
+
+async function enterRoute() {
+  state.mode = "route";
+  setModeTabs();
+  cancelAnimationFrame(sim.frame);
+  atlas.extras = null;
+  $("key-dispatch").hidden = true;
+  $("key-route").hidden = false;
+  $("heat-toggle").hidden = !etaModel?.model.reference;
+  $("hint").textContent = "Click to place A, then B. Drag a pin to move it.";
+  await engine.usePreset(state.preset);
+  engine.setTurns(state.turns);
+  placePins();
+  updateHeat();
+  run({ animate: false });
+}
+
+function setModeTabs() {
+  const dispatch = state.mode === "dispatch";
+  $("mode-route").setAttribute("aria-selected", String(!dispatch));
+  $("mode-dispatch").setAttribute("aria-selected", String(dispatch));
+  $("route-panel").hidden = dispatch;
+  $("dispatch-panel").hidden = !dispatch;
+}
+
+function buildDispatchControls(info) {
+  const r = sim.replay;
+  $("scrub").max = String(r.duration);
+  $("dispatch-meta").textContent = `Morning peak · ${r.data.drivers} drivers · the same ride requests for every method`;
+  const speeds = $("speeds");
+  for (const s of SPEEDS) {
+    const label = document.createElement("label");
+    const each = s >= 60 ? `${s / 60} simulated minute${s > 60 ? "s" : ""}` : `${s} simulated seconds`;
+    label.innerHTML = `<input type="radio" name="speed" value="${s}" aria-label="${each} per second" ${s === sim.speed ? "checked" : ""}><span>×${s}</span>`;
+    speeds.appendChild(label);
+  }
+  speeds.addEventListener("change", (ev) => {
+    sim.speed = Number(ev.target.value);
+  });
+  $("play").addEventListener("click", () => {
+    if (sim.t >= r.duration) sim.t = 0;
+    sim.playing = !sim.playing;
+    updatePlayButton();
+  });
+  $("scrub").addEventListener("input", (ev) => {
+    sim.t = Number(ev.target.value);
+    drawFrame();
+  });
+
+  const box = $("policies");
+  r.policies.forEach((p, i) => {
+    const label = document.createElement("label");
+    label.className = "method";
+    label.innerHTML = `<input type="radio" name="policy" value="${i}" ${i === sim.policy ? "checked" : ""}>
+      <span class="method-row">
+        <span class="method-name">${p.name}</span>
+        <span class="method-count" data-wait="${i}">–</span>
+        <span class="method-bar"><i data-wait-bar="${i}" style="width:0"></i></span>
+        <span class="method-time" data-detail="${i}">&nbsp;</span>
+      </span>`;
+    box.appendChild(label);
+  });
+  box.addEventListener("change", (ev) => {
+    sim.policy = Number(ev.target.value);
+    $("policy-note").textContent = POLICY_NOTES[r.policies[sim.policy].id] ?? "";
+    drawFrame();
+  });
+  $("policy-note").textContent = POLICY_NOTES[r.policies[sim.policy].id] ?? "";
+
+  $("dispatch-days").textContent = String(info.days);
+  $("dispatch-summary").innerHTML = r.policies
+    .map((p) => {
+      const m = info.summary[p.id];
+      const best = p.id === "optimal+forecast";
+      return `<tr class="${best ? "is-best" : ""}"><td>${p.name}</td><td>${m.mean_wait_min.toFixed(1)} min</td><td>${m.cancelled_pct.toFixed(1)}%</td><td>${m.repositioning_min_per_driver.toFixed(0)} min</td></tr>`;
+    })
+    .join("");
+  $("forecast-summary").innerHTML = Object.entries(info.forecast)
+    .map(([name, m]) => `<tr class="${name.startsWith("Gradient") ? "is-best" : ""}"><td>${name}</td><td>${m.deviance.toFixed(2)}</td></tr>`)
+    .join("");
+}
+
+function updatePlayButton() {
+  $("play").textContent = sim.playing ? "Pause" : sim.t >= sim.replay.duration ? "Replay" : "Play";
+  $("play").setAttribute("aria-label", $("play").textContent);
+}
+
+function tick(now) {
+  const dt = Math.min(0.1, (now - sim.last) / 1000);
+  sim.last = now;
+  const r = sim.replay;
+  if (sim.playing && !reducedMotion.matches) {
+    sim.t = Math.min(r.duration, sim.t + dt * sim.speed);
+    if (sim.t >= r.duration) {
+      sim.playing = false;
+      updatePlayButton();
+    }
+  }
+  drawFrame();
+  if (state.mode === "dispatch") sim.frame = requestAnimationFrame(tick);
+}
+
+function drawFrame() {
+  const r = sim.replay;
+  const clock = r.data.start_hour * 60 + sim.t / 60;
+  $("clock").textContent = `${String(Math.floor(clock / 60) % 24).padStart(2, "0")}:${String(Math.floor(clock % 60)).padStart(2, "0")}`;
+  $("scrub").value = String(Math.round(sim.t));
+  const stats = r.policies.map((_, i) => r.stats(i, sim.t));
+  const worst = Math.max(1, ...stats.map((s) => s.meanWaitMin ?? 0));
+  stats.forEach((s, i) => {
+    document.querySelector(`[data-wait="${i}"]`).textContent = s.meanWaitMin === null ? "–" : `${s.meanWaitMin.toFixed(1)} min`;
+    document.querySelector(`[data-wait-bar="${i}"]`).style.width = `${(100 * (s.meanWaitMin ?? 0)) / worst}%`;
+    document.querySelector(`[data-detail="${i}"]`).textContent =
+      s.meanWaitMin === null
+        ? "warming up: counting starts 20 minutes in"
+        : `${number.format(s.picked)} picked up · ${s.cancelledPct.toFixed(1)}% gave up`;
+  });
+  atlas.drawOverlay();
+}
+
+function drawDispatch(ctx) {
+  const r = sim.replay;
+  if (!r) return;
+  const riders = r.waiting(sim.policy, sim.t);
+  const cars = r.drivers(sim.policy, sim.t, atlas);
+  const size = Math.max(5, Math.min(10, atlas.view.scale * 60));
+
+  // Fade the street map a little so the fleet reads first.
+  ctx.fillStyle = "rgba(229, 231, 227, 0.55)";
+  ctx.fillRect(0, 0, atlas.width, atlas.height);
+
+  // Lines from cars on their way to the rider they will collect.
+  ctx.strokeStyle = "rgba(27, 58, 140, 0.55)";
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  const rides = r.policies[sim.policy].rideList;
+  for (const c of cars) {
+    if (c.state !== "pickup" || c.ride < 0) continue;
+    const [x, y] = atlas.toScreen(...c.xy);
+    const [rx, ry] = atlas.nodeScreen(rides[c.ride].origin);
+    ctx.moveTo(x, y);
+    ctx.lineTo(rx, ry);
+  }
+  ctx.stroke();
+
+  for (const w of riders) {
+    const [x, y] = atlas.nodeScreen(w.node);
+    const urgency = Math.min(1, w.waited / PATIENCE_S);
+    ctx.beginPath();
+    ctx.arc(x, y, 3 + urgency * 4, 0, 2 * Math.PI);
+    ctx.fillStyle = `rgba(163, 38, 143, ${(0.15 + 0.25 * urgency).toFixed(2)})`;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, 2 * Math.PI);
+    if (w.assigned) {
+      ctx.strokeStyle = "#a3268f";
+      ctx.lineWidth = 1.5;
+      ctx.fillStyle = "#ffffff";
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = "#a3268f";
+      ctx.fill();
+    }
+  }
+
+  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = "#111111";
+  for (const c of cars) {
+    const [x, y] = atlas.toScreen(...c.xy);
+    ctx.fillStyle = CAR_COLOURS[c.state];
+    ctx.fillRect(x - size / 2, y - size / 2, size, size);
+    ctx.strokeRect(x - size / 2, y - size / 2, size, size);
+  }
+}
+
 // ------------------------------------------------------------------ start
 
 async function main() {
@@ -498,6 +727,13 @@ async function main() {
     }
   }
 
+  if (engine.manifest.dispatch) {
+    $("mode-dispatch").hidden = false;
+    $("mode-dispatch").addEventListener("click", () => state.mode !== "dispatch" && enterDispatch());
+    $("mode-route").addEventListener("click", () => state.mode !== "route" && enterRoute());
+  }
+  state.mode = "route";
+
   await selectPreset(DEFAULT_PRESET);
   [state.a, state.b] = defaultEnds();
   placePins();
@@ -509,7 +745,7 @@ async function main() {
     if (r?.found) atlas.fitNodes(r.junctions, 56);
   }
   document.body.dataset.ready = "true";
-  window.fastroute = { engine, atlas, state }; // for debugging and automated checks
+  window.fastroute = { engine, atlas, state, sim }; // for debugging and automated checks
 }
 
 main();

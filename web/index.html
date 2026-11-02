@@ -27,7 +27,13 @@
             Quickest routes over London's real road network, how much of the city each
             algorithm searches to find them, and a learned ETA on top.
           </p>
+          <div class="modes" role="tablist" aria-label="Mode">
+            <button type="button" role="tab" id="mode-route" aria-selected="true">Plan a route</button>
+            <button type="button" role="tab" id="mode-dispatch" aria-selected="false" hidden>Dispatch rides</button>
+          </div>
         </header>
+
+        <div class="mode-panel" id="route-panel">
 
         <section class="trip" aria-live="polite" aria-atomic="true">
           <p class="trip-eta" id="eta">Loading map…</p>
@@ -78,6 +84,52 @@
           </table>
           <p class="model-features">Leans most on: <span id="model-features"></span>.</p>
         </details>
+        </div>
+
+        <div class="mode-panel" id="dispatch-panel" hidden>
+          <section class="trip">
+            <p class="trip-eta" id="clock">07:00</p>
+            <p class="trip-meta" id="dispatch-meta">&nbsp;</p>
+            <div class="playback">
+              <button type="button" class="play" id="play" aria-label="Pause">Pause</button>
+              <input type="range" id="scrub" min="0" max="10800" step="10" value="0" aria-label="Time in the simulated morning" />
+            </div>
+            <div class="speeds" id="speeds" role="radiogroup" aria-label="Replay speed"></div>
+          </section>
+
+          <fieldset class="group">
+            <legend>
+              Dispatch method
+              <span class="legend-note">average wait so far</span>
+            </legend>
+            <div class="methods" id="policies"></div>
+            <p class="method-note" id="policy-note"></p>
+          </fieldset>
+
+          <details class="model-card" id="dispatch-card">
+            <summary>Results over <span id="dispatch-days"></span> mornings</summary>
+            <p>
+              The same ride requests and the same starting fleet for every method. Waits run from
+              request to pickup; a rider gives up after ten minutes without a driver.
+            </p>
+            <table class="model-table">
+              <thead>
+                <tr><th>Method</th><th>Avg. wait</th><th>Cancelled</th><th>Empty driving</th></tr>
+              </thead>
+              <tbody id="dispatch-summary"></tbody>
+            </table>
+            <p>
+              The demand forecast predicts ride requests per 500 m square for the next 15 minutes from
+              what has happened so far today. On days it never saw:
+            </p>
+            <table class="model-table">
+              <thead>
+                <tr><th>Forecast</th><th>Poisson deviance</th></tr>
+              </thead>
+              <tbody id="forecast-summary"></tbody>
+            </table>
+          </details>
+        </div>
 
         <footer class="colophon">
           <p>
@@ -103,7 +155,14 @@
             Learned slowdown
           </button>
           <p class="hint" id="hint">Click to place A, then B. Drag a pin to move it.</p>
-          <div class="key" aria-label="Map key">
+          <div class="key key-dispatch" id="key-dispatch" aria-label="Map key" hidden>
+            <span><i class="car car-idle"></i>Free</span>
+            <span><i class="car car-pickup"></i>Heading to a rider</span>
+            <span><i class="car car-trip"></i>With a rider</span>
+            <span><i class="car car-reposition"></i>Repositioning</span>
+            <span><i class="rider"></i>Rider waiting</span>
+          </div>
+          <div class="key" id="key-route" aria-label="Map key">
             <span><i class="sw sw-trunk"></i>Primary route</span>
             <span><i class="sw sw-primary"></i>A road</span>
             <span><i class="sw sw-secondary"></i>B road</span>

@@ -24,12 +24,20 @@ export function viewArrays(buffer, layout) {
 async function fetchArrayBuffer(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Could not load ${url} (HTTP ${res.status}).`);
-  const raw = await res.arrayBuffer();
+  // Hosts that only serve text get the same bytes base64-encoded as .b64.txt.
+  const raw = url.endsWith(".b64.txt") ? base64ToBuffer(await res.text()) : await res.arrayBuffer();
   const head = new Uint8Array(raw, 0, 2);
   // Some hosts decompress .gz transparently; only gunzip when the bytes are still gzip.
   if (head[0] !== 0x1f || head[1] !== 0x8b) return raw;
   const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream("gzip"));
   return new Response(stream).arrayBuffer();
+}
+
+function base64ToBuffer(text) {
+  const binary = atob(text.trim());
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
 }
 
 export async function loadEngine(baseUrl) {

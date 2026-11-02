@@ -43,17 +43,29 @@ jobs:
       - name: Export graph, hierarchies and learned ETA model for the browser
         run: python -m fastroute export-web --out web/data --eta-trips 20000
 
-      - uses: actions/configure-pages@v5
+      # A plain copy of the built site, so it can be previewed privately
+      # before the repository is public and Pages is switched on.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site-preview
+          path: |
+            web
+            !web/test
+          retention-days: 14
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web
 
   deploy:
     needs: build
+    # Pages needs the repository to be public on this plan; until then, the
+    # build above still produces the site-preview download.
+    if: ${{ !github.event.repository.private }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - uses: actions/configure-pages@v5
       - id: deployment
         uses: actions/deploy-pages@v4

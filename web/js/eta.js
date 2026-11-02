@@ -110,10 +110,10 @@ export class EtaModel {
     ];
   }
 
-  /** Walk every tree; the sum is the predicted log ratio. */
-  logRatio(x) {
-    let total = this.model.baseline;
-    for (const t of this.model.trees) {
+  /** Walk every tree of a boosted model; the sum is a predicted log ratio. */
+  static walk(model, x) {
+    let total = model.baseline;
+    for (const t of model.trees) {
       let i = 0;
       while (!t.leaf[i]) i = x[t.feature[i]] <= t.threshold[i] ? t.left[i] : t.right[i];
       total += t.value[i];
@@ -121,11 +121,63 @@ export class EtaModel {
     return total;
   }
 
-  /** Learned ETA for a route through junctions; needs at least one road segment. */
+  logRatio(x) {
+    return EtaModel.walk(this.model, x);
+  }
+
+  /** Arrival window in log-ratio terms, widened by the conformal margin. */
+  logWindow(x) {
+    const q = this.model.quantiles;
+    if (!q) return null;
+    const margin = this.model.conformal_margin ?? 0;
+    return [EtaModel.walk(q.p10, x) - margin, EtaModel.walk(q.p90, x) + margin];
+  }
+
+  /** Learned ETA (and arrival window) for a route through junctions. */
   predict(path) {
     if (path.length < 2) return null;
     const x = this.features(path);
     const ratio = Math.exp(this.logRatio(x));
-    return { seconds: x[0] * ratio, graphSeconds: x[0], ratio, features: x };
+    const window = this.logWindow(x);
+    return {
+      seconds: x[0] * ratio,
+      graphSeconds: x[0],
+      ratio,
+      low: window ? x[0] * Math.exp(Math.min(window[0], Math.log(ratio))) : null,
+      high: window ? x[0] * Math.exp(Math.max(window[1], Math.log(ratio))) : null,
+      features: x,
+    };
+  }
+
+  /**
+   * How much slower than the router the model expects a typical trip to run,
+   * if it started, ended and passed through a given point, at the engine's
+   * current time. The model was never told where congestion is, so mapping
+   * this over the city shows what it inferred from trip outcomes alone.
+   */
+  slowdownAt(lat, lon) {
+    const ref = this.model.reference;
+    if (!ref) return null;
+    const x = ref.slice();
+    const kmX = (lon - this.lon0) * this.kmPerDegLon;
+    const kmY = (lat - this.lat0) * KM_PER_DEG_LAT;
+    const angle = (2 * Math.PI * this.engine.hour) / 24;
+    const set = (name, value) => {
+      const i = this.model.features.indexOf(name);
+      if (i >= 0) x[i] = value;
+    };
+    // A short local trip: keep the typical trip's shape, move it here.
+    for (const [nx, ny] of [
+      ["origin_x_km", "origin_y_km"],
+      ["dest_x_km", "dest_y_km"],
+      ["mid_x_km", "mid_y_km"],
+    ]) {
+      set(nx, kmX);
+      set(ny, kmY);
+    }
+    set("hour_sin", Math.sin(angle));
+    set("hour_cos", Math.cos(angle));
+    set("weekend", this.engine.weekend ? 1 : 0);
+    return Math.exp(this.logRatio(x));
   }
 }

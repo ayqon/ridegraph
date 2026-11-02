@@ -351,6 +351,8 @@ class EtaResult:
     model: object
     trips: int
     model_json: dict[str, object]
+    interval: dict[str, float] = field(default_factory=dict)
+    quantile_models: dict[str, object] = field(default_factory=dict)
 
 
 def export_trees(model: object, features: tuple[str, ...] = FEATURES) -> dict[str, object]:
@@ -471,7 +473,75 @@ def train(
     )
     order = np.argsort(imp.importances_mean)[::-1]
     importance = [(FEATURES[i], float(imp.importances_mean[i])) for i in order]
-    return EtaResult(metrics, importance, gbdt, len(data.y), export_trees(gbdt))
+
+    # Arrival window: separate models for the 10th and 90th percentile of the
+    # correction, so a trip gets a range a rider can plan around.
+    # Quantile models are fitted on part of the training set; the rest calibrates
+    # them (conformalized quantile regression), which makes the window's 80%
+    # coverage hold on new trips instead of being optimistic.
+    log("  training 10th and 90th percentile models for the arrival window")
+    fit_idx, cal_idx = train_test_split(np.arange(len(ytr)), test_size=0.2, random_state=seed)
+    quantile_models = {}
+    for name, q in (("p10", 0.1), ("p90", 0.9)):
+        quantile_models[name] = HistGradientBoostingRegressor(
+            loss="quantile",
+            quantile=q,
+            max_iter=200,
+            learning_rate=0.08,
+            max_leaf_nodes=15,
+            min_samples_leaf=40,
+            random_state=seed,
+        ).fit(Xtr[fit_idx], ytr[fit_idx])
+    margin = conformal_margin(
+        quantile_models["p10"].predict(Xtr[cal_idx]),
+        quantile_models["p90"].predict(Xtr[cal_idx]),
+        ytr[cal_idx],
+        coverage=0.8,
+    )
+    middle = to_seconds(gbdt.predict(Xte))
+    raw_low = to_seconds(quantile_models["p10"].predict(Xte))
+    raw_high = to_seconds(quantile_models["p90"].predict(Xte))
+    low = raw_low * np.exp(-margin)
+    high = raw_high * np.exp(margin)
+    interval = interval_metrics(low, high, middle, obs_te)
+    uncalibrated = interval_metrics(raw_low, raw_high, middle, obs_te)
+    interval["uncalibrated_coverage_pct"] = uncalibrated["coverage_pct"]
+    interval["margin_log"] = margin
+
+    model_json = export_trees(gbdt)
+    model_json["quantiles"] = {name: export_trees(m) for name, m in quantile_models.items()}
+    model_json["conformal_margin"] = margin
+    # A typical trip, used by the map to ask "how slow would a trip through here be?"
+    model_json["reference"] = [float(v) for v in np.median(Xtr, axis=0)]
+    return EtaResult(metrics, importance, gbdt, len(data.y), model_json, interval, quantile_models)
+
+
+def conformal_margin(
+    low: np.ndarray, high: np.ndarray, y: np.ndarray, *, coverage: float = 0.8
+) -> float:
+    """Widening (in log space) that gives ``coverage`` on new data.
+
+    Conformalized quantile regression (Romano et al., 2019): score each
+    calibration trip by how far it falls outside the predicted range (negative
+    when inside), and widen both ends by the right quantile of those scores.
+    """
+    scores = np.maximum(low - y, y - high)
+    n = len(scores)
+    level = min(1.0, coverage * (1 + 1 / n))
+    return float(np.quantile(scores, level, method="higher"))
+
+
+def interval_metrics(
+    low: np.ndarray, high: np.ndarray, middle: np.ndarray, observed: np.ndarray
+) -> dict[str, float]:
+    """How often observed times fall inside the window, and how wide it is."""
+    return {
+        "target_pct": 80.0,
+        "coverage_pct": float(100 * np.mean((observed >= low) & (observed <= high))),
+        "below_pct": float(100 * np.mean(observed < low)),
+        "above_pct": float(100 * np.mean(observed > high)),
+        "mean_width_pct": float(100 * np.mean((high - low) / middle)),
+    }
 
 
 def metrics_markdown(metrics: dict[str, dict[str, float]]) -> str:

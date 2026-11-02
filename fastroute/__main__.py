@@ -300,6 +300,13 @@ def cmd_eta_train(args: argparse.Namespace) -> int:
         network, trips=args.trips, seed=args.seed, log=lambda m: print(m, file=sys.stderr)
     )
     print(metrics_markdown(result.metrics))
+    iv = result.interval
+    print(
+        f"\nArrival window (10th to 90th percentile): {iv['coverage_pct']:.1f}% of held-out "
+        f"trips inside (target 80%, {iv['uncalibrated_coverage_pct']:.1f}% before conformal "
+        f"calibration), {iv['below_pct']:.1f}% faster, {iv['above_pct']:.1f}% "
+        f"slower; mean width {iv['mean_width_pct']:.0f}% of the ETA"
+    )
     print("\nMost useful features (permutation importance):")
     for name, value in result.importance[:8]:
         print(f"  {name:<15} {value:.3f}")

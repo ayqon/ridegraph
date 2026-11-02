@@ -226,10 +226,17 @@ def export(
         log(
             "  most useful features: " + ", ".join(f"{n} {v:.3f}" for n, v in result.importance[:8])
         )
+        iv = result.interval
+        log(
+            f"  arrival window: {iv['coverage_pct']:.1f}% of held-out trips inside the "
+            f"10th-90th percentile range (target 80%; {iv['uncalibrated_coverage_pct']:.1f}% "
+            f"before calibration), mean width {iv['mean_width_pct']:.0f}%"
+        )
         manifest["eta"] = {
             "file": "eta-model.json",
             "trips": result.trips,
             "metrics": result.metrics,
+            "interval": result.interval,
             "importance": result.importance[:8],
         }
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=1))

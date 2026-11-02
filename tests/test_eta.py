@@ -83,6 +83,28 @@ def test_learned_model_beats_the_router(trained) -> None:
     assert trained.importance[0][1] > 0
 
 
+def test_arrival_window_is_calibrated(trained) -> None:
+    iv = trained.interval
+    # 80% target; a few thousand held-out trips leave some sampling noise.
+    assert 70 <= iv["coverage_pct"] <= 90
+    assert iv["below_pct"] < 20 and iv["above_pct"] < 20
+    assert iv["mean_width_pct"] > 0
+    assert set(trained.model_json["quantiles"]) == {"p10", "p90"}
+    assert len(trained.model_json["reference"]) == len(FEATURES)
+
+
+def test_conformal_margin_reaches_target_coverage() -> None:
+    from fastroute.eta import conformal_margin
+
+    rng = np.random.default_rng(0)
+    y = rng.normal(size=5000)
+    # Deliberately overconfident window: +-0.5 covers ~38% of a standard normal.
+    low, high = np.full_like(y, -0.5), np.full_like(y, 0.5)
+    margin = conformal_margin(low[:2500], high[:2500], y[:2500], coverage=0.8)
+    inside = np.mean((y[2500:] >= low[2500:] - margin) & (y[2500:] <= high[2500:] + margin))
+    assert 0.77 <= inside <= 0.83
+
+
 def test_error_metrics() -> None:
     m = error_metrics(np.array([110.0, 90.0]), np.array([100.0, 100.0]))
     assert m["mae_s"] == pytest.approx(10)
@@ -111,6 +133,10 @@ def test_browser_eta_matches_python(tmp_path, network) -> None:
                     "path": path,
                     "features": x.tolist(),
                     "log_ratio": predict_from_json(model, x),
+                    "window": [
+                        predict_from_json(model["quantiles"]["p10"], x) - model["conformal_margin"],
+                        predict_from_json(model["quantiles"]["p90"], x) + model["conformal_margin"],
+                    ],
                 }
             )
     cases_path = tmp_path / "eta-cases.json"

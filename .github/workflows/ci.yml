@@ -23,7 +23,9 @@ jobs:
       - run: pip install -e ".[dev]"
       - run: ruff check .
       - run: ruff format --check .
+      # Type checking once, against the newest supported Python and numpy.
       - run: mypy fastroute
+        if: matrix.python-version == '3.12'
       - run: pytest -q --cov --cov-report=term --cov-report=json
       - name: Coverage badge data
         if: matrix.python-version == '3.12'

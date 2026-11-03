@@ -521,6 +521,7 @@ export class Atlas {
     if (this.trace && this.revealed) ctx.drawImage(this.paintTrace(), 0, 0);
     ctx.setTransform(d, 0, 0, d, 0, 0);
     this.drawLandmarks(ctx);
+    if (this.beneath) this.beneath(ctx);
 
     if (this.route && this.route.length > 1) {
       ctx.lineCap = "round";

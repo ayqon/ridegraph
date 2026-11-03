@@ -216,6 +216,8 @@ def cmd_route(args: argparse.Namespace) -> int:
 
     scenario = _scenario(args)
     router = Router(_load_network(args.network), scenario)
+    if args.alternatives or args.avoid_charge:
+        return _route_options(args, router, scenario)
     s = _snap(router.roads.network, args.origin)
     t = _snap(router.roads.network, args.destination)
     algorithm = args.algorithm
@@ -245,6 +247,48 @@ def cmd_route(args: argparse.Namespace) -> int:
         f"  {len(trip.intersections):,} intersections on route, "
         f"{trip.settled:,} settled, {elapsed_ms:.1f} ms"
     )
+    return 0
+
+
+def _route_options(args: argparse.Namespace, router, scenario) -> int:
+    from . import charges
+    from .alternatives import alternatives
+
+    if scenario.turns:
+        raise SystemExit("--alternatives and --avoid-charge work without --turns.")
+    graph = router.roads
+    s = _snap(graph.network, args.origin)
+    t = _snap(graph.network, args.destination)
+    zone = charges.zone_nodes(graph.network)
+    applies = charges.charging(scenario.hour, weekend=scenario.weekend)
+    routes = alternatives(graph, s, t, count=3 if args.alternatives else 1, zone=zone)
+    if not routes:
+        print("No route found.")
+        return 1
+    rows = [("Quickest" if i == 0 else f"Alternative {i}", r) for i, r in enumerate(routes)]
+    if args.avoid_charge:
+        try:
+            avoid = alternatives(graph, s, t, count=1, zone=zone, avoid_zone=True)
+        except ValueError as exc:
+            print(f"Cannot avoid the zone: {exc}.")
+            avoid = []
+        if avoid:
+            rows.append(("Avoiding the zone", avoid[0]))
+    print(f"{scenario.label()}:")
+    fee = f"£{charges.DAILY_CHARGE_GBP:.0f}"
+    for name, r in rows:
+        if not r.enters_zone:
+            note = "outside the Congestion Charge zone"
+        elif applies:
+            note = f"Congestion Charge {fee}"
+        else:
+            note = "in the zone, outside charging hours"
+        extra = r.seconds - routes[0].seconds
+        delta = f"+{extra / 60:.0f} min" if extra >= 30 else ""
+        print(
+            f"  {name:<18} {_format_duration(r.seconds):>14}  {r.metres / 1000:5.2f} km  "
+            f"{delta:>8}  {note}"
+        )
     return 0
 
 
@@ -480,6 +524,12 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("destination", type=_parse_point, help="lat,lon")
     p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
     p.add_argument("--algorithm", "-a", choices=ALGORITHMS, default="ch")
+    p.add_argument(
+        "--alternatives", action="store_true", help="also offer up to two different routes"
+    )
+    p.add_argument(
+        "--avoid-charge", action="store_true", help="keep out of the Congestion Charge zone"
+    )
     _add_scenario_args(p)
     p.set_defaults(func=cmd_route)
 

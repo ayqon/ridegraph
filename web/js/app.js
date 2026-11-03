@@ -3,6 +3,7 @@ import { Atlas } from "./atlas.js";
 import { EtaModel } from "./eta.js";
 import { DispatchReplay, PATIENCE_S } from "./dispatch.js";
 import { planTour } from "./tour.js";
+import { alternatives, charging, zoneNodes } from "./alternatives.js";
 
 const FEATURE_NAMES = {
   graph_eta_s: "the router's estimate",
@@ -83,6 +84,8 @@ const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 const number = new Intl.NumberFormat("en-GB");
 
 const state = { a: null, b: null, method: "ch", preset: null, turns: false, results: null, animation: 0 };
+// Alternative routes for the current trip; `chosen` indexes `list`.
+const options = { list: [], chosen: 0, avoid: false, zone: null, timer: 0, error: null };
 let engine;
 let atlas;
 let etaModel = null;
@@ -155,6 +158,22 @@ function buildControls() {
   showMethodNote();
 
   $("replay").addEventListener("click", play);
+  $("routes").addEventListener("change", (ev) => {
+    options.chosen = Number(ev.target.value);
+    showTrip();
+    atlas.setRoute(chosenRoute().junctions);
+  });
+  const charge = engine.manifest.charge;
+  $("routes-group").querySelector(".switch").hidden = !charge;
+  if (charge) {
+    options.zone = zoneNodes(engine, charge);
+    const hours = (h) => `${hhmm(h[0])} to ${hhmm(h[1])}`;
+    $("charge-terms").textContent = `£${charge.daily_gbp} a day, ${hours(charge.weekday_hours)} on weekdays and ${hours(charge.weekend_hours)} at weekends. Boundary roads are free.`;
+  }
+  $("avoid-zone").addEventListener("change", (ev) => {
+    options.avoid = ev.target.checked;
+    scheduleOptions(0);
+  });
   $("turns").addEventListener("change", (ev) => {
     state.turns = ev.target.checked;
     engine.setTurns(state.turns);
@@ -214,6 +233,29 @@ function run({ animate }) {
     showMethodNote();
   }
   const r = results[state.method];
+  options.list = [];
+  options.chosen = 0;
+  showTrip();
+  $("replay").disabled = false;
+  if (animate) play();
+  else {
+    cancelAnimationFrame(state.animation);
+    atlas.setTrace(r.trace);
+    atlas.setRoute(chosenRoute().junctions);
+  }
+  scheduleOptions(animate ? 30 : 350);
+}
+
+/** The route the panel and map show: the quickest, or an alternative the user picked. */
+function chosenRoute() {
+  const r = state.results[state.method];
+  const alt = options.chosen > 0 ? options.list[options.chosen] : null;
+  if (!alt) return r;
+  return { found: true, seconds: alt.seconds, metres: alt.metres, junctions: alt.nodes, manoeuvres: null, alt };
+}
+
+function showTrip() {
+  const r = chosenRoute();
   if (!r.found) {
     $("eta").textContent = "No route";
     $("trip-meta").textContent = "These two points are not connected by road.";
@@ -222,17 +264,114 @@ function run({ animate }) {
     const from = atlas.gridRef(atlas.X[state.a], atlas.Y[state.a]);
     const to = atlas.gridRef(atlas.X[state.b], atlas.Y[state.b]);
     const parts = [`${(r.metres / 1000).toFixed(2)} km`, `${from} to ${to}`, `${state.preset.label.toLowerCase()} traffic`];
+    if (r.alt) parts.unshift(r.alt.label);
     if (r.manoeuvres) parts.push(describeManoeuvres(r.manoeuvres));
     $("trip-meta").textContent = parts.join(" · ");
   }
   showLearnedEta(r);
-  $("replay").disabled = false;
-  if (animate) play();
-  else {
-    cancelAnimationFrame(state.animation);
-    atlas.setTrace(r.trace);
-    atlas.setRoute(r.junctions);
+}
+
+// ------------------------------------------------------------------ alternative routes
+
+function chargeApplies() {
+  const c = engine.manifest.charge;
+  return Boolean(c) && charging(c, state.preset.hour);
+}
+
+function scheduleOptions(delay) {
+  clearTimeout(options.timer);
+  $("routes").innerHTML = "";
+  $("routes-note").textContent = state.turns ? "with turn costs, quickest only" : "finding other ways…";
+  options.timer = setTimeout(computeOptions, delay);
+}
+
+function computeOptions() {
+  options.list = [];
+  options.error = null;
+  if (state.turns || state.a === null || state.b === null || !state.results) return updateOptions();
+  const zone = options.zone;
+  const base = alternatives(engine, state.a, state.b, { zone });
+  const list = (base.routes ?? []).map((route, i) => ({ ...route, label: i === 0 ? "Quickest" : `Alternative ${i}` }));
+  if (options.avoid && zone) {
+    const res = alternatives(engine, state.a, state.b, { zone, avoidZone: true, count: 1 });
+    if (res.error) options.error = "This trip starts or ends inside the zone, so it can't avoid it.";
+    else if (res.routes.length && list[0]?.entersZone) list.push({ ...res.routes[0], label: "Avoiding the zone" });
+    else if (list.length && !list[0].entersZone) options.error = "The quickest route already stays out of the zone.";
   }
+  options.list = list;
+  options.chosen = options.avoid && list[list.length - 1]?.label === "Avoiding the zone" ? list.length - 1 : 0;
+  updateOptions();
+  showTrip();
+  atlas.setRoute(chosenRoute().junctions);
+}
+
+function chargeNote(route) {
+  const fee = engine.manifest.charge ? `£${engine.manifest.charge.daily_gbp}` : "";
+  if (!route.entersZone) return "no Congestion Charge";
+  return chargeApplies() ? `${fee} Congestion Charge` : "in the zone, but not charged now";
+}
+
+function updateOptions() {
+  const box = $("routes");
+  if (state.turns) {
+    box.innerHTML = "";
+    $("routes-note").textContent = "with turn costs, quickest only";
+    return;
+  }
+  const list = options.list;
+  $("routes-note").textContent = list.length > 1 ? "pick one to see it" : "no sensible alternative";
+  const best = list[0]?.seconds ?? 0;
+  box.innerHTML = list
+    .map((r, i) => {
+      const extra = Math.round((r.seconds - best) / 60);
+      const delta = i === 0 ? "" : extra >= 1 ? ` · +${extra} min` : " · about the same";
+      return `<label class="method${r.entersZone && chargeApplies() ? " is-charged" : ""}"><input type="radio" name="route" value="${i}" ${i === options.chosen ? "checked" : ""}>
+        <span class="method-row">
+          <span class="method-name">${r.label}</span>
+          <span class="method-count">${formatEta(r.seconds).replaceAll("<small>", " ").replaceAll("</small>", " ").trim()}</span>
+          <span class="method-time">${(r.metres / 1000).toFixed(1)} km${delta} · ${chargeNote(r)}</span>
+        </span></label>`;
+    })
+    .join("") + (options.error ? `<p class="method-note">${options.error}</p>` : "");
+}
+
+function drawRouteOptions(ctx) {
+  const charge = engine.manifest.charge;
+  if (charge) {
+    ctx.beginPath();
+    charge.zone.forEach(([lat, lon], i) => {
+      const [x, y] = atlas.toScreen(...atlas.local(lat, lon));
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    if (chargeApplies()) {
+      ctx.fillStyle = "rgba(200, 16, 46, 0.06)";
+      ctx.fill();
+    }
+    ctx.setLineDash([7, 5]);
+    ctx.strokeStyle = "rgba(200, 16, 46, 0.75)";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  options.list.forEach((r, i) => {
+    if (i === options.chosen) return;
+    ctx.beginPath();
+    r.nodes.forEach((node, k) => {
+      const [x, y] = atlas.nodeScreen(node);
+      if (k === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = "#111111";
+    ctx.lineWidth = 6.5;
+    ctx.stroke();
+    ctx.strokeStyle = "#9a9a90";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  });
 }
 
 /** Animate the chosen method's search, node by node, then draw the route. */
@@ -243,7 +382,7 @@ function play() {
   const total = r.trace.nodes.length;
   if (reducedMotion.matches || total === 0) {
     atlas.setTrace(r.trace);
-    atlas.setRoute(r.junctions);
+    atlas.setRoute(chosenRoute().junctions);
     return;
   }
   atlas.setRoute(null);
@@ -254,7 +393,7 @@ function play() {
     const eased = 1 - (1 - t) ** 2;
     atlas.setTrace(r.trace, Math.max(1, Math.round(total * eased)));
     if (t < 1) state.animation = requestAnimationFrame(step);
-    else atlas.setRoute(r.junctions);
+    else atlas.setRoute(chosenRoute().junctions);
   };
   state.animation = requestAnimationFrame(step);
 }
@@ -331,6 +470,10 @@ function clearTrip(message) {
   $("trip-meta").innerHTML = "&nbsp;";
   $("learned").hidden = true;
   $("replay").disabled = true;
+  clearTimeout(options.timer);
+  options.list = [];
+  options.chosen = 0;
+  $("routes").innerHTML = "";
   for (const id of ALGORITHMS) {
     document.querySelector(`[data-count="${id}"]`).textContent = "–";
     document.querySelector(`[data-bar="${id}"]`).style.width = "0";
@@ -529,6 +672,7 @@ async function enterRoute() {
   state.mode = "route";
   setModeTabs();
   $("key-route").hidden = false;
+  atlas.beneath = drawRouteOptions;
   $("heat-toggle").hidden = !etaModel?.model.reference;
   $("hint").textContent = "Click to place A, then B. Drag a pin to move it.";
   await engine.usePreset(state.preset);
@@ -698,6 +842,8 @@ function leaveMode() {
   cancelAnimationFrame(sim.frame);
   cancelAnimationFrame(state.animation);
   atlas.extras = null;
+  atlas.beneath = null;
+  clearTimeout(options.timer);
   atlas.setTrace(null);
   atlas.setRoute(null);
   atlas.setHeat(null);
@@ -1142,6 +1288,7 @@ async function main() {
   for (const m of MODES) $(`mode-${m}`).addEventListener("click", () => state.mode !== m && enter[m]());
   $("mode-dispatch").hidden = !engine.manifest.dispatch;
   state.mode = "route";
+  atlas.beneath = drawRouteOptions;
 
   await selectPreset(DEFAULT_PRESET);
   [state.a, state.b] = defaultEnds();

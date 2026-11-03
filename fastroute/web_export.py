@@ -205,6 +205,7 @@ def export(
         "turns": turn_penalty_table(),
         "rivers": river_lines(raw) if raw else [],
         "presets": preset_entries,
+        "charge": charge_info(),
     }
     if eta_trips:
         from .eta import train
@@ -247,6 +248,19 @@ def export(
         manifest["dispatch"] = export_dispatch(network, hierarchies, out_dir, dispatch_days, log)
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=1))
     return manifest
+
+
+def charge_info() -> dict[str, object]:
+    from . import charges
+
+    return {
+        "name": "Congestion Charge",
+        "daily_gbp": charges.DAILY_CHARGE_GBP,
+        "weekday_hours": list(charges.WEEKDAY_HOURS),
+        "weekend_hours": list(charges.WEEKEND_HOURS),
+        "margin_m": charges.BOUNDARY_MARGIN_M,
+        "zone": [list(p) for p in charges.ZONE],
+    }
 
 
 def export_dispatch(

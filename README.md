@@ -274,6 +274,39 @@ python -m fastroute reach 51.5174,-0.1200 --at 08:00
 python -m fastroute tour 51.5174,-0.1200 51.5308,-0.1238 51.5033,-0.1145 ...
 ```
 
+### Alternative routes and the Congestion Charge
+
+Map apps offer two or three routes because the quickest is not always the one
+you want. `fastroute/alternatives.py` finds them with the **penalty method**:
+take the quickest route, make every road on it 40% slower, search again, and
+repeat. Each search is pushed off the corridor already used. A candidate is
+kept only if it is
+
+* at most 30% slower than the quickest (on real times, not penalised ones),
+* at most 65% shared with any route already offered, and
+* free of pointless detours: sampled stretches of a quarter of the trip must
+  each be within 15% of the quickest way between their ends.
+
+Closing roads is the same machinery with infinite penalties, which is how a
+route **avoids the Congestion Charge zone** (`fastroute/charges.py`: the zone
+polygon, £18 a day, 07:00 to 18:00 on weekdays and 12:00 to 18:00 at
+weekends; the boundary roads are free). From Paddington to Aldgate at 8am:
+
+| Route | Time | Charge |
+|---|---:|---|
+| Quickest | 36 min 32 s | £18 |
+| Alternative 1 | 40 min 11 s | £18 |
+| Alternative 2 | 45 min 27 s | £18 |
+| Avoiding the zone, along Euston Road and City Road | 50 min 08 s | none |
+
+So staying out of the zone costs 14 minutes on this trip, about £1.30 a minute
+saved. The browser runs the same method (A\* on the penalised weights, under
+100 ms on London) and a Node test holds it to Python.
+
+```bash
+python -m fastroute route 51.5265,-0.1820 51.5100,-0.0700 --at 08:00 --alternatives --avoid-charge
+```
+
 ### 7. Ride dispatch and demand forecasting
 
 Routing exists to answer a business question: which driver should take this
@@ -489,6 +522,7 @@ CI runs lint, formatting and the full suite on Python 3.10, 3.12 and 3.13.
 - [x] **Contraction Hierarchies:** node ordering, witness search, shortcuts, upward query, path unpacking
 - [x] **Traffic and turns:** time-of-day speed profiles, edge-expanded graph with turn and traffic-light costs
 - [x] **Live map:** in-browser routing on a street-atlas render of the graph, animating each algorithm's search
+- [x] **Alternative routes and the Congestion Charge:** penalty method with stretch, overlap and detour checks; zone avoidance
 - [x] **Travel-time maps and delivery rounds:** bounded one-to-all from or to a point, Held-Karp and 2-opt/Or-opt on asymmetric matrices
 - [x] **Ride dispatch and demand forecasting:** many-to-many CH, Hungarian matching, ML demand forecast, repositioning, simulated and replayed
 - [x] **Learned ETA:** simulated observed trips, route features, ridge, MLP and gradient-boosted trees, calibrated arrival windows, a learned congestion map, shipped to the browser

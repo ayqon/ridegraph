@@ -31,10 +31,14 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from .graph import Graph, RoadNetwork
+
+if TYPE_CHECKING:
+    from .eta import Dataset
 
 HOPS = (1, 2, 4, 8)
 FREQS = (0.5, 1.0, 2.0, 4.0)  # cycles per km for the position encoding
@@ -216,7 +220,7 @@ class SegmentGNN:
         return loss
 
 
-def batch(trips: list, idx: np.ndarray) -> TripBatch:
+def batch(trips: Dataset, idx: np.ndarray) -> TripBatch:
     """Gather selected trips (edges, router seconds, counts, time features, observed)."""
     edges = [trips.edges[i] for i in idx]
     secs = [trips.seconds[i] for i in idx]
@@ -233,7 +237,7 @@ def batch(trips: list, idx: np.ndarray) -> TripBatch:
 
 def train_gnn(
     H: np.ndarray,
-    trips,
+    trips: Dataset,
     train_idx: np.ndarray,
     *,
     epochs: int = 25,

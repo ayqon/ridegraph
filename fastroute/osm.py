@@ -203,5 +203,5 @@ def keep_largest_scc(network: RoadNetwork) -> RoadNetwork:
         length_m=network.length_m[edge_keep],
         road_class=network.road_class[edge_keep],
         maxspeed_kph=network.maxspeed_kph[edge_keep],
-        traffic_signals=network.traffic_signals[keep],
+        traffic_signals=None if network.traffic_signals is None else network.traffic_signals[keep],
     )

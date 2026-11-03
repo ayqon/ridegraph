@@ -17,7 +17,49 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
       - run: pip install -e ".[dev]"
       - run: ruff check .
       - run: ruff format --check .
-      - run: pytest -q
+      - run: mypy fastroute
+      - run: pytest -q --cov --cov-report=term --cov-report=json
+      - name: Coverage badge data
+        if: matrix.python-version == '3.12'
+        run: |
+          python - <<'PY'
+          import json
+          pct = json.load(open("coverage.json"))["totals"]["percent_covered"]
+          colour = "brightgreen" if pct >= 90 else "green" if pct >= 80 else "yellow"
+          badge = {"schemaVersion": 1, "label": "coverage", "message": f"{pct:.0f}%", "color": colour}
+          json.dump(badge, open("coverage-badge.json", "w"))
+          print(badge)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: matrix.python-version == '3.12'
+        with:
+          name: coverage-badge
+          path: coverage-badge.json
+
+  # Publishes the coverage figure for the README badge, on its own branch.
+  badge:
+    needs: test
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverage-badge
+      - env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir badges && mv coverage-badge.json badges/coverage.json && cd badges
+          git init -q -b badges
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add coverage.json
+          git commit -qm "Coverage badge"
+          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:badges

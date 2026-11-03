@@ -130,6 +130,7 @@ class CustomizableCH:
     up: np.ndarray = field(default_factory=lambda: np.zeros(0))  # cost lower -> higher
     down: np.ndarray = field(default_factory=lambda: np.zeros(0))  # cost higher -> lower
     build_seconds: float = 0.0
+    _direct: dict[tuple[int, int], float] | None = field(default=None, init=False, repr=False)
     customize_seconds: float = 0.0
 
     @property

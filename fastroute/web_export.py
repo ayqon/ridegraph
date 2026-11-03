@@ -221,8 +221,10 @@ def export(
             json.dumps(result.model_json, separators=(",", ":"))
         )
         best = result.metrics["Gradient-boosted trees"]
+        trees = result.model_json["trees"]
+        assert isinstance(trees, list)
         log(
-            f"  ETA model: {len(result.model_json['trees'])} trees, "
+            f"  ETA model: {len(trees)} trees, "
             f"{best['mape_pct']:.1f}% mean error on held-out trips, "
             f"{time.perf_counter() - started:.0f}s"
         )

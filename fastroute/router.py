@@ -89,7 +89,7 @@ class Router:
         # measures route length in metres.
         self.roads = Graph(network, cost)
         if scenario.turns:
-            self.turn_graph = turn_graph or TurnGraph(network)
+            self.turn_graph: TurnGraph | None = turn_graph or TurnGraph(network)
             self.graph = self.turn_graph.graph(cost)
         else:
             self.turn_graph = None
@@ -113,6 +113,7 @@ class Router:
     def to_trip(self, route: Route) -> Trip:
         if not route.found:
             return Trip(route.seconds, 0.0, [], route.settled, route.algorithm)
+        moves: Counter[str]
         if self.turn_graph is None:
             nodes, moves = route.path, Counter()
         else:

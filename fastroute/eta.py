@@ -338,7 +338,10 @@ def simulate_trips(
     rng = np.random.default_rng(seed)
     net = ctx.network
     n = net.num_nodes
-    rows, ys, etas, observed = [], [], [], []
+    rows: list[np.ndarray] = []
+    ys: list[float] = []
+    etas: list[float] = []
+    observed: list[float] = []
     all_edges, all_secs, counts, hours, weekends = [], [], [], [], []
     started = time.perf_counter()
     attempts = 0
@@ -437,7 +440,9 @@ def export_trees(model: object, features: tuple[str, ...] = FEATURES) -> dict[st
 def predict_from_json(model_json: dict[str, object], x: np.ndarray) -> float:
     """Reference implementation of the browser's tree walk, used in tests."""
     total = float(model_json["baseline"])  # type: ignore[arg-type]
-    for tree in model_json["trees"]:  # type: ignore[union-attr]
+    trees = model_json["trees"]
+    assert isinstance(trees, list)
+    for tree in trees:
         i = 0
         while not tree["leaf"][i]:
             i = (
@@ -614,8 +619,10 @@ def slowdown_at(
     model_json: dict[str, object], x_km: float, y_km: float, hour: float, weekend: bool
 ) -> float:
     """Model's expected slowdown for a typical trip placed at a point (as in the map)."""
-    names = list(model_json["features"])  # type: ignore[arg-type]
-    x = np.array(model_json["reference"], dtype=np.float64)  # type: ignore[arg-type]
+    features = model_json["features"]
+    assert isinstance(features, list)
+    names = list(features)
+    x = np.array(model_json["reference"], dtype=np.float64)
     angle = 2 * math.pi * hour / 24
     values = {
         "origin_x_km": x_km,

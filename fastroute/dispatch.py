@@ -219,6 +219,7 @@ class Forecast:
             return self.history[int(self.weekend), slot].copy()
         X = forecast_features(self.grid, self.counts, slot, self.weekend, self.cells)
         out = np.zeros(self.grid.num_cells)
+        assert self.model is not None
         out[self.cells] = [math.exp(predict_from_json(self.model, x)) for x in X]
         return out
 
@@ -621,7 +622,7 @@ def _reposition(
     forecast: Forecast,
     ch: ContractionHierarchy,
     cell_targets: list[int],
-    cell_buckets: dict[int, list[tuple[int, float]]],
+    cell_buckets: dict[int, list[tuple[int, float]]] | None,
     config: DispatchConfig,
     legs: list[tuple[int, int, float, int, int, float, int]],
     weight: np.ndarray | None = None,

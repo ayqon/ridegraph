@@ -15,6 +15,7 @@ import math
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 # Central London: Paddington and Notting Hill across to Whitechapel,
 # King's Cross down to Vauxhall and Elephant & Castle.
@@ -444,7 +445,7 @@ def cmd_export_web(args: argparse.Namespace) -> int:
     return 0
 
 
-def _tfl_snapshot(path: Path | None) -> dict[str, object]:
+def _tfl_snapshot(path: Path | None) -> dict[str, Any]:
     if path is None:
         return {}
     if not path.exists():

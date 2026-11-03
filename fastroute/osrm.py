@@ -106,7 +106,7 @@ def compare(
     """Ask both engines the same questions and summarise how they agree."""
     rng = random.Random(seed)
     lat, lon, ids = network.lat, network.lon, network.node_ids
-    rows = []
+    rows: list[dict[str, Any]] = []
     ours_ms, theirs_ms = [], []
     attempts = 0
     while len(rows) < queries and attempts < queries * 5:

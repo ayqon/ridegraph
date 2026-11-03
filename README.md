@@ -1,5 +1,13 @@
 # fastroute
 
+[![CI](https://github.com/ayqon/fastroute/actions/workflows/ci.yml/badge.svg)](https://github.com/ayqon/fastroute/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fayqon%2Ffastroute%2Fbadges%2Fcoverage.json)](https://github.com/ayqon/fastroute/actions/workflows/ci.yml)
+[![Compared with OSRM](https://github.com/ayqon/fastroute/actions/workflows/osrm.yml/badge.svg)](https://github.com/ayqon/fastroute/actions/workflows/osrm.yml)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.12%20%7C%203.13-blue)](pyproject.toml)
+[![Typed with mypy](https://img.shields.io/badge/types-mypy-2a6db2)](https://mypy-lang.org/)
+[![Ruff](https://img.shields.io/badge/lint-ruff-d7ff64)](https://docs.astral.sh/ruff/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 Quickest routes, live closures, travel-time maps, delivery rounds, learned
 arrival times and ride dispatch on London's real road network, built from
 first principles.
@@ -640,7 +648,15 @@ and brute force; the graph neural network's hand-written gradients match
 finite differences. Node tests hold the browser's alternatives, charge zone,
 Customizable CH, disruption matching, travel-time maps and tours to Python.
 
-CI runs lint, formatting and the full suite on Python 3.10, 3.12 and 3.13.
+**Property-based tests** (Hypothesis) generate random road networks, with
+one-way traps, parallel roads, unreachable targets and near-zero lengths,
+and require every search method, Customizable CH under arbitrary new times
+and closures included, to match Dijkstra; quickest times to obey the
+triangle inequality; and the Hungarian algorithm and Held-Karp to match
+brute force.
+
+CI runs lint, formatting, type checking (mypy) and the full suite with
+coverage (92% of lines) on Python 3.10, 3.12 and 3.13.
 
 ## Roadmap
 

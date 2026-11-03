@@ -29,6 +29,11 @@ halves on OpenStreetMap data for central London:
 * **Routing.** Dijkstra, bidirectional search, A\* and Contraction
   Hierarchies, implemented by hand rather than called from a library, with
   rush-hour traffic and turn costs, every one tested against a reference.
+* **Checked against a production engine.** CI runs OSRM, the open-source
+  engine behind many commercial maps, on the same roads and speeds. On 1,000
+  random London trips the travel times agree within 1% for 84% of trips
+  (median difference 0.23%), and the two routes share a median 99.7% of
+  their junctions.
 * **Live closures in milliseconds.** Customizable Contraction Hierarchies
   separate the road layout from travel times, so TfL's live closures are
   folded in by re-customising in 20 ms in the browser instead of
@@ -551,6 +556,35 @@ Contraction Hierarchies' 24x reduction in work shows up as a smaller time
 gain here. Every benchmark query is also cross-checked against Dijkstra, so a
 benchmark run doubles as a correctness check.
 
+**Against OSRM.** Agreeing with Dijkstra proves the searches are right, but
+they all share this package's map parsing and speed model. OSRM shares
+neither: it parses OpenStreetMap with its own C++ code and routes with
+Multi-Level Dijkstra. The *Compare with OSRM* workflow (`fastroute/osrm.py`)
+gives OSRM v5.27 the ways this package treats as drivable, loads fastroute's
+free-flow speed for every one of the 127,286 road segments as a *segment
+speed file*, switches off OSRM's turn and traffic-light penalties (the
+free-flow router has none) and asks both engines the same 1,000 random
+trips:
+
+| fastroute vs OSRM, 1,000 random central London trips | |
+|---|---:|
+| Travel time within 1% of OSRM's | 83.7% |
+| Travel time within 5% of OSRM's | 96.9% |
+| Median time difference | 0.23% |
+| Same route (95%+ of junctions shared) | 75.0% |
+| Median share of junctions in common | 99.7% |
+| Median query, fastroute CH in Python | 1.02 ms |
+| Median query, OSRM over local HTTP | 1.56 ms |
+
+What remains comes from the parts that are genuinely independent. OSRM
+snaps a coordinate to the nearest point on a road rather than to a
+junction, stores each segment's time in tenths of a second, and applies its
+own rules about which ways a car may use. Where the routes differ but the
+times agree, the two engines have found different routes that are equally
+quick. The query times are not a like-for-like contest (OSRM's include an
+HTTP round trip), but they show the Python hierarchy is in the same league
+as a production C++ engine on a city of this size.
+
 ## Quick start
 
 ```bash
@@ -566,6 +600,10 @@ python -m fastroute route 51.5154,-0.1410 51.5033,-0.1196
 python -m fastroute route 51.5154,-0.1410 51.5033,-0.1196 -a astar
 
 python -m fastroute bench      # compare all four on random queries
+
+# Head-to-head with OSRM (needs OSRM running; see .github/workflows/osrm.yml)
+python -m fastroute osrm-prepare
+python -m fastroute compare-osrm --queries 1000
 
 # Alternatives, the Congestion Charge, and live TfL closures
 python -m fastroute route 51.5265,-0.1820 51.5100,-0.0700 --at 08:00 --alternatives --avoid-charge

@@ -1,0 +1,89 @@
+name: Compare with OSRM
+
+# Runs OSRM, the production open-source routing engine, on the same roads and
+# speeds as fastroute and compares the answers to 1,000 random trips.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "fastroute/**"
+      - ".github/workflows/osrm.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: osrm
+  cancel-in-progress: true
+
+env:
+  OSRM_IMAGE: ghcr.io/project-osrm/osrm-backend:v5.27.1
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+
+      - name: Restore OpenStreetMap download
+        id: osm
+        uses: actions/cache@v4
+        with:
+          path: data/raw
+          key: osm-central-london-${{ hashFiles('fastroute/overpass.py') }}
+      - name: Download central London
+        if: steps.osm.outputs.cache-hit != 'true'
+        run: python -m fastroute fetch
+      - name: Build routing graph
+        run: python -m fastroute build
+
+      - name: Write the same roads and speeds for OSRM
+        run: python -m fastroute osrm-prepare --out data/osrm
+
+      # OSRM's car profile, with the turn and traffic-light penalties the
+      # free-flow router here does not have switched off, and plain duration
+      # as the weight so the segment speeds decide the route.
+      - name: Prepare the OSRM profile
+        run: |
+          docker run --rm -v "$PWD/data/osrm:/data" "$OSRM_IMAGE" sh -c "cp /opt/car.lua /data/car.lua && cp -r /opt/lib /data/lib"
+          sudo chown -R "$USER" data/osrm
+          sed -i -E \
+            -e "s/(turn_penalty *= *)[0-9.]+/\10/" \
+            -e "s/(traffic_light_penalty *= *)[0-9.]+/\10/" \
+            -e "s/(u_turn_penalty *= *)[0-9.]+/\10/" \
+            -e "s/(weight_name *= *)'routability'/\1'duration'/" \
+            data/osrm/car.lua
+          grep -nE "turn_penalty|traffic_light_penalty|u_turn_penalty|weight_name" data/osrm/car.lua
+
+      - name: Extract, partition and customise with fastroute's speeds
+        run: |
+          run() { docker run --rm -v "$PWD/data/osrm:/data" "$OSRM_IMAGE" "$@"; }
+          run osrm-extract -p /data/car.lua /data/map.osm
+          run osrm-partition /data/map.osrm
+          run osrm-customize /data/map.osrm --segment-speed-file /data/speeds.csv
+
+      - name: Start OSRM
+        run: |
+          docker run -d --name osrm -p 5000:5000 -v "$PWD/data/osrm:/data" "$OSRM_IMAGE" \
+            osrm-routed --algorithm mld /data/map.osrm
+          for i in $(seq 1 60); do
+            curl -sf "http://127.0.0.1:5000/route/v1/driving/-0.141,51.515;-0.1145,51.5033?overview=false" && break
+            sleep 2
+          done
+          echo
+
+      - name: Compare 1,000 random trips
+        run: |
+          python -m fastroute compare-osrm --queries 1000 --out osrm-comparison.json | tee osrm-comparison.md
+          cat osrm-comparison.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: osrm-comparison
+          path: |
+            osrm-comparison.json
+            osrm-comparison.md

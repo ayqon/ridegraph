@@ -480,6 +480,42 @@ def cmd_live(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_osrm_prepare(args: argparse.Namespace) -> int:
+    from .osrm import write_osm_xml, write_segment_speeds
+
+    with gzip.open(_require(args.raw, "fetch"), "rb") as fh:
+        payload = json.load(fh)
+    args.out.mkdir(parents=True, exist_ok=True)
+    nodes, ways = write_osm_xml(payload, args.out / "map.osm")
+    segments = write_segment_speeds(_load_network(args.network), args.out / "speeds.csv")
+    print(f"Wrote {ways:,} ways, {nodes:,} nodes and {segments:,} segment speeds to {args.out}")
+    return 0
+
+
+def cmd_compare_osrm(args: argparse.Namespace) -> int:
+    from functools import partial
+
+    from .ch import ContractionHierarchy
+    from .graph import Graph
+    from .osrm import compare, markdown, osrm_route
+
+    network = _load_network(args.network)
+    print("Contracting the free-flow network...", file=sys.stderr)
+    ch = ContractionHierarchy.build(Graph(network))
+
+    def route(s: int, t: int):
+        r = ch.query(s, t)
+        return r.seconds, r.path
+
+    summary = compare(
+        network, route, partial(osrm_route, args.url), queries=args.queries, seed=args.seed
+    )
+    print(markdown(summary))
+    if args.out:
+        args.out.write_text(json.dumps(summary, indent=1))
+    return 0
+
+
 def cmd_eta_train(args: argparse.Namespace) -> int:
     from .eta import metrics_markdown, train
 
@@ -617,6 +653,20 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("info", help="print graph statistics")
     p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
     p.set_defaults(func=cmd_info)
+
+    p = sub.add_parser("osrm-prepare", help="write OSM XML and segment speeds for OSRM")
+    p.add_argument("--raw", type=Path, default=DEFAULT_RAW)
+    p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
+    p.add_argument("--out", type=Path, default=Path("data/osrm"))
+    p.set_defaults(func=cmd_osrm_prepare)
+
+    p = sub.add_parser("compare-osrm", help="compare routes and times with a running OSRM")
+    p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
+    p.add_argument("--url", default="http://127.0.0.1:5000")
+    p.add_argument("--queries", type=int, default=1000)
+    p.add_argument("--seed", type=int, default=7)
+    p.add_argument("--out", type=Path, help="also save the summary as JSON")
+    p.set_defaults(func=cmd_compare_osrm)
 
     p = sub.add_parser("live", help="fetch current TfL road disruptions")
     p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)

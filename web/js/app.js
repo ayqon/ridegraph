@@ -387,7 +387,8 @@ async function fetchLive() {
   const slowed = matched.length - closed;
   const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
   const when = got.at ? got.at.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
-  const what = matched.length ? `${count(closed, "closure", "closures")} and ${count(slowed, "slow stretch", "slow stretches")} on this map` : "nothing on this map right now";
+  const parts = [closed && count(closed, "closure", "closures"), slowed && count(slowed, "slow stretch", "slow stretches")].filter(Boolean);
+  const what = parts.length ? `${parts.join(" and ")} on this map` : "nothing on this map right now";
   $("live-status").textContent = got.source === "live" ? `Live from TfL at ${when}: ${what}.` : `TfL feed unreachable from here, so this is the snapshot from ${when}: ${what}.`;
 }
 

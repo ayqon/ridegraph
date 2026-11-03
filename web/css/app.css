@@ -263,6 +263,13 @@ a {
 .car-reposition {
   background: #9a9a90;
 }
+.car-shared {
+  background: #e86a10;
+}
+.sw-surge {
+  height: 10px;
+  background: rgba(232, 106, 16, 0.45);
+}
 
 .key .rider {
   width: 9px;

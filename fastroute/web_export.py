@@ -359,9 +359,19 @@ def export_dispatch(
         "  repositioning minutes per driver: "
         + ", ".join(f"{p} {m['repositioning_min_per_driver']:.1f}" for p, m in summary.items())
     )
-    (out_dir / "dispatch.json").write_text(
-        json.dumps(replay_json(results[0], config), separators=(",", ":"))
-    )
+    replay = replay_json(results[0], config)
+    g = world.grid
+    replay["grid"] = {
+        "lat0": g.lat0,
+        "lon0": g.lon0,
+        "km_per_deg_lon": g.km_per_deg_lon,
+        "x0": g.x0,
+        "y0": g.y0,
+        "cell_km": 0.5,
+        "cols": g.cols,
+        "rows": g.rows,
+    }
+    (out_dir / "dispatch.json").write_text(json.dumps(replay, separators=(",", ":")))
     log(f"  dispatch export {time.perf_counter() - started:.0f}s")
     return {
         "file": "dispatch.json",

@@ -711,9 +711,13 @@ const POLICY_NOTES = {
     "Optimal matching, and idle drivers move towards neighbourhoods where riders usually appear at this time, by the historical average.",
   "optimal+forecast":
     "Optimal matching, and idle drivers move to where the ML forecast expects riders in the next 15 minutes, reading what has happened so far this morning.",
+  "optimal+pool":
+    "The forecast method, and riders going the same way share a car: a rider can join a car already on its way if neither rider is held up by more than 40% of their trip or six minutes.",
+  "optimal+surge":
+    "The forecast method, and prices rise where riders outnumber free drivers nearby. Some riders decline the higher price, and idle drivers head for the surge. Squares show the multiplier.",
 };
 const SPEEDS = [30, 60, 180];
-const CAR_COLOURS = { idle: "#ffffff", pickup: "#1b3a8c", trip: "#ffd21f", reposition: "#9a9a90" };
+const CAR_COLOURS = { idle: "#ffffff", pickup: "#1b3a8c", trip: "#ffd21f", shared: "#e86a10", reposition: "#9a9a90" };
 
 const sim = { replay: null, policy: 3, t: 0, speed: 60, playing: true, frame: 0, last: 0 };
 
@@ -808,12 +812,13 @@ function buildDispatchControls(info) {
   });
   $("policy-note").textContent = POLICY_NOTES[r.policies[sim.policy].id] ?? "";
 
-  $("dispatch-days").textContent = String(info.days);
+  $("dispatch-days").textContent = info.days === 1 ? "1 morning" : `${info.days} mornings`;
   $("dispatch-summary").innerHTML = r.policies
     .map((p) => {
       const m = info.summary[p.id];
       const best = p.id === "optimal+forecast";
-      return `<tr class="${best ? "is-best" : ""}"><td>${p.name}</td><td>${m.mean_wait_min.toFixed(1)} min</td><td>${m.cancelled_pct.toFixed(1)}%</td><td>${m.repositioning_min_per_driver.toFixed(0)} min</td></tr>`;
+      const drive = m.driving_min_per_ride === undefined ? "–" : `${m.driving_min_per_ride.toFixed(1)} min`;
+      return `<tr class="${best ? "is-best" : ""}"><td>${p.name}</td><td>${m.mean_wait_min.toFixed(1)} min</td><td>${(100 - m.served_pct).toFixed(1)}%</td><td>${drive}</td></tr>`;
     })
     .join("");
   $("forecast-summary").innerHTML = Object.entries(info.forecast)
@@ -851,12 +856,43 @@ function drawFrame() {
   stats.forEach((s, i) => {
     document.querySelector(`[data-wait="${i}"]`).textContent = s.meanWaitMin === null ? "–" : `${s.meanWaitMin.toFixed(1)} min`;
     document.querySelector(`[data-wait-bar="${i}"]`).style.width = `${(100 * (s.meanWaitMin ?? 0)) / worst}%`;
+    const extra = [];
+    if (s.sharedPct > 0) extra.push(`${Math.round(s.sharedPct)}% shared`);
+    if (s.pricedOutPct > 0) extra.push(`${s.pricedOutPct.toFixed(1)}% priced out`);
     document.querySelector(`[data-detail="${i}"]`).textContent =
       s.meanWaitMin === null
         ? "warming up: counting starts 20 minutes in"
-        : `${number.format(s.picked)} picked up · ${s.cancelledPct.toFixed(1)}% gave up`;
+        : [`${number.format(s.picked)} picked up`, `${s.cancelledPct.toFixed(1)}% gave up`, ...extra].join(" · ");
   });
+  $("key-surge").hidden = !r.policies[sim.policy].surgeFrames.length;
   atlas.drawOverlay();
+}
+
+/** Surge squares: shaded by multiplier, labelled once they are big enough to read. */
+function drawSurge(ctx, r) {
+  const cells = r.surgeAt(sim.policy, sim.t);
+  const g = r.data.grid;
+  if (!cells || !g) return;
+  ctx.font = "700 11px 'IBM Plex Mono', ui-monospace, monospace";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (const [cell, m] of cells) {
+    const col = cell % g.cols;
+    const row = Math.floor(cell / g.cols);
+    const toLatLon = (x, y) => [g.lat0 + y / 111.32, g.lon0 + x / g.km_per_deg_lon];
+    const [aLat, aLon] = toLatLon(g.x0 + col * g.cell_km, g.y0 + row * g.cell_km);
+    const [bLat, bLon] = toLatLon(g.x0 + (col + 1) * g.cell_km, g.y0 + (row + 1) * g.cell_km);
+    const [ax, ay] = atlas.toScreen(...atlas.local(aLat, aLon));
+    const [bx, by] = atlas.toScreen(...atlas.local(bLat, bLon));
+    const t = Math.min(1, (m - 1) / 1.5);
+    ctx.fillStyle = `rgba(232, 106, 16, ${(0.12 + 0.45 * t).toFixed(2)})`;
+    ctx.fillRect(Math.min(ax, bx), Math.min(ay, by), Math.abs(bx - ax), Math.abs(by - ay));
+    if (Math.abs(bx - ax) > 34) {
+      ctx.fillStyle = "#5a2400";
+      ctx.fillText(`×${m.toFixed(1)}`, (ax + bx) / 2, (ay + by) / 2);
+    }
+  }
+  ctx.textAlign = "start";
 }
 
 function drawDispatch(ctx) {
@@ -869,6 +905,7 @@ function drawDispatch(ctx) {
   // Fade the street map a little so the fleet reads first.
   ctx.fillStyle = "rgba(229, 231, 227, 0.55)";
   ctx.fillRect(0, 0, atlas.width, atlas.height);
+  drawSurge(ctx, r);
 
   // Lines from cars on their way to the rider they will collect.
   ctx.strokeStyle = "rgba(27, 58, 140, 0.55)";

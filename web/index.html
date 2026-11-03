@@ -206,14 +206,16 @@
           </fieldset>
 
           <details class="model-card" id="dispatch-card">
-            <summary>Results over <span id="dispatch-days"></span> mornings</summary>
+            <summary>Results over <span id="dispatch-days"></span></summary>
             <p>
               The same ride requests and the same starting fleet for every method. Waits run from
-              request to pickup; a rider gives up after ten minutes without a driver.
+              request to pickup; a rider gives up after ten minutes without a driver. Not served
+              counts riders who gave up or, with surge pricing, declined the price. Driving per ride
+              is the fleet's total driving, empty or not, divided by riders served.
             </p>
             <table class="model-table">
               <thead>
-                <tr><th>Method</th><th>Avg. wait</th><th>Cancelled</th><th>Empty driving</th></tr>
+                <tr><th>Method</th><th>Avg. wait</th><th>Not served</th><th>Driving per ride</th></tr>
               </thead>
               <tbody id="dispatch-summary"></tbody>
             </table>
@@ -268,8 +270,10 @@
             <span><i class="car car-idle"></i>Free</span>
             <span><i class="car car-pickup"></i>Heading to a rider</span>
             <span><i class="car car-trip"></i>With a rider</span>
+            <span><i class="car car-shared"></i>Two riders</span>
             <span><i class="car car-reposition"></i>Repositioning</span>
             <span><i class="rider"></i>Rider waiting</span>
+            <span id="key-surge" hidden><i class="sw sw-surge"></i>Surge price</span>
           </div>
           <div class="key" id="key-route" aria-label="Map key">
             <span><i class="sw sw-trunk"></i>Primary route</span>

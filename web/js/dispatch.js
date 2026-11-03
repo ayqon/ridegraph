@@ -6,7 +6,8 @@
 // timings the Python simulation priced.
 
 export const PATIENCE_S = 600; // matches DispatchConfig.patience_s
-const LEG = { PICKUP: 0, TRIP: 1, REPOSITION: 2 };
+const LEG = { PICKUP: 0, TRIP: 1, REPOSITION: 2, SHARED: 3 };
+const STATE = ["pickup", "trip", "reposition", "shared"];
 
 export class DispatchReplay {
   constructor(data, engine) {
@@ -25,15 +26,19 @@ export class DispatchReplay {
       byDriver[driver].push({ kind, t0, from, to, dur, ride });
     }
     for (const legs of byDriver) legs.sort((a, b) => a.t0 - b.t0);
-    const rides = p.rides.map(([created, origin, dest, assigned, picked, cancelled]) => ({
+    const rides = p.rides.map(([created, origin, dest, assigned, picked, status, shared = 0, multiplier = 1]) => ({
       created,
       origin,
       dest,
       assigned,
       picked,
-      cancelled: Boolean(cancelled),
+      cancelled: status === 1,
+      pricedOut: status === 2,
+      shared: Boolean(shared),
+      multiplier,
     }));
-    return { ...p, byDriver, rideList: rides };
+    const surge = (p.surge ?? []).map(([t, cells]) => ({ t, cells: new Map(cells) }));
+    return { ...p, byDriver, rideList: rides, surgeFrames: surge };
   }
 
   /** Road route of a leg as junctions plus cumulative seconds, cached. */
@@ -72,7 +77,7 @@ export class DispatchReplay {
       for (const leg of legs) {
         if (leg.t0 > t) break;
         if (t < leg.t0 + leg.dur) {
-          state = leg.kind === LEG.PICKUP ? "pickup" : leg.kind === LEG.TRIP ? "trip" : "reposition";
+          state = STATE[leg.kind] ?? "trip";
           ride = leg.ride;
           xy = this.along(this.path(leg.from, leg.to), t - leg.t0, leg.dur, atlas);
           break;
@@ -108,7 +113,7 @@ export class DispatchReplay {
   waiting(policyIndex, t) {
     const out = [];
     for (const r of this.policies[policyIndex].rideList) {
-      if (r.created > t) continue;
+      if (r.created > t || r.pricedOut) continue;
       if (r.picked >= 0 && t >= r.picked) continue;
       if (r.picked < 0 && t >= r.created + PATIENCE_S) continue;
       out.push({ node: r.origin, waited: t - r.created, assigned: r.assigned >= 0 && t >= r.assigned });
@@ -122,10 +127,19 @@ export class DispatchReplay {
     let waitSum = 0;
     let cancelled = 0;
     let decided = 0;
+    let shared = 0;
+    let pricedOut = 0;
+    let requests = 0;
     for (const r of this.policies[policyIndex].rideList) {
       if (r.created < this.warmup || r.created > t) continue;
+      requests++;
+      if (r.pricedOut) {
+        pricedOut++;
+        continue;
+      }
       if (r.picked >= 0 && r.picked <= t) {
         picked++;
+        if (r.shared) shared++;
         waitSum += r.picked - r.created;
         decided++;
       } else if (r.picked < 0 && r.created + PATIENCE_S <= t) {
@@ -138,6 +152,19 @@ export class DispatchReplay {
       cancelled,
       meanWaitMin: picked ? waitSum / picked / 60 : null,
       cancelledPct: decided ? (100 * cancelled) / decided : null,
+      sharedPct: picked ? (100 * shared) / picked : 0,
+      pricedOutPct: requests ? (100 * pricedOut) / requests : 0,
     };
+  }
+
+  /** Surge multipliers in force at time t: Map of square -> multiplier. */
+  surgeAt(policyIndex, t) {
+    const frames = this.policies[policyIndex].surgeFrames;
+    let current = null;
+    for (const f of frames) {
+      if (f.t > t) break;
+      current = f.cells;
+    }
+    return current;
   }
 }

@@ -44,9 +44,7 @@ from .osm import is_drivable
 def write_osm_xml(payload: Mapping[str, Any], path: Path) -> tuple[int, int]:
     """Drivable ways and the nodes they use, as OSM XML; returns (nodes, ways)."""
     elements = payload.get("elements", [])
-    ways = [
-        el for el in elements if el.get("type") == "way" and is_drivable(el.get("tags", {}))
-    ]
+    ways = [el for el in elements if el.get("type") == "way" and is_drivable(el.get("tags", {}))]
     used = {int(r) for w in ways for r in w.get("nodes", [])}
     nodes = [el for el in elements if el.get("type") == "node" and int(el["id"]) in used]
     with open(path, "w", encoding="utf-8") as fh:

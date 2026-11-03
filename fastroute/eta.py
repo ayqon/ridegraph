@@ -304,6 +304,12 @@ class Dataset:
     y: np.ndarray  # log(observed / graph ETA)
     graph_eta: np.ndarray
     observed: np.ndarray
+    # Per trip, for the graph neural network: its road segments and their
+    # router seconds, turn and light counts, and the time of day.
+    edges: list[np.ndarray] = field(default_factory=list)
+    seconds: list[np.ndarray] = field(default_factory=list)
+    counts: np.ndarray = field(default_factory=lambda: np.zeros((0, 5)))
+    tau: np.ndarray = field(default_factory=lambda: np.zeros((0, 6)))
 
 
 def nearest_preset(hour: float, presets: dict[float, ContractionHierarchy]) -> ContractionHierarchy:
@@ -333,6 +339,7 @@ def simulate_trips(
     net = ctx.network
     n = net.num_nodes
     rows, ys, etas, observed = [], [], [], []
+    all_edges, all_secs, counts, hours, weekends = [], [], [], [], []
     started = time.perf_counter()
     attempts = 0
     while len(rows) < count and attempts < count * 5:
@@ -353,12 +360,33 @@ def simulate_trips(
         x = ctx.features_from_edges(route.path, edges, times, hour, weekend)
         truth = world.trip_seconds(route.path, edges, times, hour, weekend, rng)
         rows.append(x)
+        e = np.asarray(edges, dtype=np.int64)
+        all_edges.append(e)
+        all_secs.append(times[e])
+        counts.append([x[8], x[9], x[10], x[11], x[12]])
+        hours.append(hour)
+        weekends.append(weekend)
         etas.append(x[0])
         observed.append(truth)
         ys.append(math.log(truth / x[0]))
         if len(rows) % 5000 == 0:
             log(f"    {len(rows):,} trips simulated ({time.perf_counter() - started:.0f}s)")
-    return Dataset(np.array(rows), np.array(ys), np.array(etas), np.array(observed))
+    from .gnn import time_features
+
+    hours_a, weekend_a = np.array(hours), np.array(weekends)
+    level = np.array(
+        [DEFAULT_PROFILE.congestion(h, weekend=w) for h, w in zip(hours, weekends, strict=True)]
+    )
+    return Dataset(
+        np.array(rows),
+        np.array(ys),
+        np.array(etas),
+        np.array(observed),
+        all_edges,
+        all_secs,
+        np.array(counts, dtype=np.float64).reshape(-1, 5),
+        time_features(hours_a, weekend_a, level),
+    )
 
 
 def error_metrics(predicted: np.ndarray, observed: np.ndarray) -> dict[str, float]:
@@ -427,6 +455,7 @@ def train(
     trips: int = 20_000,
     hierarchies: dict[float, ContractionHierarchy] | None = None,
     seed: int = 0,
+    gnn_epochs: int = 25,
     log: Callable[[str], None] = lambda msg: None,
 ) -> EtaResult:
     """Simulate trips, train and compare ETA models, return the best for export."""
@@ -495,6 +524,17 @@ def train(
     ).fit(Xtr, ytr)
     metrics["Gradient-boosted trees"] = error_metrics(to_seconds(gbdt.predict(Xte)), obs_te)
 
+    gnn_r = math.nan
+    if gnn_epochs:
+        log("  training the graph neural network")
+        gnn_model = _train_gnn(ctx, data, idx_train, gnn_epochs, seed, log)
+        from .gnn import batch as gnn_batch
+
+        metrics["Graph neural network"] = error_metrics(
+            gnn_model.predict(gnn_batch(data, idx_test)), obs_te
+        )
+        gnn_r = gnn_hotspot_correlation(gnn_model, ctx, world)
+
     sample = np.arange(min(len(idx_test), 3000))
     imp = permutation_importance(
         gbdt, Xte[sample], data.y[idx_test][sample], n_repeats=3, random_state=seed
@@ -542,7 +582,32 @@ def train(
     # A typical trip, used by the map to ask "how slow would a trip through here be?"
     model_json["reference"] = [float(v) for v in np.median(Xtr, axis=0)]
     interval["learned_hotspot_r"] = learned_hotspot_correlation(model_json, ctx, world)
+    if math.isfinite(gnn_r):
+        interval["gnn_hotspot_r"] = gnn_r
     return EtaResult(metrics, importance, gbdt, len(data.y), model_json, interval, quantile_models)
+
+
+def _train_gnn(ctx: RouteContext, data: Dataset, idx_train, epochs: int, seed: int, log):
+    from .gnn import line_graph, propagate, segment_features, train_gnn
+
+    net = ctx.network
+    x_km = (net.lon - ctx.lon0) * ctx.km_per_deg_lon
+    y_km = (net.lat - ctx.lat0) * KM_PER_DEG_LAT
+    own = segment_features(net, ctx.graph, ctx.group, x_km, y_km)
+    H = propagate(own, line_graph(ctx.graph)).astype(np.float32)
+    return train_gnn(H, data, idx_train, epochs=epochs, seed=seed, log=log)
+
+
+def gnn_hotspot_correlation(model, ctx: RouteContext, world: World) -> float:
+    """Correlation of the GNN's per-road slowdown at 08:30 with the hidden truth."""
+    from .gnn import time_features
+
+    hour, weekend = 8.5, False
+    level = DEFAULT_PROFILE.congestion(hour, weekend=weekend)
+    tau = time_features(np.array([hour]), np.array([weekend]), np.array([level]))[0]
+    learned = model.segment_log_slowdown(np.arange(ctx.network.num_edges), tau)
+    truth = np.log1p((world.hotspot_field + world.group_extra_arr) * world.level(hour, weekend))
+    return float(np.corrcoef(learned, truth)[0, 1])
 
 
 def slowdown_at(

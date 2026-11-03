@@ -54,7 +54,8 @@ intersections; Dijkstra looks at 27,278.
 | Router × one global factor | 10.1% | 20.3% | 58% |
 | Ridge regression | 7.6% | 15.5% | 74% |
 | Neural network (MLP, 64×64) | 7.3% | 14.4% | 75% |
-| **Gradient-boosted trees** | **6.8%** | **13.8%** | **78%** |
+| **Gradient-boosted trees** (shipped to the map) | **6.8%** | **13.8%** | **78%** |
+| Graph neural network over every road | 6.6% | 13.4% | 80% |
 
 * **Arrival window:** the 10th to 90th percentile range contains **81.0%** of
   held-out trips against an 80% target (77.4% before conformal calibration).
@@ -208,8 +209,26 @@ signal, followed by where the route runs, weekday or weekend, length and
 the number of sets of lights. One global factor helps, a linear model helps
 more, and both non-linear models capture the interactions (lights cost more
 at peak; hotspots matter only when the route passes through them).
-Gradient-boosted trees win and, being a few hundred small trees, are also
-the easiest to ship.
+Gradient-boosted trees win among the models that read one row per trip and,
+being a few hundred small trees, are also the easiest to ship.
+
+**A graph neural network** (`fastroute/gnn.py`) works on the roads instead
+of on trip summaries, the approach DeepMind took for Google Maps. Every road
+segment starts with its own features (class, length, lights, junction size,
+position as sines and cosines), which are then averaged over the *line
+graph* (segments that lead into one another) for 1, 2, 4 and 8 hops. That
+is SIGN-style message passing, precomputed so it scales to all 127,000
+segments. A two-layer network reads each segment's representation and the
+time of day and predicts its slowdown; a trip's time is the sum of
+`router seconds x slowdown` over its segments plus learned waits for each
+turn and set of lights. It is written in numpy with hand-derived gradients
+(checked against finite differences in the tests) and trained with Adam.
+
+On held-out London trips it edges out the trees: 6.6% error against 6.8%,
+80% of trips within 10% against 78%. The trees still run in the browser,
+since the network needs the representation of every road (about 60 MB).
+The network's per-road slowdowns at 08:30 correlate at r = 0.60 with the
+hidden truth road by road, a harder test than the trees' area map below.
 
 **Traffic lights in OpenStreetMap** are often tagged on each approach to a
 junction and on nearby crossings, about 10 points per km of central London

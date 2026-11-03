@@ -1,12 +1,18 @@
 # fastroute
 
-Quickest routes, travel-time maps, delivery rounds, learned arrival times
-and ride dispatch on a real road network, built from first principles.
+Quickest routes, live closures, travel-time maps, delivery rounds, learned
+arrival times and ride dispatch on London's real road network, built from
+first principles.
 
 **[Try the live map →](https://ayqon.github.io/fastroute/)** Click two points in
 central London, pick a time of day, and watch how much of the city each
-algorithm searches before it finds the route, then compare the router's ETA
-with a machine-learned one.
+algorithm searches before it finds the route. Compare alternative routes and
+the Congestion Charge, switch on live TfL closures, and set the router's ETA
+beside a machine-learned one.
+
+![The live map: Dijkstra floods the city while Contraction Hierarchies touches a few hundred junctions; alternative routes and the Congestion Charge; a travel-time map; a delivery round; ride dispatch with shared rides](docs/demo.gif)
+
+The short version of what the numbers show is in [the write-up](docs/writeup.md).
 
 Ride-hailing and maps apps answer "what is the fastest way from A to B, and
 when will I get there?" millions of times a second. This project rebuilds both
@@ -15,6 +21,12 @@ halves on OpenStreetMap data for central London:
 * **Routing.** Dijkstra, bidirectional search, A\* and Contraction
   Hierarchies, implemented by hand rather than called from a library, with
   rush-hour traffic and turn costs, every one tested against a reference.
+* **Live closures in milliseconds.** Customizable Contraction Hierarchies
+  separate the road layout from travel times, so TfL's live closures are
+  folded in by re-customising in 20 ms in the browser instead of
+  rebuilding. Alternative routes come from the penalty method, and any
+  route can avoid the Congestion Charge zone (from Paddington to Aldgate
+  at 8am that costs 14 minutes and saves £18).
 * **Everyday tools on the same engine.** A travel-time map shades
   everywhere reachable in 10, 20 and 30 minutes from (or to) any point,
   at rush hour and at night: from Oxford Circus, 20 minutes at 8am covers
@@ -24,13 +36,15 @@ halves on OpenStreetMap data for central London:
 * **Ride dispatch.** Every 30 seconds, price every free driver against every
   waiting rider with one many-to-many query and assign them optimally with
   the Hungarian algorithm; move idle drivers ahead of demand predicted by a
-  forecasting model. On simulated London mornings this cuts the average
-  pickup wait from 7.3 to 6.1 minutes against nearest-driver dispatch.
+  forecasting model. Shared rides and surge pricing are simulated on the
+  same requests, so their trade-offs can be measured rather than argued.
 * **Learned ETA.** The approach behind Uber's DeepETA: keep the routing
   engine, and train a model on observed trips to correct its estimate.
   Gradient-boosted trees cut the error on held-out London trips from 28% to
   7%, give each trip a calibrated arrival window, and run live in the
-  browser, where a map layer shows the congestion the model discovered.
+  browser, where a map layer shows the congestion the model discovered. A
+  graph neural network over every road, written in numpy, does slightly
+  better again.
 
 | Algorithm | Nodes settled (mean) | vs Dijkstra | Query time (median) | vs Dijkstra |
 |---|---:|---:|---:|---:|
@@ -63,7 +77,7 @@ intersections; Dijkstra looks at 27,278.
   with congestion hotspots it was never shown.
 
 <sub>Trained on 16,000 of 20,000 simulated trips; see
-[the learned ETA](#5-the-learned-eta) for how the trips are generated and
+[the learned ETA](#7-the-learned-eta) for how the trips are generated and
 why. Reproduce with `python -m fastroute eta-train`.</sub>
 
 ## How it works
@@ -170,7 +184,72 @@ $ python -m fastroute eta <from> <to> --turns
 
 <sub>Synthetic street grid; London output lands with the next data refresh.</sub>
 
-### 5. The learned ETA
+### 5. Live closures and Customizable Contraction Hierarchies
+
+Contraction Hierarchies are fast because they are built for one set of
+travel times. A closure on Oxford Street makes them stale, and rebuilding
+takes far longer than a user will wait. Production engines (OSRM's MLD, Bing
+Maps) separate the road layout from the times. `fastroute/cch.py` implements
+**Customizable CH** (Dibbelt, Strasser and Wagner, 2016):
+
+1. **Once per map:** order junctions by *nested dissection* (cut the city
+   along the direction that crosses the fewest roads, recurse on each half,
+   rank the separator last), then contract in that order adding every
+   shortcut, with no witness searches. On London: 77,124 roads become
+   301,179 edges and 3.19 million *lower triangles*, in 8 s.
+2. **Whenever times change:** load the current time of every road and sweep
+   the triangles bottom-up, `u->w = min(u->w, u->v + v->w)`. That takes
+   **50 ms** in numpy and **about 20 ms** in the browser.
+3. **Queries:** the usual two upward searches, with shortcuts unpacked
+   through the triangles.
+
+The times come from **Transport for London's open disruption feed**
+(`fastroute/live.py`). Each disrupted stretch is map-matched onto the graph
+(both ends and the middle of an edge within 18 m of the line). Closed roads
+get an infinite time, and open ones are slowed by severity. The map asks
+TfL directly when you switch on *Live roadworks and closures*. If the feed
+can't be reached from the browser, it falls back to a snapshot taken when CI
+built the page.
+
+```bash
+python -m fastroute live                      # what is disrupted right now
+python -m fastroute route 51.5130,-0.1590 51.5160,-0.1300 --at 13:00 --live
+```
+
+### 6. Alternative routes and the Congestion Charge
+
+Map apps offer two or three routes because the quickest is not always the one
+you want. `fastroute/alternatives.py` finds them with the **penalty method**:
+take the quickest route, make every road on it 40% slower, search again, and
+repeat. Each search is pushed off the corridor already used. A candidate is
+kept only if it is
+
+* at most 30% slower than the quickest (on real times, not penalised ones),
+* at most 65% shared with any route already offered, and
+* free of pointless detours: sampled stretches of a quarter of the trip must
+  each be within 15% of the quickest way between their ends.
+
+Closing roads is the same machinery with infinite penalties, which is how a
+route **avoids the Congestion Charge zone** (`fastroute/charges.py`: the zone
+polygon, £18 a day, 07:00 to 18:00 on weekdays and 12:00 to 18:00 at
+weekends; the boundary roads are free). From Paddington to Aldgate at 8am:
+
+| Route | Time | Charge |
+|---|---:|---|
+| Quickest | 36 min 32 s | £18 |
+| Alternative 1 | 40 min 11 s | £18 |
+| Alternative 2 | 45 min 27 s | £18 |
+| Avoiding the zone, along Euston Road and City Road | 50 min 08 s | none |
+
+So staying out of the zone costs 14 minutes on this trip, about £1.30 a minute
+saved. The browser runs the same method (A\* on the penalised weights, under
+100 ms on London) and a Node test holds it to Python.
+
+```bash
+python -m fastroute route 51.5265,-0.1820 51.5100,-0.0700 --at 08:00 --alternatives --avoid-charge
+```
+
+### 7. The learned ETA
 
 The router's estimate is only as good as its model of road speeds. It cannot
 know that lights on a particular corridor hold you for half a minute at
@@ -258,7 +337,7 @@ same features and walks the same trees. A test runs it under Node and
 requires its features and predictions to match Python's to nine decimal
 places.
 
-### 6. Travel-time maps and delivery rounds
+### 8. Travel-time maps and delivery rounds
 
 **Travel-time maps** (`fastroute/reach.py`) answer "where can I get to in 20
 minutes from here?", or, for someone choosing where to live, "from where can
@@ -293,76 +372,11 @@ python -m fastroute reach 51.5174,-0.1200 --at 08:00
 python -m fastroute tour 51.5174,-0.1200 51.5308,-0.1238 51.5033,-0.1145 ...
 ```
 
-### Alternative routes and the Congestion Charge
-
-Map apps offer two or three routes because the quickest is not always the one
-you want. `fastroute/alternatives.py` finds them with the **penalty method**:
-take the quickest route, make every road on it 40% slower, search again, and
-repeat. Each search is pushed off the corridor already used. A candidate is
-kept only if it is
-
-* at most 30% slower than the quickest (on real times, not penalised ones),
-* at most 65% shared with any route already offered, and
-* free of pointless detours: sampled stretches of a quarter of the trip must
-  each be within 15% of the quickest way between their ends.
-
-Closing roads is the same machinery with infinite penalties, which is how a
-route **avoids the Congestion Charge zone** (`fastroute/charges.py`: the zone
-polygon, £18 a day, 07:00 to 18:00 on weekdays and 12:00 to 18:00 at
-weekends; the boundary roads are free). From Paddington to Aldgate at 8am:
-
-| Route | Time | Charge |
-|---|---:|---|
-| Quickest | 36 min 32 s | £18 |
-| Alternative 1 | 40 min 11 s | £18 |
-| Alternative 2 | 45 min 27 s | £18 |
-| Avoiding the zone, along Euston Road and City Road | 50 min 08 s | none |
-
-So staying out of the zone costs 14 minutes on this trip, about £1.30 a minute
-saved. The browser runs the same method (A\* on the penalised weights, under
-100 ms on London) and a Node test holds it to Python.
-
-```bash
-python -m fastroute route 51.5265,-0.1820 51.5100,-0.0700 --at 08:00 --alternatives --avoid-charge
-```
-
-### Live closures and Customizable Contraction Hierarchies
-
-Contraction Hierarchies are fast because they are built for one set of
-travel times. A closure on Oxford Street makes them stale, and rebuilding
-takes far longer than a user will wait. Production engines (OSRM's MLD, Bing
-Maps) separate the road layout from the times. `fastroute/cch.py` implements
-**Customizable CH** (Dibbelt, Strasser and Wagner, 2016):
-
-1. **Once per map:** order junctions by *nested dissection* (cut the city
-   along the direction that crosses the fewest roads, recurse on each half,
-   rank the separator last), then contract in that order adding every
-   shortcut, with no witness searches. On London: 77,124 roads become
-   301,179 edges and 3.19 million *lower triangles*, in 8 s.
-2. **Whenever times change:** load the current time of every road and sweep
-   the triangles bottom-up, `u->w = min(u->w, u->v + v->w)`. That takes
-   **50 ms** in numpy and **about 20 ms** in the browser.
-3. **Queries:** the usual two upward searches, with shortcuts unpacked
-   through the triangles.
-
-The times come from **Transport for London's open disruption feed**
-(`fastroute/live.py`). Each disrupted stretch is map-matched onto the graph
-(both ends and the middle of an edge within 18 m of the line). Closed roads
-get an infinite time, and open ones are slowed by severity. The map asks
-TfL directly when you switch on *Live roadworks and closures*. If the feed
-can't be reached from the browser, it falls back to a snapshot taken when CI
-built the page.
-
-```bash
-python -m fastroute live                      # what is disrupted right now
-python -m fastroute route 51.5130,-0.1590 51.5160,-0.1300 --at 13:00 --live
-```
-
-### 7. Ride dispatch and demand forecasting
+### 9. Ride dispatch and demand forecasting
 
 Routing exists to answer a business question: which driver should take this
 ride? `fastroute/dispatch.py` simulates a fleet over the 07:00 to 10:00
-morning peak and compares four ways of answering it, on exactly the same
+morning peak and compares six ways of answering it, on exactly the same
 ride requests and the same starting fleet.
 
 **Demand** (`fastroute/demand.py`) comes from places with their own rhythm:
@@ -389,6 +403,20 @@ per rider, then join them through buckets at the nodes they share.
   where expected demand over the next 15 minutes most exceeds the drivers
   already there, using either the historical average for that place and
   time, or an **ML demand forecast**.
+* *+ shared rides.* The forecast method, and riders going the same way share
+  a car. A waiting rider can **join a car already carrying one rider**: the
+  car's position is the last junction it has reached on its route (every
+  prefix of a quickest route is itself quickest, so a binary search over CH
+  queries finds it), and every pickup and drop order is priced. Riders in
+  the same batch can also pair up from the start. Nobody is held up by more
+  than 40% of their own trip or six minutes, and the pairs that save most
+  driving go first.
+* *+ surge pricing.* The forecast method, and every two minutes each
+  neighbourhood gets a price multiplier from how far waiting and expected
+  riders outnumber nearby free drivers. Each rider accepts with probability
+  `exp(-(multiplier - 1))`, and idle drivers are drawn towards surging
+  areas. Surge here does not bring extra drivers online, so the comparison
+  isolates its rationing effect.
 
 **The forecast** is a gradient-boosted Poisson model predicting ride requests
 per 500 m square for the next 15 minutes, from the time, the place and what
@@ -409,6 +437,8 @@ and city-wide). On days it never saw:
 | Optimal matching | 6.6 min | 12.1 min | 5.4 min | 6.2% | 0 |
 | Optimal + historical-average repositioning | 6.2 min | 11.6 min | 5.1 min | 4.9% | 16 min |
 | **Optimal + ML-forecast repositioning** | **6.1 min** | **11.3 min** | **4.9 min** | 5.0% | **12 min** |
+| + shared rides | 5.1 min | 9.6 min | 4.4 min | 1.4% | 14 min |
+| + surge pricing | 5.2 min | 9.6 min | 4.7 min | 0.3% | 14 min |
 
 Optimal matching alone cuts waits by about 10%, and repositioning ahead of
 demand brings the total to 16%. The ML forecast halves the forecasting error
@@ -419,13 +449,31 @@ actually building today. Better forecasts do not automatically mean
 proportionally better decisions; the repositioning rule is where the next
 gains would come from.
 
-### 8. The live map
+The two product levers pull in opposite directions:
+
+| On top of the ML-forecast method | Riders served | Shared | Priced out | Fleet driving per ride served |
+|---|---:|---:|---:|---:|
+| Neither | 95.0% | none | none | 25.7 min |
+| **Shared rides** | **98.6%** | 46% of rides | none | **22.1 min** |
+| Surge pricing | 91.3% | none | 8.5% | 25.8 min |
+
+**Shared rides** serve more people with less driving: 46% of rides are
+shared, waits fall by 16%, those who give up drop from 5.0% to 1.4%, and the
+fleet drives 14% less per rider served. The price is 2.1 extra minutes in
+the car for a shared rider. **Surge pricing** also shortens waits (5.2 min,
+almost nobody gives up), but by turning riders away: 8.5% decline the
+price, so fewer riders are served than with no surge at all. Without the
+extra drivers a higher price draws in, surge only rations a fixed fleet.
+That is the honest reading of the simulation, and the reason real
+platforms justify surge by its effect on supply.
+
+### 10. The live map
 
 The demo in `web/` runs entirely in the browser, with no server:
 
 * **Same data, same answers.** `python -m fastroute export-web` writes the
   graph and one Contraction Hierarchy per time-of-day preset as compact,
-  gzipped binary arrays. `web/js/engine.js` is a direct port of the four
+  gzipped binary arrays. `web/js/engine.js` is a direct port of the
   algorithms, and a test runs it under Node and requires exact agreement
   with the Python router on every preset.
 * **The map is the graph.** Rather than a tile server's picture of London,
@@ -435,8 +483,15 @@ The demo in `web/` runs entirely in the browser, with no server:
 * **Search you can see.** Every settled junction lights up its streets in
   the colour of the side that reached it, so Dijkstra visibly floods the
   city while Contraction Hierarchies touches a few hundred junctions
-  scattered up the road hierarchy. All four methods run on every trip, with
-  junctions examined and query time side by side.
+  scattered up the road hierarchy. All five methods (Customizable CH
+  included) run on every trip, with junctions examined and query time side
+  by side.
+* **Routes, charges and closures.** Each trip lists the quickest route and
+  up to two alternatives with their times and whether they enter the
+  Congestion Charge zone, which is drawn on the map; a switch adds the
+  quickest route that stays out. *Live roadworks and closures* asks TfL's
+  feed directly, draws the closed streets and re-customises the
+  hierarchy, while plain CH steps aside because its shortcuts are stale.
 * **Turn costs on demand.** A switch charges for turns and traffic lights.
   The browser rebuilds the edge-expanded turn graph from per-manoeuvre turn
   kinds in the export, numbered exactly as the Python one, and the trip
@@ -454,17 +509,18 @@ The demo in `web/` runs entirely in the browser, with no server:
   numbered) and *Dispatch rides*. The browser runs the same algorithms as
   Python, held to them by Node tests.
 * **Dispatch you can watch.** A *Dispatch rides* mode replays a simulated
-  morning: cars coloured by what they are doing move along their real
-  routes, riders wait and are collected, and all four methods' running
-  averages update side by side. Only the decisions are stored; the browser
+  morning: cars coloured by what they are doing (orange when carrying two
+  riders) move along their real routes, riders wait and are collected, surge
+  squares show their multipliers, and every method's running averages update
+  side by side. Only the decisions are stored; the browser
   rebuilds every route with the same hierarchy, and a test holds each leg to
   the duration the simulation recorded.
 * **Built and deployed by CI.** On each push, a workflow downloads central
-  London from OpenStreetMap (cached between runs), builds the graph,
-  contracts it for each preset, trains the ETA model and publishes `web/` to
-  GitHub Pages.
+  London from OpenStreetMap (cached between runs), snapshots TfL's
+  disruptions, builds the graph, contracts it for each preset, trains the
+  ETA models, simulates dispatch and publishes `web/` to GitHub Pages.
 
-### 9. What the London numbers show
+### 11. What the London numbers show
 
 * **Contraction Hierarchies work because real roads are hierarchical.** On a
   uniform synthetic grid the reduction in search work is 24x; on London it
@@ -478,7 +534,7 @@ The demo in `web/` runs entirely in the browser, with no server:
   Python**, because juggling two frontiers costs interpreter overhead that
   eats most of the saving.
 
-### 10. Measuring fairly
+### 12. Measuring fairly
 
 Benchmarks report **nodes settled** alongside wall-clock time. Settled nodes
 measure the work each algorithm does, independent of language; Python
@@ -502,6 +558,15 @@ python -m fastroute route 51.5154,-0.1410 51.5033,-0.1196
 python -m fastroute route 51.5154,-0.1410 51.5033,-0.1196 -a astar
 
 python -m fastroute bench      # compare all four on random queries
+
+# Alternatives, the Congestion Charge, and live TfL closures
+python -m fastroute route 51.5265,-0.1820 51.5100,-0.0700 --at 08:00 --alternatives --avoid-charge
+python -m fastroute live
+python -m fastroute route 51.5130,-0.1590 51.5160,-0.1300 --at 13:00 --live
+
+# Where can I get to in 20 minutes? Best order for a round of deliveries
+python -m fastroute reach 51.5174,-0.1200 --at 08:00
+python -m fastroute tour 51.5174,-0.1200 51.5308,-0.1238 51.5033,-0.1145 51.5154,-0.1410
 
 # Rush hour, with turn costs and traffic lights
 python -m fastroute route 51.5154,-0.1410 51.5033,-0.1196 --at 08:30 --turns -a astar
@@ -563,6 +628,17 @@ following its daily rhythm and staying reproducible, forecast features never
 reading the slot they predict, the forecast beating both baselines, every
 policy running on identical requests and never exceeding the pickup limit,
 and a Node test holding the browser's replayed routes to the simulation.
+Shared rides keep every rider within the detour limits and every driver's
+legs back to back; surge only ever prices out riders under the surge policy.
+
+The newer pieces are held the same way. Customizable CH must equal Dijkstra
+after any re-customisation, including random closures; TfL feeds are parsed
+in JSON and WKT forms and closures land on the right roads; alternative
+routes start with the quickest, stay within the stretch limit and keep out
+of the zone when asked; travel-time maps and delivery rounds match Dijkstra
+and brute force; the graph neural network's hand-written gradients match
+finite differences. Node tests hold the browser's alternatives, charge zone,
+Customizable CH, disruption matching, travel-time maps and tours to Python.
 
 CI runs lint, formatting and the full suite on Python 3.10, 3.12 and 3.13.
 
@@ -578,11 +654,17 @@ CI runs lint, formatting and the full suite on Python 3.10, 3.12 and 3.13.
 - [x] **Travel-time maps and delivery rounds:** bounded one-to-all from or to a point, Held-Karp and 2-opt/Or-opt on asymmetric matrices
 - [x] **Ride dispatch and demand forecasting:** many-to-many CH, Hungarian matching, ML demand forecast, repositioning, simulated and replayed
 - [x] **Learned ETA:** simulated observed trips, route features, ridge, MLP and gradient-boosted trees, calibrated arrival windows, a learned congestion map, shipped to the browser
+- [x] **Graph neural network ETA:** line-graph message passing over every road, per-segment slowdowns, hand-derived gradients
+- [x] **Shared rides and surge pricing:** en-route joining with detour limits, batch pairing, price multipliers with rider elasticity
 
 ## Data
 
 Road data © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright),
 available under the Open Database License.
+
+Live road disruptions: Powered by TfL Open Data. Contains OS data © Crown
+copyright and database rights 2016 and Geomni UK Map data © and database
+rights 2019.
 
 ## License
 

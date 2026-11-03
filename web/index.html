@@ -25,7 +25,8 @@
           <p class="place" id="place">Central London</p>
           <p class="lede">
             Quickest routes over London's real road network, how much of the city each
-            algorithm searches to find them, and a learned ETA on top.
+            algorithm searches to find them, live closures, charges, deliveries and ride
+            dispatch, with a learned ETA on top.
           </p>
           <div class="modes" role="tablist" aria-label="Mode">
             <button type="button" role="tab" id="mode-route" aria-selected="true">Plan a route</button>
@@ -239,8 +240,9 @@
 
         <footer class="colophon">
           <p>
-            Traffic is a modelled weekday pattern, not live data. Road data ©
+            Traffic is a modelled weekday pattern; closures are live when switched on. Road data ©
             <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.
+            Disruptions powered by <a href="https://tfl.gov.uk/info-for/open-data-users/">TfL Open Data</a>.
           </p>
           <p><a href="https://github.com/ayqon/fastroute">How it works, with code and benchmarks</a></p>
         </footer>

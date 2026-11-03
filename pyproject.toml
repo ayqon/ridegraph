@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fastroute"
-version = "0.1.0"
-description = "Quickest-route search on real road networks, from Dijkstra to Contraction Hierarchies, with traffic, turn costs and a learned ETA model."
+version = "1.0.0"
+description = "Quickest routes, live closures, learned ETAs and ride dispatch on real road networks, built from first principles."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }

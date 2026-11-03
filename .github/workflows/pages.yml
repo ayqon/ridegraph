@@ -40,8 +40,12 @@ jobs:
 
       - name: Build routing graph
         run: python -m fastroute build
+      # The page asks TfL for live disruptions itself; this snapshot is the
+      # fallback when the feed can't be reached from the viewer's browser.
+      - name: Snapshot live road disruptions from TfL
+        run: python -m fastroute live --out data/tfl.json || echo "TfL feed unavailable; no snapshot"
       - name: Export graph, hierarchies and learned ETA model for the browser
-        run: python -m fastroute export-web --out web/data --eta-trips 20000
+        run: python -m fastroute export-web --out web/data --eta-trips 20000 --tfl data/tfl.json
 
       # The built site, data included, on its own branch, so it can be
       # previewed privately before the repository is public and Pages is on.

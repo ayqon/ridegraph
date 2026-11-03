@@ -48,11 +48,12 @@ export async function loadEngine(baseUrl) {
   const engine = new Engine(manifest, graph);
   engine.fetchHierarchy = async (preset) =>
     viewArrays(await fetchArrayBuffer(`${baseUrl}/${preset.file}`), preset.arrays);
+  engine.fetchCCH = async (info) => viewArrays(await fetchArrayBuffer(`${baseUrl}/${info.file}`), info.arrays);
   return engine;
 }
 
 // Binary min-heap over (key, node) pairs in typed arrays, with lazy deletion.
-class Heap {
+export class Heap {
   constructor(capacity = 1024) {
     this.keys = new Float64Array(capacity);
     this.vals = new Int32Array(capacity);
@@ -114,7 +115,7 @@ class Heap {
 }
 
 // Per-direction search state, reset in O(1) between queries via generation stamps.
-class Side {
+export class Side {
   constructor(n) {
     this.dist = new Float64Array(n);
     this.parent = new Int32Array(n);
@@ -144,7 +145,7 @@ class Side {
 }
 
 // Growable record of settled nodes, in order, with the side that settled them.
-class Trace {
+export class Trace {
   constructor() {
     this.nodes = new Int32Array(4096);
     this.sides = new Uint8Array(4096);
@@ -218,6 +219,9 @@ export class Engine {
     this.turns = false;
     this.hierarchies = new Map();
     this.ch = null;
+    this.cch = null; // Customizable CH, loaded on first use
+    this.cchDirty = true;
+    this.liveFactor = null; // per-edge multipliers from live disruptions
     this.setTime(manifest.presets[0]?.hour ?? 3);
   }
 
@@ -237,6 +241,8 @@ export class Engine {
     const factor = this.manifest.traffic.sensitivity.map((s) => 1 - s * level);
     const w = this.roads.weight;
     for (let e = 0; e < this.m; e++) w[e] = this.freeflow_s[e] / factor[this.road_class[e]];
+    if (this.liveFactor) for (let e = 0; e < this.m; e++) w[e] *= this.liveFactor[e];
+    this.cchDirty = true;
     this.hour = hour;
     this.weekend = weekend;
     this.finishWeights(this.roads);
@@ -584,7 +590,35 @@ export class Engine {
 
   /** Whether Contraction Hierarchies can answer in the current mode. */
   get chAvailable() {
-    return Boolean(this.ch) && !this.turns;
+    // A CH is built for one set of travel times; live closures make it stale.
+    return Boolean(this.ch) && !this.turns && !this.liveFactor;
+  }
+
+  get cchAvailable() {
+    return Boolean(this.cch) && !this.turns;
+  }
+
+  /** Apply (or clear) live per-edge multipliers on top of the time of day. */
+  setLive(factor) {
+    this.liveFactor = factor;
+    this.setTime(this.hour, this.weekend);
+  }
+
+  async loadCCH() {
+    if (this.cch || !this.manifest.cch) return this.cch;
+    const arrays = await this.fetchCCH(this.manifest.cch);
+    const { CustomizableCH } = await import("./cch.js");
+    this.cch = new CustomizableCH(this, arrays);
+    return this.cch;
+  }
+
+  cch_query(s, t) {
+    if (!this.cchAvailable) throw new Error("Customizable CH is not available in this mode.");
+    if (this.cchDirty) {
+      this.cch.customize();
+      this.cchDirty = false;
+    }
+    return this.cch.query(s, t);
   }
 
   ch_query(s, t) {
@@ -806,10 +840,12 @@ export class Engine {
         return this.astar(s, t);
       case "ch":
         return this.ch_query(s, t);
+      case "cch":
+        return this.cch_query(s, t);
       default:
         throw new Error(`unknown algorithm ${algorithm}`);
     }
   }
 }
 
-export const ALGORITHMS = ["dijkstra", "bidirectional", "astar", "ch"];
+export const ALGORITHMS = ["dijkstra", "bidirectional", "astar", "ch", "cch"];

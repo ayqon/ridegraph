@@ -150,6 +150,8 @@ def export(
     name: str = "Central London",
     eta_trips: int = 0,
     dispatch_days: int = 0,
+    tfl: object | None = None,
+    tfl_fetched: str | None = None,
     presets: tuple[Preset, ...] = PRESETS,
     log: Callable[[str], None] = lambda msg: print(msg, file=sys.stderr),
 ) -> dict[str, object]:
@@ -207,6 +209,8 @@ def export(
         "presets": preset_entries,
         "charge": charge_info(),
     }
+    manifest["cch"] = export_cch(network, out_dir, log)
+    manifest["live"] = export_live(network, out_dir, tfl, tfl_fetched, log)
     if eta_trips:
         from .eta import train
 
@@ -248,6 +252,69 @@ def export(
         manifest["dispatch"] = export_dispatch(network, hierarchies, out_dir, dispatch_days, log)
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=1))
     return manifest
+
+
+def export_cch(network: RoadNetwork, out_dir: Path, log: Callable[[str], None]) -> dict:
+    """Customizable CH topology: the same for every time of day and every closure."""
+    from .cch import CustomizableCH
+
+    cch = CustomizableCH.build(network)
+    blob, layout = _pack(
+        {
+            "rank": cch.rank.astype(np.int32),
+            "first_up": cch.first_up.astype(np.int32),
+            "up_head": cch.up_head.astype(np.int32),
+        }
+    )
+    size = _write(out_dir / "cch.bin.gz", blob)
+    log(
+        f"  customizable CH: {cch.num_edges:,} edges, {cch.num_triangles:,} triangles, "
+        f"{size / 1e6:.2f} MB, {cch.build_seconds:.1f}s"
+    )
+    return {
+        "file": "cch.bin.gz",
+        "arrays": layout,
+        "edges": cch.num_edges,
+        "triangles": cch.num_triangles,
+    }
+
+
+def export_live(
+    network: RoadNetwork,
+    out_dir: Path,
+    payload: object | None,
+    fetched: str | None,
+    log: Callable[[str], None],
+) -> dict:
+    """Where the browser gets live disruptions, plus a snapshot to fall back on."""
+    from . import live
+
+    info: dict[str, object] = {
+        "url": live.TFL_STREET_DISRUPTIONS,
+        "match_m": live.MATCH_M,
+        "severity_factor": live.SEVERITY_FACTOR,
+        "default_factor": live.DEFAULT_FACTOR,
+        "snapshot": None,
+        "fetched": fetched,
+    }
+    if payload is None:
+        return info
+    stretches = live.parse(payload)
+    _, hits = live.match(network, stretches)
+    kept = [
+        {
+            "streetName": d.street,
+            "severity": d.severity,
+            "closure": d.closure,
+            "lineString": json.dumps([[round(lon, 6), round(lat, 6)] for lat, lon in d.points]),
+        }
+        for d, h in zip(stretches, hits, strict=True)
+        if h
+    ]
+    (out_dir / "tfl.json").write_text(json.dumps(kept, separators=(",", ":")))
+    info["snapshot"] = "tfl.json"
+    log(f"  live snapshot: {len(kept)} of {len(stretches)} TfL disruptions are on this map")
+    return info
 
 
 def charge_info() -> dict[str, object]:

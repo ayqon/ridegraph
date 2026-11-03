@@ -307,6 +307,38 @@ saved. The browser runs the same method (A\* on the penalised weights, under
 python -m fastroute route 51.5265,-0.1820 51.5100,-0.0700 --at 08:00 --alternatives --avoid-charge
 ```
 
+### Live closures and Customizable Contraction Hierarchies
+
+Contraction Hierarchies are fast because they are built for one set of
+travel times. A closure on Oxford Street makes them stale, and rebuilding
+takes far longer than a user will wait. Production engines (OSRM's MLD, Bing
+Maps) separate the road layout from the times. `fastroute/cch.py` implements
+**Customizable CH** (Dibbelt, Strasser and Wagner, 2016):
+
+1. **Once per map:** order junctions by *nested dissection* (cut the city
+   along the direction that crosses the fewest roads, recurse on each half,
+   rank the separator last), then contract in that order adding every
+   shortcut, with no witness searches. On London: 77,124 roads become
+   301,179 edges and 3.19 million *lower triangles*, in 8 s.
+2. **Whenever times change:** load the current time of every road and sweep
+   the triangles bottom-up, `u->w = min(u->w, u->v + v->w)`. That takes
+   **50 ms** in numpy and **about 20 ms** in the browser.
+3. **Queries:** the usual two upward searches, with shortcuts unpacked
+   through the triangles.
+
+The times come from **Transport for London's open disruption feed**
+(`fastroute/live.py`). Each disrupted stretch is map-matched onto the graph
+(both ends and the middle of an edge within 18 m of the line). Closed roads
+get an infinite time, and open ones are slowed by severity. The map asks
+TfL directly when you switch on *Live roadworks and closures*. If the feed
+can't be reached from the browser, it falls back to a snapshot taken when CI
+built the page.
+
+```bash
+python -m fastroute live                      # what is disrupted right now
+python -m fastroute route 51.5130,-0.1590 51.5160,-0.1300 --at 13:00 --live
+```
+
 ### 7. Ride dispatch and demand forecasting
 
 Routing exists to answer a business question: which driver should take this
@@ -522,6 +554,7 @@ CI runs lint, formatting and the full suite on Python 3.10, 3.12 and 3.13.
 - [x] **Contraction Hierarchies:** node ordering, witness search, shortcuts, upward query, path unpacking
 - [x] **Traffic and turns:** time-of-day speed profiles, edge-expanded graph with turn and traffic-light costs
 - [x] **Live map:** in-browser routing on a street-atlas render of the graph, animating each algorithm's search
+- [x] **Live closures:** TfL disruption feed, map matching, Customizable CH with nested dissection and triangle customization
 - [x] **Alternative routes and the Congestion Charge:** penalty method with stretch, overlap and detour checks; zone avoidance
 - [x] **Travel-time maps and delivery rounds:** bounded one-to-all from or to a point, Held-Karp and 2-opt/Or-opt on asymmetric matrices
 - [x] **Ride dispatch and demand forecasting:** many-to-many CH, Hungarian matching, ML demand forecast, repositioning, simulated and replayed

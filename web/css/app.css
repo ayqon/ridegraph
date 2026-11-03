@@ -865,6 +865,21 @@ legend {
 .sw-secondary {
   background: var(--b-road);
 }
+.sw-alt {
+  background: #9a9a90;
+  box-shadow: 0 0 0 1.5px var(--ink);
+}
+.sw-zone {
+  height: 0;
+  border-top: 2px dashed rgba(200, 16, 46, 0.85);
+}
+.sw-closed {
+  height: 0;
+  border-top: 4px dashed #7a0019;
+}
+.sw-slow {
+  background: #e86a10;
+}
 
 .dot {
   width: 8px;

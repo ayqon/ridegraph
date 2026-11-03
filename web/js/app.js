@@ -4,6 +4,7 @@ import { EtaModel } from "./eta.js";
 import { DispatchReplay, PATIENCE_S } from "./dispatch.js";
 import { planTour } from "./tour.js";
 import { alternatives, charging, zoneNodes } from "./alternatives.js";
+import { loadDisruptions, match as matchDisruptions, parse as parseDisruptions } from "./live.js";
 
 const FEATURE_NAMES = {
   graph_eta_s: "the router's estimate",
@@ -48,6 +49,10 @@ const METHODS = {
     name: "Contraction Hierarchies",
     note: "Climbs from each end towards more important junctions, using shortcuts worked out in advance. Production routing engines rely on this.",
   },
+  cch: {
+    name: "Customizable CH",
+    note: "The same climb, on shortcuts chosen from the road layout alone. When travel times change, a live closure say, they are refreshed in tens of milliseconds instead of rebuilt.",
+  },
 };
 
 const LANDMARKS = [
@@ -86,6 +91,8 @@ const number = new Intl.NumberFormat("en-GB");
 const state = { a: null, b: null, method: "ch", preset: null, turns: false, results: null, animation: 0 };
 // Alternative routes for the current trip; `chosen` indexes `list`.
 const options = { list: [], chosen: 0, avoid: false, zone: null, timer: 0, error: null };
+// Live disruptions: loaded once, applied in route mode while the switch is on.
+const liveState = { on: false, data: null, factor: null, matched: [], loading: false };
 let engine;
 let atlas;
 let etaModel = null;
@@ -151,6 +158,7 @@ function buildControls() {
   }
   methods.addEventListener("change", (ev) => {
     state.method = ev.target.value;
+    state.switchedFromCh = false;
     showMethodNote();
     play();
   });
@@ -169,6 +177,16 @@ function buildControls() {
     options.zone = zoneNodes(engine, charge);
     const hours = (h) => `${hhmm(h[0])} to ${hhmm(h[1])}`;
     $("charge-terms").textContent = `£${charge.daily_gbp} a day, ${hours(charge.weekday_hours)} on weekdays and ${hours(charge.weekend_hours)} at weekends. Boundary roads are free.`;
+  }
+  if (engine.manifest.live) {
+    $("live-switch").hidden = false;
+    $("live").addEventListener("change", async (ev) => {
+      liveState.on = ev.target.checked;
+      if (liveState.on && !liveState.data) await fetchLive();
+      engine.setLive(liveState.on ? liveState.factor : null);
+      updateLiveKey();
+      run({ animate: true });
+    });
   }
   $("avoid-zone").addEventListener("change", (ev) => {
     options.avoid = ev.target.checked;
@@ -206,7 +224,7 @@ function showMethodNote() {
 function run({ animate }) {
   if (state.a === null || state.b === null) return;
   const results = {};
-  const available = ALGORITHMS.filter((id) => id !== "ch" || engine.chAvailable);
+  const available = ALGORITHMS.filter((id) => (id !== "ch" || engine.chAvailable) && (id !== "cch" || engine.cchAvailable));
   for (const id of available) results[id] = engine.route(id, state.a, state.b);
   state.results = results;
 
@@ -220,16 +238,25 @@ function run({ animate }) {
     row.closest(".method").classList.toggle("is-unavailable", !r);
     document.querySelector(`[data-count="${id}"]`).textContent = r ? number.format(r.settled) : "–";
     document.querySelector(`[data-bar="${id}"]`).style.width = r ? `${(100 * r.settled) / most}%` : "0";
-    document.querySelector(`[data-time="${id}"]`).textContent = r
-      ? `found in ${formatMs(r.ms)}`
-      : "needs its own preprocessing with turn costs; try it in the Python tool";
+    let note = "needs its own preprocessing with turn costs; try it in the Python tool";
+    if (!r && id === "ch" && engine.liveFactor && !state.turns) note = "built for one set of travel times, so live closures leave it stale";
+    if (!r && id === "cch" && !state.turns) note = "loading…";
+    if (r && id === "cch" && engine.cch?.customizeMs) note = `found in ${formatMs(r.ms)} · times loaded in ${formatMs(engine.cch.customizeMs)}`;
+    else if (r) note = `found in ${formatMs(r.ms)}`;
+    document.querySelector(`[data-time="${id}"]`).textContent = note;
   }
 
   if (!results[state.method]) {
-    // Contraction Hierarchies are off with turn costs; fall back, and return once they are back.
+    // Hierarchies are off with turn costs (and plain CH with live closures); fall back.
     state.switchedFromCh = true;
-    state.method = "astar";
-    document.querySelector(`input[name=method][value=astar]`).checked = true;
+    state.method = results.cch ? "cch" : "astar";
+    document.querySelector(`input[name=method][value=${state.method}]`).checked = true;
+    showMethodNote();
+  } else if (state.switchedFromCh && state.method !== "ch" && results.ch) {
+    // CH is back: return to it.
+    state.switchedFromCh = false;
+    state.method = "ch";
+    document.querySelector("input[name=method][value=ch]").checked = true;
     showMethodNote();
   }
   const r = results[state.method];
@@ -335,7 +362,61 @@ function updateOptions() {
     .join("") + (options.error ? `<p class="method-note">${options.error}</p>` : "");
 }
 
+// ------------------------------------------------------------------ live disruptions
+
+async function fetchLive() {
+  const info = engine.manifest.live;
+  $("live-status").textContent = "Checking Transport for London…";
+  let got = null;
+  try {
+    got = await loadDisruptions(info);
+  } catch (err) {
+    console.warn("No disruption data", err);
+  }
+  if (!got) {
+    $("live-status").textContent = "The TfL feed can't be reached from here, and this build has no snapshot.";
+    liveState.on = false;
+    $("live").checked = false;
+    return;
+  }
+  const { factor, matched } = matchDisruptions(engine, parseDisruptions(got.payload), info);
+  liveState.data = got;
+  liveState.factor = factor;
+  liveState.matched = matched;
+  const closed = matched.filter((d) => d.closed).length;
+  const slowed = matched.length - closed;
+  const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  const when = got.at ? got.at.toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+  const what = matched.length ? `${count(closed, "closure", "closures")} and ${count(slowed, "slow stretch", "slow stretches")} on this map` : "nothing on this map right now";
+  $("live-status").textContent = got.source === "live" ? `Live from TfL at ${when}: ${what}.` : `TfL feed unreachable from here, so this is the snapshot from ${when}: ${what}.`;
+}
+
+function updateLiveKey() {
+  const on = liveState.on && state.mode === "route";
+  $("key-closed").hidden = !(on && liveState.matched.some((d) => d.closed));
+  $("key-slow").hidden = !(on && liveState.matched.some((d) => !d.closed));
+}
+
+function drawDisruptions(ctx) {
+  if (!liveState.on || !liveState.matched.length) return;
+  ctx.lineCap = "round";
+  for (const d of liveState.matched) {
+    ctx.beginPath();
+    d.points.forEach(([lat, lon], i) => {
+      const [x, y] = atlas.toScreen(...atlas.local(lat, lon));
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.setLineDash(d.closed ? [6, 4] : []);
+    ctx.strokeStyle = d.closed ? "#7a0019" : "#e86a10";
+    ctx.lineWidth = d.closed ? 5 : 4;
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+}
+
 function drawRouteOptions(ctx) {
+  drawDisruptions(ctx);
   const charge = engine.manifest.charge;
   if (charge) {
     ctx.beginPath();
@@ -676,6 +757,7 @@ async function enterRoute() {
   $("heat-toggle").hidden = !etaModel?.model.reference;
   $("hint").textContent = "Click to place A, then B. Drag a pin to move it.";
   await engine.usePreset(state.preset);
+  if (liveState.on && liveState.factor) engine.setLive(liveState.factor);
   engine.setTurns(state.turns);
   placePins();
   updateHeat();
@@ -844,6 +926,7 @@ function leaveMode() {
   atlas.extras = null;
   atlas.beneath = null;
   clearTimeout(options.timer);
+  if (engine.liveFactor) engine.setLive(null); // live closures are a route-mode feature
   atlas.setTrace(null);
   atlas.setRoute(null);
   atlas.setHeat(null);
@@ -1291,6 +1374,11 @@ async function main() {
   atlas.beneath = drawRouteOptions;
 
   await selectPreset(DEFAULT_PRESET);
+  try {
+    await engine.loadCCH();
+  } catch (err) {
+    console.warn("Customizable CH didn't load", err);
+  }
   [state.a, state.b] = defaultEnds();
   placePins();
   drawRulers();

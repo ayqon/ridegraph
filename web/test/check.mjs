@@ -18,6 +18,8 @@ const load = (file) => {
 const manifest = JSON.parse(readFileSync(join(dataDir, "manifest.json"), "utf8"));
 const engine = new Engine(manifest, load(manifest.graph.file));
 engine.fetchHierarchy = async (preset) => viewArrays(load(preset.file), preset.arrays);
+engine.fetchCCH = async (info) => viewArrays(load(info.file), info.arrays);
+await engine.loadCCH();
 const presets = Object.fromEntries(manifest.presets.map((p) => [p.id, p]));
 
 const failures = [];
@@ -27,6 +29,7 @@ for (const c of JSON.parse(readFileSync(casesPath, "utf8"))) {
   engine.setTurns(Boolean(c.turns));
   for (const algorithm of ALGORITHMS) {
     if (algorithm === "ch" && !engine.chAvailable) continue;
+    if (algorithm === "cch" && !engine.cchAvailable) continue;
     const r = engine.route(algorithm, c.s, c.t);
     checked++;
     const where = `${algorithm} ${c.preset}${c.turns ? " turns" : ""} ${c.s}->${c.t}`;

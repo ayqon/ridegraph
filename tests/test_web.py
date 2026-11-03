@@ -69,9 +69,9 @@ def test_javascript_engine_matches_python(tmp_path) -> None:
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     summary = json.loads(proc.stdout)
-    # Four algorithms without turns; CH is not offered with turns in the browser.
     plain = sum(1 for c in cases if not c["turns"])
-    assert summary["checked"] == plain * 4 + (len(cases) - plain) * 3
+    # Plain cases run all five methods; with turn costs, both hierarchies sit out.
+    assert summary["checked"] == plain * 5 + (len(cases) - plain) * 3
 
 
 def test_river_lines_are_extracted() -> None:

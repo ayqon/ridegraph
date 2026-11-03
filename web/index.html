@@ -74,6 +74,14 @@
               <small>Right turns wait for oncoming traffic; lights add an average wait.</small>
             </span>
           </label>
+          <label class="switch" id="live-switch" hidden>
+            <input type="checkbox" id="live" />
+            <span class="switch-track" aria-hidden="true"></span>
+            <span class="switch-text">
+              Live roadworks and closures
+              <small id="live-status">From Transport for London's open data feed.</small>
+            </span>
+          </label>
         </fieldset>
 
         <fieldset class="group">
@@ -269,6 +277,10 @@
             <span><i class="sw sw-secondary"></i>B road</span>
             <span><i class="dot dot-f"></i>Searched from A</span>
             <span><i class="dot dot-b"></i>Searched from B</span>
+            <span><i class="sw sw-alt"></i>Other routes</span>
+            <span><i class="sw sw-zone"></i>Congestion Charge zone</span>
+            <span id="key-closed" hidden><i class="sw sw-closed"></i>Closed</span>
+            <span id="key-slow" hidden><i class="sw sw-slow"></i>Slowed by roadworks</span>
             <span class="key-heat" id="key-heat" hidden>
               <i class="ramp"></i><span id="heat-range"></span>
             </span>

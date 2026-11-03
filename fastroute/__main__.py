@@ -216,6 +216,8 @@ def cmd_route(args: argparse.Namespace) -> int:
 
     scenario = _scenario(args)
     router = Router(_load_network(args.network), scenario)
+    if args.live or args.tfl:
+        return _route_live(args, router, scenario)
     if args.alternatives or args.avoid_charge:
         return _route_options(args, router, scenario)
     s = _snap(router.roads.network, args.origin)
@@ -248,6 +250,66 @@ def cmd_route(args: argparse.Namespace) -> int:
         f"{trip.settled:,} settled, {elapsed_ms:.1f} ms"
     )
     return 0
+
+
+def _route_live(args: argparse.Namespace, router, scenario) -> int:
+    from . import live
+    from .cch import CustomizableCH
+
+    if scenario.turns:
+        raise SystemExit("--live works without --turns.")
+    if args.tfl:
+        payload = json.loads(_require(args.tfl, "live --out FILE").read_text())["payload"]
+        source = str(args.tfl)
+    else:
+        try:
+            payload = live.fetch()
+        except OSError as exc:
+            raise SystemExit(f"Could not reach the TfL feed: {exc}") from None
+        source = "TfL, live"
+    network = router.network
+    s = _snap(network, args.origin)
+    t = _snap(network, args.destination)
+    stretches = live.parse(payload)
+    factor, hits = live.match(network, stretches)
+    summ = live.summary(stretches, hits)
+    print(
+        f"Disruptions ({source}): {summ['on_this_map']} on this map, "
+        f"{summ['closed']} closed, {summ['slowed']} slowed",
+        file=sys.stderr,
+    )
+    base = _edge_seconds(router, scenario)
+    print("Building the Customizable CH (once per map)...", file=sys.stderr)
+    cch = CustomizableCH.build(network)
+    cch.customize(base)
+    before, _ = cch.query(s, t)
+    first_ms = cch.customize_seconds * 1000
+    cch.customize(base * factor)
+    after, path = cch.query(s, t)
+    print(f"{scenario.label()}:")
+    print(f"  usual traffic        {_format_duration(before):>14}")
+    if not path:
+        print("  with disruptions     no route: the closures cut these points off")
+        return 1
+    print(f"  with disruptions     {_format_duration(after):>14}  ({len(path):,} junctions)")
+    print(
+        f"  re-customised for the new times in {cch.customize_seconds * 1000:.0f} ms "
+        f"(first customisation {first_ms:.0f} ms; preprocessing {cch.build_seconds:.1f} s)"
+    )
+    return 0
+
+
+def _edge_seconds(router, scenario):
+    """Travel time per edge in the network's own edge order."""
+    import numpy as np
+
+    from .graph import free_flow_cost
+    from .traffic import traffic_cost
+
+    if scenario.hour is None:
+        return np.asarray(free_flow_cost(router.network), dtype=np.float64)
+    cost = traffic_cost(scenario.hour, weekend=scenario.weekend)
+    return np.asarray(cost(router.network), dtype=np.float64)
 
 
 def _route_options(args: argparse.Namespace, router, scenario) -> int:
@@ -377,7 +439,44 @@ def cmd_export_web(args: argparse.Namespace) -> int:
         name=args.name,
         eta_trips=args.eta_trips,
         dispatch_days=args.dispatch_days,
+        **_tfl_snapshot(args.tfl),
     )
+    return 0
+
+
+def _tfl_snapshot(path: Path | None) -> dict[str, object]:
+    if path is None:
+        return {}
+    if not path.exists():
+        print(f"{path} not found; exporting without a disruption snapshot", file=sys.stderr)
+        return {}
+    data = json.loads(path.read_text())
+    return {"tfl": data.get("payload"), "tfl_fetched": data.get("fetched")}
+
+
+def cmd_live(args: argparse.Namespace) -> int:
+    from datetime import datetime, timezone
+
+    from . import live
+
+    try:
+        payload = live.fetch()
+    except OSError as exc:
+        raise SystemExit(f"Could not reach the TfL feed: {exc}") from None
+    fetched = datetime.now(timezone.utc).isoformat(timespec="seconds")  # noqa: UP017
+    stretches = live.parse(payload)
+    print(f"{len(stretches)} disrupted stretches in London right now")
+    if args.out:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(json.dumps({"fetched": fetched, "payload": payload}))
+        print(f"Saved to {args.out}", file=sys.stderr)
+    if args.network.exists():
+        factor, hits = live.match(_load_network(args.network), stretches)
+        s = live.summary(stretches, hits)
+        print(
+            f"{s['on_this_map']} on this map: {s['closed']} closed, {s['slowed']} slowed "
+            f"({int((factor > 1).sum()):,} road segments)"
+        )
     return 0
 
 
@@ -519,6 +618,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
     p.set_defaults(func=cmd_info)
 
+    p = sub.add_parser("live", help="fetch current TfL road disruptions")
+    p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
+    p.add_argument("--out", type=Path, help="save the feed for export-web --tfl")
+    p.set_defaults(func=cmd_live)
+
     p = sub.add_parser("route", help="quickest route between two coordinates")
     p.add_argument("origin", type=_parse_point, help="lat,lon")
     p.add_argument("destination", type=_parse_point, help="lat,lon")
@@ -530,6 +634,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument(
         "--avoid-charge", action="store_true", help="keep out of the Congestion Charge zone"
     )
+    p.add_argument(
+        "--live", action="store_true", help="route around current TfL closures (Customizable CH)"
+    )
+    p.add_argument("--tfl", type=Path, help="use saved TfL disruptions instead of fetching")
     _add_scenario_args(p)
     p.set_defaults(func=cmd_route)
 
@@ -604,6 +712,7 @@ def main(argv: list[str] | None = None) -> int:
         help="simulated mornings for the dispatch comparison (0 to skip; needs scikit-learn)",
     )
     p.add_argument("--name", default="Central London")
+    p.add_argument("--tfl", type=Path, help="saved TfL disruptions (from `live --out`)")
     p.set_defaults(func=cmd_export_web)
 
     args = parser.parse_args(argv)

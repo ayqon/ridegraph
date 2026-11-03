@@ -24,7 +24,7 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: pip install -e ".[ml]"
+      - run: pip install -e ".[ml,docs]"
 
       # Reuse the OpenStreetMap download between deploys so the shared
       # Overpass servers are only queried when the query itself changes.
@@ -46,6 +46,9 @@ jobs:
         run: python -m fastroute live --out data/tfl.json || echo "TfL feed unavailable; no snapshot"
       - name: Export graph, hierarchies and learned ETA model for the browser
         run: python -m fastroute export-web --out web/data --eta-trips 20000 --tfl data/tfl.json
+
+      - name: Build the documentation into the site
+        run: mkdocs build --strict -d web/docs
 
       # The built site, data included, on its own branch, so it can be
       # previewed privately before the repository is public and Pages is on.

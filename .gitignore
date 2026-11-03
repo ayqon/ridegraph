@@ -11,3 +11,5 @@ data/raw/
 
 # Built by CI from OpenStreetMap: python -m fastroute export-web
 web/data/
+site/
+web/docs/

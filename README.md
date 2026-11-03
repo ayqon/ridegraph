@@ -20,7 +20,7 @@ beside a machine-learned one.
 
 ![The live map: Dijkstra floods the city while Contraction Hierarchies touches a few hundred junctions; alternative routes and the Congestion Charge; a travel-time map; a delivery round; ride dispatch with shared rides](docs/demo.gif)
 
-The short version of what the numbers show is in [the write-up](docs/writeup.md).
+The short version of what the numbers show is in [the write-up](docs/writeup.md). The [documentation](https://ayqon.github.io/fastroute/docs/) covers the architecture, the design decisions and the full command-line and Python reference.
 
 Ride-hailing and maps apps answer "what is the fastest way from A to B, and
 when will I get there?" millions of times a second. This project rebuilds both

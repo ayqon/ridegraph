@@ -1,0 +1,65 @@
+site_name: fastroute
+site_description: Quickest routes, live closures, learned arrival times and ride dispatch on London's road network, built from first principles.
+site_url: https://ayqon.github.io/fastroute/docs/
+repo_url: https://github.com/ayqon/fastroute
+repo_name: ayqon/fastroute
+edit_uri: edit/main/docs/
+copyright: Code MIT. Road data © OpenStreetMap contributors. Disruptions powered by TfL Open Data.
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: black
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Dark mode
+    - scheme: slate
+      primary: black
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.highlight
+
+nav:
+  - Overview: index.md
+  - Architecture: architecture.md
+  - Design decisions: decisions.md
+  - Results: writeup.md
+  - Command line: cli.md
+  - Python API: api.md
+  - Live map: https://ayqon.github.io/fastroute/
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_source: false
+            docstring_style: google
+            members_order: source
+            show_root_heading: true
+            heading_level: 2
+            filters: ["!^_"]
+
+hooks:
+  - scripts/docs_hooks.py

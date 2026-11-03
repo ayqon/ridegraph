@@ -628,7 +628,8 @@ def cmd_tour(args: argparse.Namespace) -> int:
     return 0
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
+    """The full command-line interface (also used to generate the docs)."""
     parser = argparse.ArgumentParser(
         prog="fastroute", description="Quickest-route search on real road networks."
     )
@@ -765,8 +766,11 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--name", default="Central London")
     p.add_argument("--tfl", type=Path, help="saved TfL disruptions (from `live --out`)")
     p.set_defaults(func=cmd_export_web)
+    return parser
 
-    args = parser.parse_args(argv)
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
     return args.func(args)
 
 

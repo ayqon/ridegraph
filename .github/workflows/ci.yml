@@ -26,6 +26,9 @@ jobs:
       # Type checking once, against the newest supported Python and numpy.
       - run: mypy fastroute
         if: matrix.python-version == '3.12'
+      - name: Documentation builds cleanly
+        if: matrix.python-version == '3.12'
+        run: pip install -e ".[docs]" && mkdocs build --strict -d /tmp/site
       - run: pytest -q --cov --cov-report=term --cov-report=json
       - name: Coverage badge data
         if: matrix.python-version == '3.12'

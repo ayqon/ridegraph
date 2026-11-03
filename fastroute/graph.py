@@ -82,6 +82,8 @@ class RoadNetwork:
         return len(self.src)
 
     def save(self, path: str | Path) -> None:
+        signals = self.traffic_signals
+        assert signals is not None  # always set by __post_init__
         np.savez_compressed(
             path,
             node_ids=self.node_ids,
@@ -92,7 +94,7 @@ class RoadNetwork:
             length_m=self.length_m,
             road_class=self.road_class,
             maxspeed_kph=self.maxspeed_kph,
-            traffic_signals=self.traffic_signals,
+            traffic_signals=signals,
         )
 
     @classmethod

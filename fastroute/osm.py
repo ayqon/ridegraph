@@ -115,8 +115,9 @@ def network_from_overpass(
                     maxspeed.append(limit_value)
 
     ids = np.fromiter(index.keys(), dtype=np.int64, count=len(index))
-    lat = np.array([coords[i][0] for i in ids], dtype=np.float64)
-    lon = np.array([coords[i][1] for i in ids], dtype=np.float64)
+    keys = list(index)
+    lat = np.array([coords[i][0] for i in keys], dtype=np.float64)
+    lon = np.array([coords[i][1] for i in keys], dtype=np.float64)
     network = RoadNetwork(
         node_ids=ids,
         lat=lat,

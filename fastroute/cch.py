@@ -131,6 +131,14 @@ class CustomizableCH:
     down: np.ndarray = field(default_factory=lambda: np.zeros(0))  # cost higher -> lower
     build_seconds: float = 0.0
     _direct: dict[tuple[int, int], float] | None = field(default=None, init=False, repr=False)
+    # Plain-list views for the query loop (see ``_lists``).
+    _topology: tuple[list[int], list[int], list[int]] | None = field(
+        default=None, init=False, repr=False
+    )
+    _edge_ids: dict[tuple[int, int], int] = field(default_factory=dict, init=False, repr=False)
+    _list_cache: tuple[np.ndarray, np.ndarray, list[float], list[float]] | None = field(
+        default=None, init=False, repr=False
+    )
     customize_seconds: float = 0.0
 
     @property
@@ -266,7 +274,7 @@ class CustomizableCH:
         heaps = ([(0.0, source)], [(0.0, target)])
         done: tuple[set[int], set[int]] = (set(), set())
         best, meet = math.inf, -1
-        first_up, up_head = self.first_up, self.up_head
+        first_up, up_head, up, down = self._lists()
         while heaps[0] or heaps[1]:
             for side in (0, 1):
                 heap = heaps[side]
@@ -282,10 +290,10 @@ class CustomizableCH:
                 other = dist[1 - side].get(v)
                 if other is not None and d + other < best:
                     best, meet = d + other, v
-                cost = self.up if side == 0 else self.down
+                cost = up if side == 0 else down
                 for e in range(first_up[v], first_up[v + 1]):
                     nd = d + cost[e]
-                    w = int(up_head[e])
+                    w = up_head[e]
                     if nd < dist[side].get(w, math.inf):
                         dist[side][w] = nd
                         parent[side][w] = v
@@ -304,15 +312,36 @@ class CustomizableCH:
             path.extend(self._unpack(a, b)[1:])
         return best, path
 
+    def _lists(self) -> tuple[list[int], list[int], list[float], list[float]]:
+        """Plain-list views for the query loop, rebuilt when new times are loaded.
+
+        Python lists index several times faster than numpy arrays one element at
+        a time, which is all the search does.
+        """
+        if self._topology is None:
+            first, heads = self.first_up.tolist(), self.up_head.tolist()
+            self._topology = (first, heads, self.rank.tolist())
+            self._edge_ids = {
+                (lo, heads[e]): e
+                for lo in range(self.num_nodes)
+                for e in range(first[lo], first[lo + 1])
+            }
+        cache = self._list_cache
+        if cache is None or cache[0] is not self.up or cache[1] is not self.down:
+            cache = (self.up, self.down, self.up.tolist(), self.down.tolist())
+            self._list_cache = cache
+        return self._topology[0], self._topology[1], cache[2], cache[3]
+
     def _edge(self, lo: int, hi: int) -> int:
-        s, e = self.first_up[lo], self.first_up[lo + 1]
-        seg = self.rank[self.up_head[s:e]]
-        return int(s + np.searchsorted(seg, self.rank[hi]))
+        return self._edge_ids[(lo, hi)]
 
     def _cost(self, a: int, b: int) -> float:
-        if self.rank[a] < self.rank[b]:
-            return float(self.up[self._edge(a, b)])
-        return float(self.down[self._edge(b, a)])
+        _, _, up, down = self._lists()
+        assert self._topology is not None
+        rank = self._topology[2]
+        if rank[a] < rank[b]:
+            return up[self._edge(a, b)]
+        return down[self._edge(b, a)]
 
     def _unpack(self, a: int, b: int) -> list[int]:
         """Junctions along the CCH edge a -> b, expanding shortcuts over lower junctions."""
@@ -335,7 +364,10 @@ class CustomizableCH:
     def _middle(self, x: int, y: int, target: float) -> int | None:
         if self._direct_cost(x, y) <= target * (1 + 1e-12) + 1e-9:
             return None
-        lo = min(x, y, key=lambda v: self.rank[v])
+        self._lists()
+        assert self._topology is not None
+        rank = self._topology[2]
+        lo = x if rank[x] < rank[y] else y
         hi = y if lo == x else x
         for v in self._lower(lo) & self._lower(hi):
             if abs(self._cost(x, v) + self._cost(v, y) - target) <= 1e-9 * max(1.0, target):

@@ -11,7 +11,6 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
-import math
 import sys
 import time
 from pathlib import Path
@@ -37,20 +36,12 @@ MAX_SNAP_M = 500.0
 
 def _snap(network, point: tuple[float, float]) -> int:
     """Nearest junction to a coordinate, refusing points off the map."""
-    import numpy as np
+    from .graph import OffNetworkError, snap
 
-    lat, lon = point
-    dx = np.radians(network.lon - lon) * math.cos(math.radians(lat))
-    dy = np.radians(network.lat - lat)
-    d2 = dx * dx + dy * dy
-    node = int(np.argmin(d2))
-    metres = math.sqrt(float(d2[node])) * 6_371_000
-    if metres > MAX_SNAP_M:
-        raise SystemExit(
-            f"{lat:.4f},{lon:.4f} is {metres / 1000:,.1f} km from the nearest road in this "
-            "network. Pick a point inside the area you fetched."
-        )
-    return node
+    try:
+        return snap(network, *point, max_m=MAX_SNAP_M)
+    except OffNetworkError as exc:
+        raise SystemExit(f"{exc}. Pick a point inside the area you fetched.") from None
 
 
 def _require(path: Path, how_to_make: str) -> Path:
@@ -517,6 +508,33 @@ def cmd_compare_osrm(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_serve(args: argparse.Namespace) -> int:
+    import os
+
+    try:
+        import uvicorn
+    except ImportError:
+        raise SystemExit('Serving needs the API extras: pip install -e ".[api]"') from None
+    _require(args.network, "build")
+    os.environ["FASTROUTE_NETWORK"] = str(args.network)
+    if args.eta_model:
+        os.environ["FASTROUTE_ETA_MODEL"] = str(_require(args.eta_model, "eta-train --out FILE"))
+    print(
+        f"Loading {args.network} and building the Customizable CH, then serving on "
+        f"http://{args.host}:{args.port} (API docs at /docs)",
+        file=sys.stderr,
+    )
+    uvicorn.run(
+        "fastroute.api:app_from_env",
+        factory=True,
+        host=args.host,
+        port=args.port,
+        workers=args.workers,
+        log_level="warning",
+    )
+    return 0
+
+
 def cmd_eta_train(args: argparse.Namespace) -> int:
     from .eta import metrics_markdown, train
 
@@ -655,6 +673,14 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("info", help="print graph statistics")
     p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
     p.set_defaults(func=cmd_info)
+
+    p = sub.add_parser("serve", help="run the HTTP routing API")
+    p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
+    p.add_argument("--eta-model", type=Path, help="eta-model.json from eta-train or export-web")
+    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--port", type=int, default=8000)
+    p.add_argument("--workers", type=int, default=1, help="worker processes")
+    p.set_defaults(func=cmd_serve)
 
     p = sub.add_parser("osrm-prepare", help="write OSM XML and segment speeds for OSRM")
     p.add_argument("--raw", type=Path, default=DEFAULT_RAW)

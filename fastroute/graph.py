@@ -228,3 +228,21 @@ class Graph:
 
     def path_time_s(self, path: list[int]) -> float:
         return sum(self.weight[self.edge_between(u, v)] for u, v in pairwise(path))
+
+
+class OffNetworkError(ValueError):
+    """A coordinate too far from any road in the network."""
+
+
+def snap(network: RoadNetwork, lat: float, lon: float, max_m: float = 500.0) -> int:
+    """Nearest junction to a coordinate; raises ``OffNetworkError`` beyond ``max_m``."""
+    dx = np.radians(network.lon - lon) * math.cos(math.radians(lat))
+    dy = np.radians(network.lat - lat)
+    d2 = dx * dx + dy * dy
+    node = int(np.argmin(d2))
+    metres = math.sqrt(float(d2[node])) * 6_371_000
+    if metres > max_m:
+        raise OffNetworkError(
+            f"{lat:.4f},{lon:.4f} is {metres / 1000:,.1f} km from the nearest road in this network"
+        )
+    return node

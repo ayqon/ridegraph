@@ -1,0 +1,10 @@
+.git
+.github
+data
+web
+docs
+tests
+scripts
+site
+**/__pycache__
+*.npz

@@ -533,7 +533,42 @@ The demo in `web/` runs entirely in the browser, with no server:
   disruptions, builds the graph, contracts it for each preset, trains the
   ETA models, simulates dispatch and publishes `web/` to GitHub Pages.
 
-### 11. What the London numbers show
+### 11. An HTTP API
+
+The map needs no server, but a product would. `fastroute/api.py` serves the
+engine as a FastAPI application with OpenAPI docs at `/docs`:
+
+| Endpoint | Answers |
+|---|---|
+| `GET /route?from=lat,lon&to=lat,lon&at=08:15` | The quickest route as GeoJSON, with distance, Congestion Charge and the learned ETA with its arrival window; `alternatives=2` and `avoid_charge=true` add more routes |
+| `GET /reach?from=lat,lon&minutes=10,20,30&arriving=false` | Area reachable within each time |
+| `POST /tour` | Best visiting order for up to 13 stops, every method compared |
+| `GET /health` | What is loaded |
+
+**Any minute of the day.** The browser offers four preset times because each
+plain hierarchy is built for one set of travel times. The API answers for
+any time by keeping one Customizable CH and loading each quarter-hour's
+times into it on first use (tens of milliseconds), with recent quarter-hours
+cached, including the plain-list views the search loop reads.
+
+**Measured** with `scripts/loadtest.py` on central London, one worker, on a
+2-vCPU machine that also ran the load generator: **14 ms** median and 21 ms
+95th-percentile latency for a route with its learned ETA, about **70
+requests a second** per worker, no errors over 2,000 random requests spread
+over six quarter-hours. Start-up, including building the hierarchy, takes 9 s.
+More throughput is more workers.
+
+```bash
+pip install -e ".[api,ml]"
+python -m fastroute serve --eta-model web/data/eta-model.json
+curl "http://127.0.0.1:8000/route?from=51.5154,-0.1410&to=51.5033,-0.1145&at=08:15"
+
+docker build -t fastroute . && docker run -p 8000:8000 fastroute
+```
+
+A CI workflow builds the image and checks the running container answers.
+
+### 12. What the London numbers show
 
 * **Contraction Hierarchies work because real roads are hierarchical.** On a
   uniform synthetic grid the reduction in search work is 24x; on London it
@@ -547,7 +582,7 @@ The demo in `web/` runs entirely in the browser, with no server:
   Python**, because juggling two frontiers costs interpreter overhead that
   eats most of the saving.
 
-### 12. Measuring fairly
+### 13. Measuring fairly
 
 Benchmarks report **nodes settled** alongside wall-clock time. Settled nodes
 measure the work each algorithm does, independent of language; Python
@@ -708,6 +743,7 @@ coverage (92% of lines) on Python 3.10, 3.12 and 3.13.
 - [x] **Travel-time maps and delivery rounds:** bounded one-to-all from or to a point, Held-Karp and 2-opt/Or-opt on asymmetric matrices
 - [x] **Ride dispatch and demand forecasting:** many-to-many CH, Hungarian matching, ML demand forecast, repositioning, simulated and replayed
 - [x] **Learned ETA:** simulated observed trips, route features, ridge, MLP and gradient-boosted trees, calibrated arrival windows, a learned congestion map, shipped to the browser
+- [x] **HTTP API:** FastAPI service at any time of day on Customizable CH, GeoJSON responses, Docker image, load-tested
 - [x] **Graph neural network ETA:** line-graph message passing over every road, per-segment slowdowns, hand-derived gradients
 - [x] **Shared rides and surge pricing:** en-route joining with detour limits, batch pairing, price multipliers with rider elasticity
 

@@ -127,20 +127,26 @@ class TourPlan:
     return_to_start: bool
 
 
-def plan(ch: ContractionHierarchy, stops: list[int], *, return_to_start: bool = True) -> TourPlan:
-    """Compare visiting orders for ``stops`` (depot first)."""
-    matrix = ch.many_to_many(stops, stops)
+def plan_matrix(matrix: np.ndarray, *, return_to_start: bool = True) -> TourPlan:
+    """Compare visiting orders for a travel-time matrix (stop 0 is the depot)."""
+    n = len(matrix)
     orders = {
-        "As entered": as_entered(len(stops)),
+        "As entered": as_entered(n),
         "Nearest next stop": nearest_neighbour(matrix),
     }
     orders["Improved (2-opt + Or-opt)"] = improve(
         matrix, orders["Nearest next stop"], return_to_start=return_to_start
     )
-    if len(stops) <= MAX_EXACT_STOPS:
+    if n <= MAX_EXACT_STOPS:
         orders["Optimal (Held-Karp)"] = held_karp(matrix, return_to_start=return_to_start)
     seconds = {
         name: tour_cost(matrix, order, return_to_start=return_to_start)
         for name, order in orders.items()
     }
-    return TourPlan(stops, matrix, orders, seconds, return_to_start)
+    return TourPlan(list(range(n)), matrix, orders, seconds, return_to_start)
+
+
+def plan(ch: ContractionHierarchy, stops: list[int], *, return_to_start: bool = True) -> TourPlan:
+    """Compare visiting orders for ``stops`` (depot first)."""
+    result = plan_matrix(ch.many_to_many(stops, stops), return_to_start=return_to_start)
+    return TourPlan(stops, result.matrix, result.orders, result.seconds, return_to_start)

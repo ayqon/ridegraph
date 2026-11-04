@@ -32,6 +32,7 @@ nav:
   - Architecture: architecture.md
   - Design decisions: decisions.md
   - Results: writeup.md
+  - HTTP API: http-api.md
   - Command line: cli.md
   - Python API: api.md
   - Live map: https://ayqon.github.io/fastroute/

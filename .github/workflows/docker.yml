@@ -1,0 +1,42 @@
+name: API image
+
+# Builds the API image and checks the running container answers routes.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - "fastroute/**"
+      - "pyproject.toml"
+      - ".github/workflows/docker.yml"
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build (map download skipped; a synthetic network is used below)
+        run: docker build --build-arg FETCH=0 -t fastroute .
+      - name: Run against a synthetic street grid
+        run: |
+          docker run -d --name api -p 8000:8000 fastroute sh -c \
+            "python -c \"from fastroute.synthetic import grid_network; grid_network(30, 30, seed=1).save('data/central-london.npz')\" \
+             && uvicorn fastroute.api:app_from_env --factory --host 0.0.0.0 --port 8000"
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8000/health && break; sleep 2; done
+          echo
+      - name: Smoke test
+        run: |
+          curl -sf "http://127.0.0.1:8000/route?from=51.516,-0.119&to=51.530,-0.095&at=08:15&alternatives=2" | python -c "
+          import json, sys
+          body = json.load(sys.stdin)
+          names = [f['properties']['name'] for f in body['features']]
+          print(body['time'], names, [f['properties']['seconds'] for f in body['features']])
+          assert body['features'][0]['geometry']['coordinates'], 'empty route'
+          "
+          curl -sf "http://127.0.0.1:8000/openapi.json" > /dev/null
+      - if: failure()
+        run: docker logs api

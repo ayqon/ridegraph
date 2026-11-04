@@ -28,3 +28,7 @@ Generated from the docstrings.
 ::: fastroute.gnn
 
 ::: fastroute.osrm
+
+::: fastroute.validation
+
+::: fastroute.api

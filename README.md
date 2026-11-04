@@ -345,6 +345,34 @@ square accordingly. Against the hidden hotspot field this map correlates at
 r = 0.83 on London (0.91 on a synthetic grid): the model has located the
 congestion from trip outcomes alone.
 
+**How realistic is the simulated city?** `python -m fastroute validate`
+times random weekday trips (about 6 km) in it and sets the speeds beside
+published figures:
+
+| Weekday time | Simulated trips | Router's estimate |
+|---|---:|---:|
+| 03:00 | 20.9 km/h | 25.4 km/h |
+| 08:00 | 11.1 km/h | 16.2 km/h |
+| 13:00 | 13.7 km/h | 19.6 km/h |
+| 17:30 | 10.9 km/h | 16.8 km/h |
+
+| Published figure | Source | Speed |
+|---|---|---:|
+| City of London, local A roads | DfT 2022 (CGN0503d) | 12.4 km/h |
+| Camden, local A roads | DfT 2022 (CGN0503d) | 13.0 km/h |
+| London city centre, all day | TomTom Traffic Index 2023 | 16.1 km/h |
+| London city centre, peak hours | TomTom Traffic Index 2023 | 13.7 km/h |
+
+Midday in the simulated city (13.7 km/h) sits right among the official
+figures for the boroughs it covers, and the router's own daytime estimate
+(16 to 20 km/h) is close to TomTom's all-day figure, which is what a router
+that knows nothing about lights or queues should look like. The simulated
+rush hours run about 20% slower than TomTom's peak figure, so if anything
+the models are trained and tested on a harsher London than the real one.
+The definitions differ (DfT counts A roads only, TomTom whole trips in its
+own city-centre area), so these are a range to sit within, not a target to
+fit.
+
 **In the browser.** The trees export to JSON, and `web/js/eta.js` computes the
 same features and walks the same trees. A test runs it under Node and
 requires its features and predictions to match Python's to nine decimal
@@ -743,6 +771,7 @@ coverage (92% of lines) on Python 3.10, 3.12 and 3.13.
 - [x] **Travel-time maps and delivery rounds:** bounded one-to-all from or to a point, Held-Karp and 2-opt/Or-opt on asymmetric matrices
 - [x] **Ride dispatch and demand forecasting:** many-to-many CH, Hungarian matching, ML demand forecast, repositioning, simulated and replayed
 - [x] **Learned ETA:** simulated observed trips, route features, ridge, MLP and gradient-boosted trees, calibrated arrival windows, a learned congestion map, shipped to the browser
+- [x] **Validation against published speeds:** simulated trip speeds by time of day beside DfT and TomTom figures
 - [x] **HTTP API:** FastAPI service at any time of day on Customizable CH, GeoJSON responses, Docker image, load-tested
 - [x] **Graph neural network ETA:** line-graph message passing over every road, per-segment slowdowns, hand-derived gradients
 - [x] **Shared rides and surge pricing:** en-route joining with detour limits, batch pairing, price multipliers with rider elasticity

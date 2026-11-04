@@ -508,6 +508,14 @@ def cmd_compare_osrm(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_validate(args: argparse.Namespace) -> int:
+    from .validation import markdown, simulated_speeds
+
+    print(f"Timing {args.trips} random trips per hour in the simulated city...", file=sys.stderr)
+    print(markdown(simulated_speeds(_load_network(args.network), trips=args.trips)))
+    return 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     import os
 
@@ -673,6 +681,11 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("info", help="print graph statistics")
     p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
     p.set_defaults(func=cmd_info)
+
+    p = sub.add_parser("validate", help="compare simulated speeds with published London figures")
+    p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
+    p.add_argument("--trips", type=int, default=300)
+    p.set_defaults(func=cmd_validate)
 
     p = sub.add_parser("serve", help="run the HTTP routing API")
     p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)

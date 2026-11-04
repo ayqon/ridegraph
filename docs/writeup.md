@@ -69,6 +69,12 @@ and waits at lights and turns. On 4,000 held-out trips:
 | Gradient-boosted trees on route features | 6.8% | 78% |
 | Graph neural network over every road | 6.6% | 80% |
 
+Is the simulated city believable? Timed trips run at 13.7 km/h at midday,
+right among the Department for Transport's 2022 figures for the City of
+London (12.4 km/h) and Camden (13.0 km/h), while its rush hours (about 11
+km/h) are around 20% slower than TomTom's 2023 peak figure for central
+London. If anything, the models learn on a harsher London than the real one.
+
 Three things stood out. Time of day and the number of sets of traffic lights
 matter more than distance. Arrival *windows* need calibration: quantile
 models alone covered 77% of trips against an 80% target, and conformal

@@ -29,15 +29,27 @@ jobs:
           cache: pip
       - run: pip install -e ".[ml,docs]"
 
+      # The exported cities (graphs, hierarchies, trained models, dispatch
+      # replays) only change when the Python code does, so reuse them and
+      # skip the half hour of preprocessing and training when it hasn't.
+      - name: Restore exported city data
+        id: citydata
+        uses: actions/cache@v4
+        with:
+          path: web/data
+          key: webdata-${{ hashFiles('ridegraph/**/*.py', 'pyproject.toml') }}
+
       # Reuse the OpenStreetMap downloads between deploys so the shared
       # Overpass servers are only queried when a query or a city changes.
       - name: Restore OpenStreetMap downloads
+        if: steps.citydata.outputs.cache-hit != 'true'
         uses: actions/cache@v4
         with:
           path: data/raw
           key: osm-cities-${{ hashFiles('ridegraph/overpass.py', 'ridegraph/cities.py') }}
           restore-keys: osm-
       - name: Download each city that is missing
+        if: steps.citydata.outputs.cache-hit != 'true'
         run: |
           for city in london nicosia new-york; do
             raw=$(python -c "from ridegraph.cities import get; print(get('$city').raw_path)")
@@ -45,12 +57,15 @@ jobs:
           done
 
       - name: Build the routing graphs
+        if: steps.citydata.outputs.cache-hit != 'true'
         run: for city in london nicosia new-york; do python -m ridegraph build --city "$city"; done
       # The page asks TfL for live disruptions itself; this snapshot is the
       # fallback when the feed can't be reached from the viewer's browser.
       - name: Snapshot live road disruptions from TfL
+        if: steps.citydata.outputs.cache-hit != 'true'
         run: python -m ridegraph live --out data/tfl.json || echo "TfL feed unavailable; no snapshot"
       - name: Export each city for the browser
+        if: steps.citydata.outputs.cache-hit != 'true'
         run: |
           python -m ridegraph export-web --city london --tfl data/tfl.json
           python -m ridegraph export-web --city nicosia

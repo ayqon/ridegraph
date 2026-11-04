@@ -128,6 +128,7 @@ type checking and the full suite on Python 3.10, 3.12 and 3.13.
 
 - [How it works](docs/how-it-works.md): each part explained, with the numbers
 - [Architecture](docs/architecture.md) and [design decisions](docs/decisions.md)
+- [Road rules and driving behaviour](docs/road-rules.md): what the router obeys, what it does not yet, and how each rule fits
 - [Write-up](docs/writeup.md): what the results show
 - [HTTP API](docs/http-api.md)
 

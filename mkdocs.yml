@@ -32,6 +32,7 @@ nav:
   - How it works: how-it-works.md
   - Architecture: architecture.md
   - Design decisions: decisions.md
+  - Road rules: road-rules.md
   - Results: writeup.md
   - HTTP API: http-api.md
   - Command line: cli.md

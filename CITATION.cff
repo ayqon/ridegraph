@@ -1,0 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Ridegraph: routing, arrival-time prediction and ride dispatch on city road networks"
+type: software
+authors:
+  - family-names: Konstantinou
+    given-names: Ioannis
+    orcid: "https://orcid.org/0009-0000-2007-0581"
+repository-code: "https://github.com/ayqon/ridegraph"
+url: "https://ridegraph.dev"
+license: MIT
+version: 1.0.0
+date-released: "2026-11-04"
+keywords:
+  - routing
+  - shortest paths
+  - contraction hierarchies
+  - openstreetmap
+  - machine learning
+  - ride-hailing
+  - dispatch

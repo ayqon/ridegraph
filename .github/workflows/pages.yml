@@ -3,7 +3,7 @@ name: Deploy map demo
 on:
   push:
     branches: [main]
-    paths: ["web/**", "ridegraph/**", ".github/workflows/pages.yml"]
+    paths: ["web/**", "ridegraph/**", "docs/**", "mkdocs.yml", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:

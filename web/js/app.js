@@ -429,7 +429,7 @@ function drawDisruptions(ctx) {
       else ctx.lineTo(x, y);
     });
     ctx.setLineDash(d.closed ? [6, 4] : []);
-    ctx.strokeStyle = d.closed ? "#111111" : "#777777";
+    ctx.strokeStyle = d.closed ? "#7a0019" : "#e86a10";
     ctx.lineWidth = d.closed ? 5 : 4;
     ctx.stroke();
   }
@@ -448,11 +448,11 @@ function drawRouteOptions(ctx) {
     });
     ctx.closePath();
     if (chargeApplies()) {
-      ctx.fillStyle = "rgba(17, 17, 17, 0.05)";
+      ctx.fillStyle = "rgba(200, 16, 46, 0.06)";
       ctx.fill();
     }
     ctx.setLineDash([7, 5]);
-    ctx.strokeStyle = "rgba(17, 17, 17, 0.6)";
+    ctx.strokeStyle = "rgba(200, 16, 46, 0.75)";
     ctx.lineWidth = 2;
     ctx.stroke();
     ctx.setLineDash([]);
@@ -470,7 +470,7 @@ function drawRouteOptions(ctx) {
     ctx.strokeStyle = "#111111";
     ctx.lineWidth = 6.5;
     ctx.stroke();
-    ctx.strokeStyle = "#9a9a9a";
+    ctx.strokeStyle = "#9a9a90";
     ctx.lineWidth = 3;
     ctx.stroke();
   });
@@ -738,7 +738,7 @@ const POLICY_NOTES = {
     "The forecast method, and prices rise where riders outnumber free drivers nearby. Some riders decline the higher price, and idle drivers head for the surge. Squares show the multiplier.",
 };
 const SPEEDS = [30, 60, 180];
-const CAR_COLOURS = { idle: "#ffffff", pickup: "#9a9a9a", trip: "#111111", shared: "#555555", reposition: "#dcdcdc" };
+const CAR_COLOURS = { idle: "#ffffff", pickup: "#1b3a8c", trip: "#ffd21f", shared: "#e86a10", reposition: "#9a9a90" };
 
 const sim = { replay: null, policy: 3, t: 0, speed: 60, playing: true, frame: 0, last: 0 };
 
@@ -906,10 +906,10 @@ function drawSurge(ctx, r) {
     const [ax, ay] = atlas.toScreen(...atlas.local(aLat, aLon));
     const [bx, by] = atlas.toScreen(...atlas.local(bLat, bLon));
     const t = Math.min(1, (m - 1) / 1.5);
-    ctx.fillStyle = `rgba(17, 17, 17, ${(0.06 + 0.3 * t).toFixed(2)})`;
+    ctx.fillStyle = `rgba(232, 106, 16, ${(0.12 + 0.45 * t).toFixed(2)})`;
     ctx.fillRect(Math.min(ax, bx), Math.min(ay, by), Math.abs(bx - ax), Math.abs(by - ay));
     if (Math.abs(bx - ax) > 34) {
-      ctx.fillStyle = "#111111";
+      ctx.fillStyle = "#5a2400";
       ctx.fillText(`×${m.toFixed(1)}`, (ax + bx) / 2, (ay + by) / 2);
     }
   }
@@ -924,12 +924,12 @@ function drawDispatch(ctx) {
   const size = Math.max(5, Math.min(10, atlas.view.scale * 60));
 
   // Fade the street map a little so the fleet reads first.
-  ctx.fillStyle = "rgba(241, 241, 241, 0.6)";
+  ctx.fillStyle = "rgba(229, 231, 227, 0.55)";
   ctx.fillRect(0, 0, atlas.width, atlas.height);
   drawSurge(ctx, r);
 
   // Lines from cars on their way to the rider they will collect.
-  ctx.strokeStyle = "rgba(17, 17, 17, 0.35)";
+  ctx.strokeStyle = "rgba(27, 58, 140, 0.55)";
   ctx.lineWidth = 1.2;
   ctx.beginPath();
   const rides = r.policies[sim.policy].rideList;
@@ -947,18 +947,18 @@ function drawDispatch(ctx) {
     const urgency = Math.min(1, w.waited / PATIENCE_S);
     ctx.beginPath();
     ctx.arc(x, y, 3 + urgency * 4, 0, 2 * Math.PI);
-    ctx.fillStyle = `rgba(17, 17, 17, ${(0.1 + 0.2 * urgency).toFixed(2)})`;
+    ctx.fillStyle = `rgba(163, 38, 143, ${(0.15 + 0.25 * urgency).toFixed(2)})`;
     ctx.fill();
     ctx.beginPath();
     ctx.arc(x, y, 3, 0, 2 * Math.PI);
     if (w.assigned) {
-      ctx.strokeStyle = "#111111";
+      ctx.strokeStyle = "#a3268f";
       ctx.lineWidth = 1.5;
       ctx.fillStyle = "#ffffff";
       ctx.fill();
       ctx.stroke();
     } else {
-      ctx.fillStyle = "#111111";
+      ctx.fillStyle = "#a3268f";
       ctx.fill();
     }
   }
@@ -1060,7 +1060,7 @@ function drawWorldPaths(ctx, paths, colours, widthPx) {
 }
 
 function fadeMap(ctx, alpha = 0.55) {
-  ctx.fillStyle = `rgba(241, 241, 241, ${alpha})`;
+  ctx.fillStyle = `rgba(229, 231, 227, ${alpha})`;
   ctx.fillRect(0, 0, atlas.width, atlas.height);
 }
 
@@ -1072,7 +1072,7 @@ function drawMarker(ctx, node, text, dark) {
   ctx.lineWidth = 2;
   ctx.fillRect(x - size / 2, y - size / 2, size, size);
   ctx.strokeRect(x - size / 2, y - size / 2, size, size);
-  ctx.fillStyle = dark ? "#ffffff" : "#111111";
+  ctx.fillStyle = dark ? "#ffd21f" : "#111111";
   ctx.font = "800 13px 'Barlow Condensed', 'Arial Narrow', sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -1089,7 +1089,7 @@ function formatLong(seconds) {
 // ------------------------------------------------------------------ travel-time map
 
 const BANDS_MIN = [10, 20, 30];
-const BAND_COLOURS = ["#111111", "#666666", "#b3b3b3"];
+const BAND_COLOURS = ["#1b3a8c", "#4f72c4", "#a2b8e6"];
 const AREA_CELL_KM = 0.25;
 const reach = { origin: null, arriving: false, band: 1, preset: "0800", built: false, paths: null, areas: null, night: null };
 
@@ -1363,8 +1363,8 @@ function drawTour(ctx) {
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   for (const [width, colour] of [
-    [9, "#ffffff"],
-    [5, "#111111"],
+    [8, "#111111"],
+    [3.5, "#ffd21f"],
   ]) {
     ctx.strokeStyle = colour;
     ctx.lineWidth = width;

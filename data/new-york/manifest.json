@@ -1,0 +1,1083 @@
+{
+ "version": 1,
+ "name": "Manhattan",
+ "nodes": 27378,
+ "edges": 36252,
+ "bbox": [
+  40.6995233,
+  -74.0187565,
+  40.7756416,
+  -73.9379634
+ ],
+ "classes": [
+  "motorway",
+  "motorway_link",
+  "trunk",
+  "trunk_link",
+  "primary",
+  "primary_link",
+  "secondary",
+  "secondary_link",
+  "tertiary",
+  "tertiary_link",
+  "unclassified",
+  "residential",
+  "living_street",
+  "service"
+ ],
+ "traffic": {
+  "weekday": [
+   0.05,
+   0.03,
+   0.02,
+   0.02,
+   0.03,
+   0.08,
+   0.25,
+   0.7,
+   1.0,
+   0.8,
+   0.55,
+   0.55,
+   0.6,
+   0.6,
+   0.6,
+   0.7,
+   0.85,
+   1.0,
+   0.85,
+   0.55,
+   0.35,
+   0.25,
+   0.15,
+   0.08
+  ],
+  "weekend": [
+   0.1,
+   0.08,
+   0.05,
+   0.03,
+   0.03,
+   0.03,
+   0.05,
+   0.1,
+   0.2,
+   0.35,
+   0.5,
+   0.6,
+   0.65,
+   0.65,
+   0.6,
+   0.55,
+   0.55,
+   0.5,
+   0.45,
+   0.4,
+   0.3,
+   0.25,
+   0.2,
+   0.15
+  ],
+  "sensitivity": [
+   0.6,
+   0.55,
+   0.55,
+   0.5,
+   0.5,
+   0.45,
+   0.45,
+   0.4,
+   0.35,
+   0.3,
+   0.25,
+   0.2,
+   0.1,
+   0.1
+  ]
+ },
+ "graph": {
+  "file": "graph.bin.gz",
+  "arrays": [
+   {
+    "name": "lat",
+    "dtype": "float64",
+    "offset": 0,
+    "length": 27378
+   },
+   {
+    "name": "lon",
+    "dtype": "float64",
+    "offset": 219024,
+    "length": 27378
+   },
+   {
+    "name": "first_out",
+    "dtype": "int32",
+    "offset": 438048,
+    "length": 27379
+   },
+   {
+    "name": "head",
+    "dtype": "int32",
+    "offset": 547568,
+    "length": 36252
+   },
+   {
+    "name": "freeflow_s",
+    "dtype": "float64",
+    "offset": 692576,
+    "length": 36252
+   },
+   {
+    "name": "length_m",
+    "dtype": "float32",
+    "offset": 982592,
+    "length": 36252
+   },
+   {
+    "name": "road_class",
+    "dtype": "uint8",
+    "offset": 1127600,
+    "length": 36252
+   },
+   {
+    "name": "turn_kind",
+    "dtype": "uint8",
+    "offset": 1163856,
+    "length": 55446
+   },
+   {
+    "name": "signals",
+    "dtype": "uint8",
+    "offset": 1219304,
+    "length": 27378
+   }
+  ]
+ },
+ "turns": {
+  "kinds": [
+   "none",
+   "straight",
+   "left",
+   "right",
+   "sharp_left",
+   "sharp_right",
+   "u_turn"
+  ],
+  "seconds": [
+   0.0,
+   0.0,
+   10.0,
+   4.0,
+   15.0,
+   8.0,
+   30.0
+  ],
+  "signals_s": 12.0
+ },
+ "rivers": [
+  [
+   [
+    40.734435,
+    -73.946839
+   ],
+   [
+    40.735374,
+    -73.946991
+   ],
+   [
+    40.737159,
+    -73.945888
+   ]
+  ],
+  [
+   [
+    40.743071,
+    -73.939222
+   ],
+   [
+    40.740217,
+    -73.940837
+   ],
+   [
+    40.739593,
+    -73.941725
+   ],
+   [
+    40.739279,
+    -73.942172
+   ],
+   [
+    40.738851,
+    -73.943034
+   ],
+   [
+    40.737478,
+    -73.946864
+   ]
+  ],
+  [
+   [
+    40.714126,
+    -73.92398
+   ],
+   [
+    40.715244,
+    -73.924333
+   ],
+   [
+    40.716268,
+    -73.922745
+   ],
+   [
+    40.717293,
+    -73.923131
+   ],
+   [
+    40.718015,
+    -73.923919
+   ],
+   [
+    40.7184,
+    -73.924145
+   ],
+   [
+    40.720056,
+    -73.924374
+   ],
+   [
+    40.720343,
+    -73.924413
+   ],
+   [
+    40.721725,
+    -73.92555
+   ],
+   [
+    40.724028,
+    -73.926548
+   ],
+   [
+    40.725823,
+    -73.927331
+   ],
+   [
+    40.727435,
+    -73.928827
+   ],
+   [
+    40.728001,
+    -73.929772
+   ],
+   [
+    40.728307,
+    -73.931042
+   ],
+   [
+    40.728522,
+    -73.932758
+   ],
+   [
+    40.728827,
+    -73.934681
+   ],
+   [
+    40.729322,
+    -73.936338
+   ],
+   [
+    40.729953,
+    -73.937711
+   ],
+   [
+    40.730993,
+    -73.939119
+   ],
+   [
+    40.732476,
+    -73.939977
+   ],
+   [
+    40.734265,
+    -73.940689
+   ],
+   [
+    40.735514,
+    -73.941762
+   ],
+   [
+    40.736359,
+    -73.943461
+   ],
+   [
+    40.737159,
+    -73.945888
+   ],
+   [
+    40.737452,
+    -73.946783
+   ],
+   [
+    40.737478,
+    -73.946864
+   ],
+   [
+    40.738817,
+    -73.951003
+   ],
+   [
+    40.739155,
+    -73.952264
+   ],
+   [
+    40.739409,
+    -73.953823
+   ],
+   [
+    40.739434,
+    -73.955248
+   ],
+   [
+    40.739246,
+    -73.957176
+   ],
+   [
+    40.736437,
+    -73.962547
+   ],
+   [
+    40.734562,
+    -73.966934
+   ]
+  ],
+  [
+   [
+    40.88054,
+    -73.933924
+   ],
+   [
+    40.809588,
+    -73.975287
+   ],
+   [
+    40.776298,
+    -74.000191
+   ],
+   [
+    40.758429,
+    -74.013553
+   ],
+   [
+    40.749187,
+    -74.017203
+   ],
+   [
+    40.707771,
+    -74.026135
+   ]
+  ]
+ ],
+ "presets": [
+  {
+   "id": "0300",
+   "label": "Night",
+   "hour": 3.0,
+   "file": "ch-0300.bin.gz",
+   "arrays": [
+    {
+     "name": "rank",
+     "dtype": "int32",
+     "offset": 0,
+     "length": 27378
+    },
+    {
+     "name": "up_first",
+     "dtype": "int32",
+     "offset": 109512,
+     "length": 27379
+    },
+    {
+     "name": "up_head",
+     "dtype": "int32",
+     "offset": 219032,
+     "length": 39752
+    },
+    {
+     "name": "up_weight",
+     "dtype": "float32",
+     "offset": 378040,
+     "length": 39752
+    },
+    {
+     "name": "up_middle",
+     "dtype": "int32",
+     "offset": 537048,
+     "length": 39752
+    },
+    {
+     "name": "down_first",
+     "dtype": "int32",
+     "offset": 696056,
+     "length": 27379
+    },
+    {
+     "name": "down_tail",
+     "dtype": "int32",
+     "offset": 805576,
+     "length": 39776
+    },
+    {
+     "name": "down_weight",
+     "dtype": "float32",
+     "offset": 964680,
+     "length": 39776
+    },
+    {
+     "name": "down_middle",
+     "dtype": "int32",
+     "offset": 1123784,
+     "length": 39776
+    }
+   ],
+   "shortcuts": 43276
+  },
+  {
+   "id": "0800",
+   "label": "Morning peak",
+   "hour": 8.0,
+   "file": "ch-0800.bin.gz",
+   "arrays": [
+    {
+     "name": "rank",
+     "dtype": "int32",
+     "offset": 0,
+     "length": 27378
+    },
+    {
+     "name": "up_first",
+     "dtype": "int32",
+     "offset": 109512,
+     "length": 27379
+    },
+    {
+     "name": "up_head",
+     "dtype": "int32",
+     "offset": 219032,
+     "length": 39922
+    },
+    {
+     "name": "up_weight",
+     "dtype": "float32",
+     "offset": 378720,
+     "length": 39922
+    },
+    {
+     "name": "up_middle",
+     "dtype": "int32",
+     "offset": 538408,
+     "length": 39922
+    },
+    {
+     "name": "down_first",
+     "dtype": "int32",
+     "offset": 698096,
+     "length": 27379
+    },
+    {
+     "name": "down_tail",
+     "dtype": "int32",
+     "offset": 807616,
+     "length": 39820
+    },
+    {
+     "name": "down_weight",
+     "dtype": "float32",
+     "offset": 966896,
+     "length": 39820
+    },
+    {
+     "name": "down_middle",
+     "dtype": "int32",
+     "offset": 1126176,
+     "length": 39820
+    }
+   ],
+   "shortcuts": 43490
+  },
+  {
+   "id": "1300",
+   "label": "Midday",
+   "hour": 13.0,
+   "file": "ch-1300.bin.gz",
+   "arrays": [
+    {
+     "name": "rank",
+     "dtype": "int32",
+     "offset": 0,
+     "length": 27378
+    },
+    {
+     "name": "up_first",
+     "dtype": "int32",
+     "offset": 109512,
+     "length": 27379
+    },
+    {
+     "name": "up_head",
+     "dtype": "int32",
+     "offset": 219032,
+     "length": 40129
+    },
+    {
+     "name": "up_weight",
+     "dtype": "float32",
+     "offset": 379552,
+     "length": 40129
+    },
+    {
+     "name": "up_middle",
+     "dtype": "int32",
+     "offset": 540072,
+     "length": 40129
+    },
+    {
+     "name": "down_first",
+     "dtype": "int32",
+     "offset": 700592,
+     "length": 27379
+    },
+    {
+     "name": "down_tail",
+     "dtype": "int32",
+     "offset": 810112,
+     "length": 39886
+    },
+    {
+     "name": "down_weight",
+     "dtype": "float32",
+     "offset": 969656,
+     "length": 39886
+    },
+    {
+     "name": "down_middle",
+     "dtype": "int32",
+     "offset": 1129200,
+     "length": 39886
+    }
+   ],
+   "shortcuts": 43763
+  },
+  {
+   "id": "1730",
+   "label": "Evening peak",
+   "hour": 17.5,
+   "file": "ch-1730.bin.gz",
+   "arrays": [
+    {
+     "name": "rank",
+     "dtype": "int32",
+     "offset": 0,
+     "length": 27378
+    },
+    {
+     "name": "up_first",
+     "dtype": "int32",
+     "offset": 109512,
+     "length": 27379
+    },
+    {
+     "name": "up_head",
+     "dtype": "int32",
+     "offset": 219032,
+     "length": 39949
+    },
+    {
+     "name": "up_weight",
+     "dtype": "float32",
+     "offset": 378832,
+     "length": 39949
+    },
+    {
+     "name": "up_middle",
+     "dtype": "int32",
+     "offset": 538632,
+     "length": 39949
+    },
+    {
+     "name": "down_first",
+     "dtype": "int32",
+     "offset": 698432,
+     "length": 27379
+    },
+    {
+     "name": "down_tail",
+     "dtype": "int32",
+     "offset": 807952,
+     "length": 39943
+    },
+    {
+     "name": "down_weight",
+     "dtype": "float32",
+     "offset": 967728,
+     "length": 39943
+    },
+    {
+     "name": "down_middle",
+     "dtype": "int32",
+     "offset": 1127504,
+     "length": 39943
+    }
+   ],
+   "shortcuts": 43640
+  }
+ ],
+ "city": {
+  "key": "new-york",
+  "name": "Manhattan",
+  "landmarks": [
+   {
+    "name": "Times Square",
+    "lat": 40.758,
+    "lon": -73.9855
+   },
+   {
+    "name": "Grand Central",
+    "lat": 40.7527,
+    "lon": -73.9772
+   },
+   {
+    "name": "Penn Station",
+    "lat": 40.7506,
+    "lon": -73.9935
+   },
+   {
+    "name": "Empire State Building",
+    "lat": 40.7484,
+    "lon": -73.9857
+   },
+   {
+    "name": "Rockefeller Center",
+    "lat": 40.7587,
+    "lon": -73.9787
+   },
+   {
+    "name": "Bryant Park",
+    "lat": 40.7536,
+    "lon": -73.9832
+   },
+   {
+    "name": "Columbus Circle",
+    "lat": 40.7681,
+    "lon": -73.9819
+   },
+   {
+    "name": "Hudson Yards",
+    "lat": 40.7536,
+    "lon": -74.0019
+   },
+   {
+    "name": "Chelsea",
+    "lat": 40.7465,
+    "lon": -74.0014
+   },
+   {
+    "name": "Flatiron",
+    "lat": 40.7411,
+    "lon": -73.9897
+   },
+   {
+    "name": "Union Square",
+    "lat": 40.7359,
+    "lon": -73.9911
+   },
+   {
+    "name": "Washington Square",
+    "lat": 40.7308,
+    "lon": -73.9973
+   },
+   {
+    "name": "East Village",
+    "lat": 40.7265,
+    "lon": -73.9815
+   },
+   {
+    "name": "SoHo",
+    "lat": 40.7233,
+    "lon": -74.003
+   },
+   {
+    "name": "Lower East Side",
+    "lat": 40.715,
+    "lon": -73.9843
+   },
+   {
+    "name": "Chinatown",
+    "lat": 40.7158,
+    "lon": -73.997
+   },
+   {
+    "name": "City Hall",
+    "lat": 40.7128,
+    "lon": -74.006
+   },
+   {
+    "name": "World Trade Center",
+    "lat": 40.7127,
+    "lon": -74.0134
+   },
+   {
+    "name": "Wall Street",
+    "lat": 40.7069,
+    "lon": -74.0113
+   },
+   {
+    "name": "Long Island City",
+    "lat": 40.7447,
+    "lon": -73.9485
+   },
+   {
+    "name": "Williamsburg",
+    "lat": 40.7081,
+    "lon": -73.9571
+   }
+  ],
+  "default_trip": [
+   [
+    40.7506,
+    -73.9935
+   ],
+   [
+    40.7069,
+    -74.0113
+   ]
+  ],
+  "default_tour": [
+   [
+    40.7359,
+    -73.9911
+   ],
+   [
+    40.758,
+    -73.9855
+   ],
+   [
+    40.7527,
+    -73.9772
+   ],
+   [
+    40.7465,
+    -74.0014
+   ],
+   [
+    40.7233,
+    -74.003
+   ],
+   [
+    40.7069,
+    -74.0113
+   ],
+   [
+    40.715,
+    -73.9843
+   ],
+   [
+    40.7265,
+    -73.9815
+   ],
+   [
+    40.7681,
+    -73.9819
+   ]
+  ],
+  "drive_on_left": false,
+  "notes": [
+   "Traffic follows London's weekday pattern; it has not been checked for New York.",
+   "Turn costs are mirrored for driving on the right."
+  ]
+ },
+ "cch": {
+  "file": "cch.bin.gz",
+  "arrays": [
+   {
+    "name": "rank",
+    "dtype": "int32",
+    "offset": 0,
+    "length": 27378
+   },
+   {
+    "name": "first_up",
+    "dtype": "int32",
+    "offset": 109512,
+    "length": 27379
+   },
+   {
+    "name": "up_head",
+    "dtype": "int32",
+    "offset": 219032,
+    "length": 145216
+   }
+  ],
+  "edges": 145216,
+  "triangles": 1695971
+ },
+ "eta": {
+  "file": "eta-model.json",
+  "trips": 8000,
+  "metrics": {
+   "Graph ETA (router only)": {
+    "mae_s": 367.5956689042521,
+    "mape_pct": 31.153222160892096,
+    "p90_pct": 44.428427109947165,
+    "within_10_pct": 2.8125
+   },
+   "Graph ETA x global factor": {
+    "mae_s": 136.83367639754982,
+    "mape_pct": 12.36186637679157,
+    "p90_pct": 25.753786250666842,
+    "within_10_pct": 48.6875
+   },
+   "Ridge regression": {
+    "mae_s": 101.34551079315465,
+    "mape_pct": 9.106428047649825,
+    "p90_pct": 19.6677339196076,
+    "within_10_pct": 65.5
+   },
+   "Neural network (MLP)": {
+    "mae_s": 102.99866019962175,
+    "mape_pct": 9.006536454852125,
+    "p90_pct": 19.285780283787897,
+    "within_10_pct": 66.8125
+   },
+   "Gradient-boosted trees": {
+    "mae_s": 92.3298124310507,
+    "mape_pct": 8.249565914266741,
+    "p90_pct": 17.249119669437448,
+    "within_10_pct": 70.1875
+   },
+   "Graph neural network": {
+    "mae_s": 89.75084128097035,
+    "mape_pct": 7.937318246155156,
+    "p90_pct": 16.324703436329294,
+    "within_10_pct": 72.5625
+   }
+  },
+  "interval": {
+   "target_pct": 80.0,
+   "coverage_pct": 78.875,
+   "below_pct": 10.5,
+   "above_pct": 10.625,
+   "mean_width_pct": 25.247583572760625,
+   "uncalibrated_coverage_pct": 71.75,
+   "margin_log": 0.021318211554315014,
+   "learned_hotspot_r": 0.469643955574364,
+   "gnn_hotspot_r": 0.2973657927753761
+  },
+  "importance": [
+   [
+    "n_lights",
+    0.27627233603109325
+   ],
+   [
+    "length_km",
+    0.18221864462305493
+   ],
+   [
+    "hour_cos",
+    0.1726522966694967
+   ],
+   [
+    "hour_sin",
+    0.13860784247768634
+   ],
+   [
+    "weekend",
+    0.07160400914518172
+   ],
+   [
+    "mid_x_km",
+    0.028637526636758486
+   ],
+   [
+    "share_major",
+    0.02369722309042614
+   ],
+   [
+    "crow_km",
+    0.021659954397759768
+   ]
+  ]
+ },
+ "dispatch": {
+  "file": "dispatch.json",
+  "preset": "0800",
+  "days": 3,
+  "summary": {
+   "nearest": {
+    "requests": 482.3333333333333,
+    "served_pct": 98.58142262222752,
+    "cancelled_pct": 1.4185773777724944,
+    "mean_wait_min": 6.292087082584725,
+    "p90_wait_min": 11.508802327774177,
+    "mean_pickup_drive_min": 5.178435880218462,
+    "utilisation_pct": 53.42291008613577,
+    "repositioning_min_per_driver": 0.0,
+    "driving_min_per_ride": 20.390143668276696,
+    "shared_pct": 0.0,
+    "extra_onboard_min": 0.0,
+    "priced_out_pct": 0.0,
+    "mean_multiplier": 1.0
+   },
+   "optimal": {
+    "requests": 482.3333333333333,
+    "served_pct": 98.4557458349625,
+    "cancelled_pct": 1.5442541650375077,
+    "mean_wait_min": 5.759720802026969,
+    "p90_wait_min": 10.680667160958665,
+    "mean_pickup_drive_min": 4.699358220444627,
+    "utilisation_pct": 52.179428642243046,
+    "repositioning_min_per_driver": 0.0,
+    "driving_min_per_ride": 19.943394836902158,
+    "shared_pct": 0.0,
+    "extra_onboard_min": 0.0,
+    "priced_out_pct": 0.0,
+    "mean_multiplier": 1.0
+   },
+   "optimal+history": {
+    "requests": 482.3333333333333,
+    "served_pct": 98.56395899245645,
+    "cancelled_pct": 1.4360410075435432,
+    "mean_wait_min": 4.683834911282217,
+    "p90_wait_min": 8.935703163758935,
+    "mean_pickup_drive_min": 3.9911089242528823,
+    "utilisation_pct": 50.62010240454399,
+    "repositioning_min_per_driver": 12.999677773099188,
+    "driving_min_per_ride": 22.042429135047968,
+    "shared_pct": 0.0,
+    "extra_onboard_min": 0.0,
+    "priced_out_pct": 0.0,
+    "mean_multiplier": 1.0
+   },
+   "optimal+forecast": {
+    "requests": 482.3333333333333,
+    "served_pct": 98.78817423909322,
+    "cancelled_pct": 1.211825760906772,
+    "mean_wait_min": 4.929124608143131,
+    "p90_wait_min": 9.445105607446893,
+    "mean_pickup_drive_min": 4.174073803596623,
+    "utilisation_pct": 51.049539959239894,
+    "repositioning_min_per_driver": 11.473502856159264,
+    "driving_min_per_ride": 21.854018644840423,
+    "shared_pct": 0.0,
+    "extra_onboard_min": 0.0,
+    "priced_out_pct": 0.0,
+    "mean_multiplier": 1.0
+   },
+   "optimal+pool": {
+    "requests": 482.3333333333333,
+    "served_pct": 99.8007824976046,
+    "cancelled_pct": 0.19921750239540081,
+    "mean_wait_min": 3.790834349910669,
+    "p90_wait_min": 6.680053294198037,
+    "mean_pickup_drive_min": 3.529073154471554,
+    "utilisation_pct": 43.082925439724725,
+    "repositioning_min_per_driver": 14.586528132536591,
+    "driving_min_per_ride": 19.282056134572567,
+    "shared_pct": 41.691164483558104,
+    "extra_onboard_min": 2.14337464706874,
+    "priced_out_pct": 0.0,
+    "mean_multiplier": 1.0
+   },
+   "optimal+surge": {
+    "requests": 482.3333333333333,
+    "served_pct": 95.1873693987365,
+    "cancelled_pct": 0.26402640264026406,
+    "mean_wait_min": 4.150844265027045,
+    "p90_wait_min": 7.7891286845288334,
+    "mean_pickup_drive_min": 3.8317755801304956,
+    "utilisation_pct": 48.329637728698096,
+    "repositioning_min_per_driver": 13.396807560632896,
+    "driving_min_per_ride": 22.034588721732177,
+    "shared_pct": 0.0,
+    "extra_onboard_min": 0.0,
+    "priced_out_pct": 4.548604198623248,
+    "mean_multiplier": 1.0357291618747306
+   }
+  },
+  "forecast": {
+   "Same as the last 15 minutes": {
+    "mae": 0.24155312022373257,
+    "deviance": 4.265741828212427
+   },
+   "Historical average for the time": {
+    "mae": 0.24189701147930148,
+    "deviance": 0.9394789427114615
+   },
+   "Gradient-boosted forecast": {
+    "mae": 0.22816260203533,
+    "deviance": 0.4757818657956395
+   }
+  },
+  "centres": [
+   {
+    "name": "Penn Station",
+    "kind": "station",
+    "x_km": -1.2770311297500894,
+    "y_km": 1.449113665999288
+   },
+   {
+    "name": "Grand Central",
+    "kind": "station",
+    "x_km": 0.09783932410763686,
+    "y_km": 1.6828856659991387
+   },
+   {
+    "name": "Port Authority",
+    "kind": "station",
+    "x_km": -1.0071179118154774,
+    "y_km": 2.150429665999631
+   },
+   {
+    "name": "Midtown",
+    "kind": "office",
+    "x_km": -0.028682496800111514,
+    "y_km": 2.350805665999164
+   },
+   {
+    "name": "Financial District",
+    "kind": "office",
+    "x_km": -2.7784234045155642,
+    "y_km": -3.415570334000843
+   },
+   {
+    "name": "Hudson Yards",
+    "kind": "office",
+    "x_km": -1.9855533268308432,
+    "y_km": 1.7830736659993007
+   },
+   {
+    "name": "Times Square",
+    "kind": "nightlife",
+    "x_km": -0.6022480849123607,
+    "y_km": 2.272881665999741
+   },
+   {
+    "name": "East Village",
+    "kind": "nightlife",
+    "x_km": -0.264856562492897,
+    "y_km": -1.2336983340003915
+   },
+   {
+    "name": "Lower East Side",
+    "kind": "nightlife",
+    "x_km": -0.5010306281868812,
+    "y_km": -2.5138783340001765
+   },
+   {
+    "name": "Meatpacking District",
+    "kind": "nightlife",
+    "x_km": -2.500075398518997,
+    "y_km": 0.36930966599982723
+   }
+  ]
+ }
+}

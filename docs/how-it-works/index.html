@@ -1,0 +1,1797 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Routing, arrival-time prediction and ride dispatch on real city road networks, written from scratch.">
+      
+      
+      
+        <link rel="canonical" href="https://ridegraph.dev/docs/how-it-works/">
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../architecture/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>How it works - Ridegraph</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="grey">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#how-it-works" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Ridegraph" class="md-header__button md-logo" aria-label="Ridegraph" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Ridegraph
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              How it works
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="grey"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="grey"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ayqon/ridegraph" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ayqon/ridegraph
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Ridegraph" class="md-nav__button md-logo" aria-label="Ridegraph" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Ridegraph
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ayqon/ridegraph" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ayqon/ridegraph
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How it works
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How it works
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#three-cities-one-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Three cities, one engine
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-map-is-a-graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The map is a graph
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-edges-cost-seconds-not-metres" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Edges cost seconds, not metres
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-four-ways-to-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Four ways to search
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-traffic-and-turns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Traffic and turns
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-live-closures-and-customizable-contraction-hierarchies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Live closures and Customizable Contraction Hierarchies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-alternative-routes-and-the-congestion-charge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Alternative routes and the Congestion Charge
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-the-learned-eta" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. The learned ETA
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-travel-time-maps-and-delivery-rounds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Travel-time maps and delivery rounds
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-ride-dispatch-and-demand-forecasting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Ride dispatch and demand forecasting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-the-live-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. The live map
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-an-http-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. An HTTP API
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-what-the-london-numbers-show" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. What the London numbers show
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-measuring-fairly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Measuring fairly
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design decisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../road-rules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Road rules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../writeup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../http-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command line
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://ridegraph.dev/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Live map
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#three-cities-one-engine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Three cities, one engine
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-the-map-is-a-graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The map is a graph
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-edges-cost-seconds-not-metres" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Edges cost seconds, not metres
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-four-ways-to-search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Four ways to search
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-traffic-and-turns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Traffic and turns
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-live-closures-and-customizable-contraction-hierarchies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Live closures and Customizable Contraction Hierarchies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-alternative-routes-and-the-congestion-charge" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Alternative routes and the Congestion Charge
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-the-learned-eta" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. The learned ETA
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-travel-time-maps-and-delivery-rounds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Travel-time maps and delivery rounds
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-ride-dispatch-and-demand-forecasting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Ride dispatch and demand forecasting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-the-live-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. The live map
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-an-http-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. An HTTP API
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-what-the-london-numbers-show" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. What the London numbers show
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-measuring-fairly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Measuring fairly
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="how-it-works">How it works<a class="headerlink" href="#how-it-works" title="Permanent link">&para;</a></h1>
+<h2 id="three-cities-one-engine">Three cities, one engine<a class="headerlink" href="#three-cities-one-engine" title="Permanent link">&para;</a></h2>
+<p>Nothing in the engine is London-specific. <code>ridegraph/cities.py</code> gives each
+city its area, the places a person would name on the map, where ride demand
+concentrates and which side of the road traffic drives on; the same
+pipeline downloads, builds, contracts, trains and simulates each one, and
+the map switches between them, keeping the view inside the chosen city.</p>
+<table>
+<thead>
+<tr>
+<th>City</th>
+<th>Area</th>
+<th>Extras</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Central London</strong></td>
+<td>Paddington to Whitechapel, King's Cross to Vauxhall</td>
+<td>Congestion Charge, live TfL closures, checked against OSRM and published speeds</td>
+</tr>
+<tr>
+<td><strong>Nicosia</strong></td>
+<td>The south of the city, stopping short of the buffer zone so no route crosses the Green Line</td>
+<td>Drives on the left, like London</td>
+</tr>
+<tr>
+<td><strong>Manhattan</strong></td>
+<td>Battery to Central Park South, with the bridges to Brooklyn and Queens</td>
+<td>Drives on the right, so turn costs are mirrored</td>
+</tr>
+</tbody>
+</table>
+<p>The time-of-day traffic pattern is London's everywhere; only London's has
+been checked against real figures.</p>
+<h2 id="1-the-map-is-a-graph">1. The map is a graph<a class="headerlink" href="#1-the-map-is-a-graph" title="Permanent link">&para;</a></h2>
+<p>Intersections become <strong>nodes</strong> and road segments become directed <strong>edges</strong>.
+A two-way street is two edges; a one-way street or roundabout is one.</p>
+<p>The pipeline (<code>ridegraph/osm.py</code>) pulls drivable ways from OpenStreetMap,
+drops what a car cannot use (footpaths, private roads, car park aisles),
+applies <code>oneway</code>, roundabout and motorway direction rules, then keeps only the
+largest strongly connected component. That last step matters: cutting a city
+out of a bounding box leaves stubs you can drive into but never leave, and a
+router that starts there would fail.</p>
+<h2 id="2-edges-cost-seconds-not-metres">2. Edges cost seconds, not metres<a class="headerlink" href="#2-edges-cost-seconds-not-metres" title="Permanent link">&para;</a></h2>
+<p>The quickest route is not the shortest one. Each edge's weight is its travel
+time (<code>ridegraph/speeds.py</code>):</p>
+<div class="highlight"><pre><span></span><code>seconds = length / free-flow speed
+</code></pre></div>
+<p>Free-flow speed comes from the posted <code>maxspeed</code> when OSM has it, discounted to
+what drivers actually sustain between junctions, or from a typical speed for
+the road class otherwise. So 900 m of main road can beat 600 m of back street,
+and the tests check that it does.</p>
+<p>The raw map (<code>RoadNetwork</code>) and the weighted routing graph (<code>Graph</code>) are kept
+separate, so swapping in a traffic model means rebuilding weights, not
+re-downloading the map. Edges are stored in CSR (compressed sparse row) form,
+the layout production engines use: all edges leaving node <code>u</code> sit
+contiguously in <code>head[first_out[u]:first_out[u + 1]]</code>, with a mirrored
+incoming index for searches that run backwards.</p>
+<h2 id="3-four-ways-to-search">3. Four ways to search<a class="headerlink" href="#3-four-ways-to-search" title="Permanent link">&para;</a></h2>
+<p><strong>Dijkstra</strong> (<code>dijkstra.py</code>) grows a ball of settled nodes outward from the
+start in order of travel time; when the destination is settled, its time is
+provably optimal. It is the reference every other algorithm must agree with,
+and its weakness motivates the rest: the ball expands in every direction,
+including away from the destination.</p>
+<p><strong>Bidirectional Dijkstra</strong> (<code>bidirectional.py</code>) searches from both ends at
+once, so two half-size balls replace one big one. The subtle part is the
+stopping rule: the first node both searches reach is not necessarily on the
+best route, so the search tracks the best joined route seen and stops only
+once the two frontiers together cannot beat it.</p>
+<p><strong>A*</strong> (<code>astar.py</code>) adds a sense of direction by ranking nodes on time so far
+plus an estimate of time remaining: straight-line distance at the network's
+top speed. That estimate can never overshoot, so results stay optimal while
+the search stretches towards the target. In a city the gain is bounded
+because "top speed in a straight line" is very optimistic.</p>
+<p><strong>Contraction Hierarchies</strong> (<code>ch.py</code>) is what production routing engines rely
+on. A one-off preprocessing step ranks nodes by importance and removes them
+from least to most important. Whenever removing node <code>v</code> would break a
+quickest route <code>u -&gt; v -&gt; w</code>, a <strong>shortcut</strong> edge <code>u -&gt; w</code> is added, unless a
+local <em>witness search</em> finds another route that is just as quick.</p>
+<p>Afterwards, every quickest route can be found by searching only <em>upwards</em> in
+the ranking from both ends, so each query explores a small cone instead of a
+ball of the city. The implementation includes lazy priority updates during
+ordering, bounded witness searches, stall-on-demand at query time, and
+recursive unpacking of shortcuts back into real road segments.</p>
+<h2 id="4-traffic-and-turns">4. Traffic and turns<a class="headerlink" href="#4-traffic-and-turns" title="Permanent link">&para;</a></h2>
+<p><strong>Rush hour</strong> (<code>traffic.py</code>). The same road has a different speed at 3am and
+8am. Each edge's speed is scaled by a city-wide congestion curve for the hour
+(separate weekday and weekend curves) and by how sensitive that class of road
+is to congestion: arterials lose up to half their speed at the peak,
+residential streets far less, because through-traffic avoids them. So at
+8am the quickest route can leave the main road for back streets, and the
+tests check that it does. The curves are illustrative, shaped after London's
+familiar pattern rather than fitted to measured data; production systems use
+historical and live per-segment speeds from vehicle GPS traces, which would
+slot in here without touching the routing code.</p>
+<p><strong>Turns</strong> (<code>turns.py</code>). In a plain road graph, a node is an intersection, so
+the search cannot tell turning right across oncoming traffic from carrying
+straight on. The fix is an <strong>edge-expanded graph</strong>: each node is a directed
+road segment ("I just drove u to v") and each edge is a manoeuvre ("then
+take v to w"), costing the next segment's travel time plus a turn penalty.
+UK defaults make right turns (crossing traffic) dearer than left turns, with
+extra cost for sharp turns, U-turns and traffic lights parsed from OSM. A
+bend in a single road is not a junction, so it costs nothing.</p>
+<p>Every algorithm runs on the expanded graph unchanged, Contraction
+Hierarchies included, since it is just another weighted graph. A <code>Router</code>
+(<code>router.py</code>) builds the right graph for a scenario and maps routes back to
+intersections.</p>
+<div class="highlight"><pre><span></span><code>$ python -m ridegraph eta &lt;from&gt; &lt;to&gt; --turns
+03:00 weekday, with turn costs    2 min 20 s   1.01 km  reference route
+08:00 weekday, with turn costs    3 min 59 s   0.99 km  different route (30% shared)
+13:00 weekday, with turn costs    3 min 06 s   1.01 km  same route
+17:30 weekday, with turn costs    3 min 50 s   0.99 km  different route (30% shared)
+</code></pre></div>
+<p><sub>Synthetic street grid; London output lands with the next data refresh.</sub></p>
+<h2 id="5-live-closures-and-customizable-contraction-hierarchies">5. Live closures and Customizable Contraction Hierarchies<a class="headerlink" href="#5-live-closures-and-customizable-contraction-hierarchies" title="Permanent link">&para;</a></h2>
+<p>Contraction Hierarchies are fast because they are built for one set of
+travel times. A closure on Oxford Street makes them stale, and rebuilding
+takes far longer than a user will wait. Production engines (OSRM's MLD, Bing
+Maps) separate the road layout from the times. <code>ridegraph/cch.py</code> implements
+<strong>Customizable CH</strong> (Dibbelt, Strasser and Wagner, 2016):</p>
+<ol>
+<li><strong>Once per map:</strong> order junctions by <em>nested dissection</em> (cut the city
+   along the direction that crosses the fewest roads, recurse on each half,
+   rank the separator last), then contract in that order adding every
+   shortcut, with no witness searches. On London: 77,124 roads become
+   301,179 edges and 3.19 million <em>lower triangles</em>, in 8 s.</li>
+<li><strong>Whenever times change:</strong> load the current time of every road and sweep
+   the triangles bottom-up, <code>u-&gt;w = min(u-&gt;w, u-&gt;v + v-&gt;w)</code>. That takes
+   <strong>50 ms</strong> in numpy and <strong>about 20 ms</strong> in the browser.</li>
+<li><strong>Queries:</strong> the usual two upward searches, with shortcuts unpacked
+   through the triangles.</li>
+</ol>
+<p>The times come from <strong>Transport for London's open disruption feed</strong>
+(<code>ridegraph/live.py</code>). Each disrupted stretch is map-matched onto the graph
+(both ends and the middle of an edge within 18 m of the line). Closed roads
+get an infinite time, and open ones are slowed by severity. The map asks
+TfL directly when you switch on <em>Live roadworks and closures</em>. If the feed
+can't be reached from the browser, it falls back to a snapshot taken when CI
+built the page.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>ridegraph<span class="w"> </span>live<span class="w">                      </span><span class="c1"># what is disrupted right now</span>
+python<span class="w"> </span>-m<span class="w"> </span>ridegraph<span class="w"> </span>route<span class="w"> </span><span class="m">51</span>.5130,-0.1590<span class="w"> </span><span class="m">51</span>.5160,-0.1300<span class="w"> </span>--at<span class="w"> </span><span class="m">13</span>:00<span class="w"> </span>--live
+</code></pre></div>
+<h2 id="6-alternative-routes-and-the-congestion-charge">6. Alternative routes and the Congestion Charge<a class="headerlink" href="#6-alternative-routes-and-the-congestion-charge" title="Permanent link">&para;</a></h2>
+<p>Map apps offer two or three routes because the quickest is not always the one
+you want. <code>ridegraph/alternatives.py</code> finds them with the <strong>penalty method</strong>:
+take the quickest route, make every road on it 40% slower, search again, and
+repeat. Each search is pushed off the corridor already used. A candidate is
+kept only if it is</p>
+<ul>
+<li>at most 30% slower than the quickest (on real times, not penalised ones),</li>
+<li>at most 65% shared with any route already offered, and</li>
+<li>free of pointless detours: sampled stretches of a quarter of the trip must
+  each be within 15% of the quickest way between their ends.</li>
+</ul>
+<p>Closing roads is the same machinery with infinite penalties, which is how a
+route <strong>avoids the Congestion Charge zone</strong> (<code>ridegraph/charges.py</code>: the zone
+polygon, £18 a day, 07:00 to 18:00 on weekdays and 12:00 to 18:00 at
+weekends; the boundary roads are free). From Paddington to Aldgate at 8am:</p>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th style="text-align: right;">Time</th>
+<th>Charge</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Quickest</td>
+<td style="text-align: right;">36 min 32 s</td>
+<td>£18</td>
+</tr>
+<tr>
+<td>Alternative 1</td>
+<td style="text-align: right;">40 min 11 s</td>
+<td>£18</td>
+</tr>
+<tr>
+<td>Alternative 2</td>
+<td style="text-align: right;">45 min 27 s</td>
+<td>£18</td>
+</tr>
+<tr>
+<td>Avoiding the zone, along Euston Road and City Road</td>
+<td style="text-align: right;">50 min 08 s</td>
+<td>none</td>
+</tr>
+</tbody>
+</table>
+<p>So staying out of the zone costs 14 minutes on this trip, about £1.30 a minute
+saved. The browser runs the same method (A* on the penalised weights, under
+100 ms on London) and a Node test holds it to Python.</p>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>ridegraph<span class="w"> </span>route<span class="w"> </span><span class="m">51</span>.5265,-0.1820<span class="w"> </span><span class="m">51</span>.5100,-0.0700<span class="w"> </span>--at<span class="w"> </span><span class="m">08</span>:00<span class="w"> </span>--alternatives<span class="w"> </span>--avoid-charge
+</code></pre></div>
+<h2 id="7-the-learned-eta">7. The learned ETA<a class="headerlink" href="#7-the-learned-eta" title="Permanent link">&para;</a></h2>
+<p>The router's estimate is only as good as its model of road speeds. It cannot
+know that lights on a particular corridor hold you for half a minute at
+8:30, that one junction always queues, or that the evening peak arrives later
+than the timetable. Production ride-hailing systems therefore keep the
+routing engine and learn the <strong>residual</strong>: given a route and a moment, how
+far off will the engine be? <code>ridegraph/eta.py</code> follows that design.</p>
+<p><strong>Features</strong> are things a production system knows when the trip is
+requested: the router's ETA, route length, straight-line distance and
+detour, the share of the route on main roads, B roads and side streets, the
+number of left, right, sharp and U-turns and of traffic lights on the route,
+time of day (as a point on a circle, so 23:59 sits next to 00:00), weekday or
+weekend, and where the route starts, ends and passes through.</p>
+<p><strong>The target</strong> is <code>log(observed time / router ETA)</code>, so the model learns a
+multiplicative correction and large and small trips weigh evenly.</p>
+<p><strong>Observed trips.</strong> Real trip logs for London are not public, so the
+pipeline generates them, and it is open about it. A <code>World</code> is a hidden
+ground truth that differs from the router the way a real city would:
+congestion hotspots around a few busy junctions, a rush hour that peaks
+later and harder than the router assumes, main roads that clog more than
+modelled, waits at right turns and traffic lights that grow with traffic,
+occasional incidents and day-to-day noise. 20,000 trips between random
+points at random times are routed with Contraction Hierarchies and timed in
+that world. Nothing in the features reads the world directly; the models
+have to infer its effects from routes and outcomes.</p>
+<p><strong>Results</strong> are measured on 4,000 trips the models never saw:</p>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th style="text-align: right;">Mean abs. error</th>
+<th style="text-align: right;">90th pct. error</th>
+<th style="text-align: right;">Within 10%</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Router alone</td>
+<td style="text-align: right;">27.5%</td>
+<td style="text-align: right;">38.5%</td>
+<td style="text-align: right;">2%</td>
+</tr>
+<tr>
+<td>Router times one global factor</td>
+<td style="text-align: right;">10.1%</td>
+<td style="text-align: right;">20.3%</td>
+<td style="text-align: right;">58%</td>
+</tr>
+<tr>
+<td>Ridge regression</td>
+<td style="text-align: right;">7.6%</td>
+<td style="text-align: right;">15.5%</td>
+<td style="text-align: right;">74%</td>
+</tr>
+<tr>
+<td>Neural network (MLP, 64x64)</td>
+<td style="text-align: right;">7.3%</td>
+<td style="text-align: right;">14.4%</td>
+<td style="text-align: right;">75%</td>
+</tr>
+<tr>
+<td>Gradient-boosted trees (shipped to the map)</td>
+<td style="text-align: right;">6.8%</td>
+<td style="text-align: right;">13.8%</td>
+<td style="text-align: right;">78%</td>
+</tr>
+<tr>
+<td>Graph neural network over every road</td>
+<td style="text-align: right;">6.6%</td>
+<td style="text-align: right;">13.4%</td>
+<td style="text-align: right;">80%</td>
+</tr>
+</tbody>
+</table>
+<p>The
+simulated city is calibrated to central London: trips average about 21 km/h
+at night, 14 at midday and 11 at the peaks. The router alone is optimistic
+by about 28%, mostly because it knows nothing about traffic lights or about
+when the peaks really arrive. Time of day is the model's most useful
+signal, followed by where the route runs, weekday or weekend, length and
+the number of sets of lights. One global factor helps, a linear model helps
+more, and both non-linear models capture the interactions (lights cost more
+at peak; hotspots matter only when the route passes through them).
+Gradient-boosted trees win among the models that read one row per trip and,
+being a few hundred small trees, are also the easiest to ship.</p>
+<p><strong>A graph neural network</strong> (<code>ridegraph/gnn.py</code>) works on the roads instead
+of on trip summaries, the approach DeepMind took for Google Maps. Every road
+segment starts with its own features (class, length, lights, junction size,
+position as sines and cosines), which are then averaged over the <em>line
+graph</em> (segments that lead into one another) for 1, 2, 4 and 8 hops. That
+is SIGN-style message passing, precomputed so it scales to all 127,000
+segments. A two-layer network reads each segment's representation and the
+time of day and predicts its slowdown; a trip's time is the sum of
+<code>router seconds x slowdown</code> over its segments plus learned waits for each
+turn and set of lights. It is written in numpy with hand-derived gradients
+(checked against finite differences in the tests) and trained with Adam.</p>
+<p>On held-out London trips it edges out the trees: 6.6% error against 6.8%,
+80% of trips within 10% against 78%. The trees still run in the browser,
+since the network needs the representation of every road (about 60 MB).
+The network's per-road slowdowns at 08:30 correlate at r = 0.60 with the
+hidden truth road by road, a harder test than the trees' area map below.</p>
+<p><strong>Traffic lights in OpenStreetMap</strong> are often tagged on each approach to a
+junction and on nearby crossings, about 10 points per km of central London
+route. Signal nodes within 60 m along a route therefore count as one set
+(about 4 per km), both in the simulation and in the model's features.</p>
+<p><strong>Arrival windows.</strong> A single number hides how much trips vary, so two more
+gradient-boosted models predict the 10th and 90th percentiles, and each trip
+gets a range such as "usually 25 to 36 min". Quantile models alone tend to be
+overconfident (77% coverage on London against an 80% target), so the window
+is calibrated with <strong>conformalized quantile regression</strong>: part of the
+training set is held back, the models' misses on it are measured, and the
+window is widened by exactly the margin that gives 80% coverage on new trips.
+On held-out London trips it lands at 81.0%, with misses split evenly above
+and below.</p>
+<p><strong>What the model learned.</strong> The hidden hotspots are never shown to the model,
+yet it should find them, since trips through them run slow. The map's
+<em>Learned slowdown</em> layer asks the model how far off the router a typical
+trip through each grid square would be at the chosen time, and shades the
+square accordingly. Against the hidden hotspot field this map correlates at
+r = 0.83 on London (0.91 on a synthetic grid): the model has located the
+congestion from trip outcomes alone.</p>
+<p><strong>How realistic is the simulated city?</strong> <code>python -m ridegraph validate</code>
+times random weekday trips (about 6 km) in it and sets the speeds beside
+published figures:</p>
+<table>
+<thead>
+<tr>
+<th>Weekday time</th>
+<th style="text-align: right;">Simulated trips</th>
+<th style="text-align: right;">Router's estimate</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>03:00</td>
+<td style="text-align: right;">20.9 km/h</td>
+<td style="text-align: right;">25.4 km/h</td>
+</tr>
+<tr>
+<td>08:00</td>
+<td style="text-align: right;">11.1 km/h</td>
+<td style="text-align: right;">16.2 km/h</td>
+</tr>
+<tr>
+<td>13:00</td>
+<td style="text-align: right;">13.7 km/h</td>
+<td style="text-align: right;">19.6 km/h</td>
+</tr>
+<tr>
+<td>17:30</td>
+<td style="text-align: right;">10.9 km/h</td>
+<td style="text-align: right;">16.8 km/h</td>
+</tr>
+</tbody>
+</table>
+<table>
+<thead>
+<tr>
+<th>Published figure</th>
+<th>Source</th>
+<th style="text-align: right;">Speed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>City of London, local A roads</td>
+<td>DfT 2022 (CGN0503d)</td>
+<td style="text-align: right;">12.4 km/h</td>
+</tr>
+<tr>
+<td>Camden, local A roads</td>
+<td>DfT 2022 (CGN0503d)</td>
+<td style="text-align: right;">13.0 km/h</td>
+</tr>
+<tr>
+<td>London city centre, all day</td>
+<td>TomTom Traffic Index 2023</td>
+<td style="text-align: right;">16.1 km/h</td>
+</tr>
+<tr>
+<td>London city centre, peak hours</td>
+<td>TomTom Traffic Index 2023</td>
+<td style="text-align: right;">13.7 km/h</td>
+</tr>
+</tbody>
+</table>
+<p>Midday in the simulated city (13.7 km/h) sits right among the official
+figures for the boroughs it covers, and the router's own daytime estimate
+(16 to 20 km/h) is close to TomTom's all-day figure, which is what a router
+that knows nothing about lights or queues should look like. The simulated
+rush hours run about 20% slower than TomTom's peak figure, so if anything
+the models are trained and tested on a harsher London than the real one.
+The definitions differ (DfT counts A roads only, TomTom whole trips in its
+own city-centre area), so these are a range to sit within, not a target to
+fit.</p>
+<p><strong>In the browser.</strong> The trees export to JSON, and <code>web/js/eta.js</code> computes the
+same features and walks the same trees. A test runs it under Node and
+requires its features and predictions to match Python's to nine decimal
+places.</p>
+<h2 id="8-travel-time-maps-and-delivery-rounds">8. Travel-time maps and delivery rounds<a class="headerlink" href="#8-travel-time-maps-and-delivery-rounds" title="Permanent link">&para;</a></h2>
+<p><strong>Travel-time maps</strong> (<code>ridegraph/reach.py</code>) answer "where can I get to in 20
+minutes from here?", or, for someone choosing where to live, "from where can
+I get <em>to</em> my office in 20 minutes?". It is a single-source search that
+settles junctions in time order and stops at the budget, run on the reverse
+graph for journeys into a point. Reachable area is counted over 250 m
+squares. From Holborn, 10 minutes reaches 12.2 km² at 08:00 against
+36.6 km² at 03:00: rush hour shrinks a 10-minute radius to a third.</p>
+<p><strong>Delivery rounds</strong> (<code>ridegraph/tour.py</code>) find the best order to visit a
+list of stops, the travelling salesman problem on one-way streets, where
+A to B and B to A take different times:</p>
+<ol>
+<li>One many-to-many Contraction Hierarchies query prices every stop against
+   every other at the chosen time of day.</li>
+<li><strong>Held-Karp</strong> dynamic programming finds the provably best order, instant
+   up to about a dozen stops.</li>
+<li>Nearest-next-stop construction plus <strong>2-opt and Or-opt</strong> improvement give
+   a fast heuristic for comparison and for larger jobs, re-costing whole
+   tours on each move because reversing a stretch of an asymmetric tour
+   changes its cost.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Eight drops from Holborn, midday, round trip</th>
+<th style="text-align: right;">Time</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>In the order entered</td>
+<td style="text-align: right;">2 h 07 min</td>
+</tr>
+<tr>
+<td>Nearest next stop</td>
+<td style="text-align: right;">1 h 20 min</td>
+</tr>
+<tr>
+<td>Nearest next stop + 2-opt/Or-opt</td>
+<td style="text-align: right;">1 h 05 min</td>
+</tr>
+<tr>
+<td><strong>Optimal (Held-Karp)</strong></td>
+<td style="text-align: right;"><strong>1 h 05 min</strong></td>
+</tr>
+</tbody>
+</table>
+<div class="highlight"><pre><span></span><code>python<span class="w"> </span>-m<span class="w"> </span>ridegraph<span class="w"> </span>reach<span class="w"> </span><span class="m">51</span>.5174,-0.1200<span class="w"> </span>--at<span class="w"> </span><span class="m">08</span>:00
+python<span class="w"> </span>-m<span class="w"> </span>ridegraph<span class="w"> </span>tour<span class="w"> </span><span class="m">51</span>.5174,-0.1200<span class="w"> </span><span class="m">51</span>.5308,-0.1238<span class="w"> </span><span class="m">51</span>.5033,-0.1145<span class="w"> </span>...
+</code></pre></div>
+<h2 id="9-ride-dispatch-and-demand-forecasting">9. Ride dispatch and demand forecasting<a class="headerlink" href="#9-ride-dispatch-and-demand-forecasting" title="Permanent link">&para;</a></h2>
+<p>Routing exists to answer a business question: which driver should take this
+ride? <code>ridegraph/dispatch.py</code> simulates a fleet over the 07:00 to 10:00
+morning peak and compares six ways of answering it, on exactly the same
+ride requests and the same starting fleet.</p>
+<p><strong>Demand</strong> (<code>ridegraph/demand.py</code>) comes from places with their own rhythm:
+main-line stations busy at commuting hours, the City and Holborn filling in
+the morning and emptying in the evening, Soho, Covent Garden and Shoreditch
+at night, plus requests from anywhere. Every day has its own level, its own
+surprises at each hotspot, and a couple of unannounced events (a match, a
+concert) that make one area surge for an hour or two.</p>
+<p><strong>Pricing every pairing at once.</strong> Every 30 seconds the dispatcher needs the
+pickup time from every free driver to every waiting rider. Running one
+query per pair would be hundreds of searches; bucket-based <strong>many-to-many
+Contraction Hierarchies</strong> do it with one small upward search per driver and
+per rider, then join them through buckets at the nodes they share.</p>
+<p><strong>The methods compared:</strong></p>
+<ul>
+<li><em>Nearest driver.</em> Riders, oldest first, each take the closest free driver.</li>
+<li><em>Optimal matching.</em> The <strong>Hungarian algorithm</strong> (<code>ridegraph/matching.py</code>)
+  assigns the whole batch at once to minimise total pickup time, with each
+  rider's cost reduced by how long they have already waited so that
+  hard-to-reach riders are not left until they give up.</li>
+<li><em>Optimal + repositioning.</em> Idle drivers also move towards neighbourhoods
+  where expected demand over the next 15 minutes most exceeds the drivers
+  already there, using either the historical average for that place and
+  time, or an <strong>ML demand forecast</strong>.</li>
+<li><em>+ shared rides.</em> The forecast method, and riders going the same way share
+  a car. A waiting rider can <strong>join a car already carrying one rider</strong>: the
+  car's position is the last junction it has reached on its route (every
+  prefix of a quickest route is itself quickest, so a binary search over CH
+  queries finds it), and every pickup and drop order is priced. Riders in
+  the same batch can also pair up from the start. Nobody is held up by more
+  than 40% of their own trip or six minutes, and the pairs that save most
+  driving go first.</li>
+<li><em>+ surge pricing.</em> The forecast method, and every two minutes each
+  neighbourhood gets a price multiplier from how far waiting and expected
+  riders outnumber nearby free drivers. Each rider accepts with probability
+  <code>exp(-(multiplier - 1))</code>, and idle drivers are drawn towards surging
+  areas. Surge here does not bring extra drivers online, so the comparison
+  isolates its rationing effect.</li>
+</ul>
+<p><strong>The forecast</strong> is a gradient-boosted Poisson model predicting ride requests
+per 500 m square for the next 15 minutes, from the time, the place and what
+has happened so far today (the last 15 minutes and the last hour, nearby
+and city-wide). On days it never saw:</p>
+<table>
+<thead>
+<tr>
+<th>Forecast</th>
+<th style="text-align: right;">Poisson deviance (lower is better)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Same as the last 15 minutes</td>
+<td style="text-align: right;">3.35</td>
+</tr>
+<tr>
+<td>Historical average for the time</td>
+<td style="text-align: right;">0.77</td>
+</tr>
+<tr>
+<td><strong>Gradient-boosted forecast</strong></td>
+<td style="text-align: right;"><strong>0.39</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Results</strong>, averaged over 6 simulated London mornings with 115 drivers:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th style="text-align: right;">Avg. wait</th>
+<th style="text-align: right;">90th pct. wait</th>
+<th style="text-align: right;">Pickup drive</th>
+<th style="text-align: right;">Gave up</th>
+<th style="text-align: right;">Empty driving per driver</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Nearest driver</td>
+<td style="text-align: right;">7.3 min</td>
+<td style="text-align: right;">13.3 min</td>
+<td style="text-align: right;">5.8 min</td>
+<td style="text-align: right;">5.9%</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr>
+<td>Optimal matching</td>
+<td style="text-align: right;">6.6 min</td>
+<td style="text-align: right;">12.1 min</td>
+<td style="text-align: right;">5.4 min</td>
+<td style="text-align: right;">6.2%</td>
+<td style="text-align: right;">0</td>
+</tr>
+<tr>
+<td>Optimal + historical-average repositioning</td>
+<td style="text-align: right;">6.2 min</td>
+<td style="text-align: right;">11.6 min</td>
+<td style="text-align: right;">5.1 min</td>
+<td style="text-align: right;">4.9%</td>
+<td style="text-align: right;">16 min</td>
+</tr>
+<tr>
+<td><strong>Optimal + ML-forecast repositioning</strong></td>
+<td style="text-align: right;"><strong>6.1 min</strong></td>
+<td style="text-align: right;"><strong>11.3 min</strong></td>
+<td style="text-align: right;"><strong>4.9 min</strong></td>
+<td style="text-align: right;">5.0%</td>
+<td style="text-align: right;"><strong>12 min</strong></td>
+</tr>
+<tr>
+<td>+ shared rides</td>
+<td style="text-align: right;">5.1 min</td>
+<td style="text-align: right;">9.6 min</td>
+<td style="text-align: right;">4.4 min</td>
+<td style="text-align: right;">1.4%</td>
+<td style="text-align: right;">14 min</td>
+</tr>
+<tr>
+<td>+ surge pricing</td>
+<td style="text-align: right;">5.2 min</td>
+<td style="text-align: right;">9.6 min</td>
+<td style="text-align: right;">4.7 min</td>
+<td style="text-align: right;">0.3%</td>
+<td style="text-align: right;">14 min</td>
+</tr>
+</tbody>
+</table>
+<p>Optimal matching alone cuts waits by about 10%, and repositioning ahead of
+demand brings the total to 16%. The ML forecast halves the forecasting error
+of the historical average, but in this dispatch loop that shows up mainly as
+efficiency: it reaches the best waits while sending drivers on about a
+quarter less empty repositioning, because it moves them only where demand is
+actually building today. Better forecasts do not automatically mean
+proportionally better decisions; the repositioning rule is where the next
+gains would come from.</p>
+<p>The two product levers pull in opposite directions:</p>
+<table>
+<thead>
+<tr>
+<th>On top of the ML-forecast method</th>
+<th style="text-align: right;">Riders served</th>
+<th style="text-align: right;">Shared</th>
+<th style="text-align: right;">Priced out</th>
+<th style="text-align: right;">Fleet driving per ride served</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Neither</td>
+<td style="text-align: right;">95.0%</td>
+<td style="text-align: right;">none</td>
+<td style="text-align: right;">none</td>
+<td style="text-align: right;">25.7 min</td>
+</tr>
+<tr>
+<td><strong>Shared rides</strong></td>
+<td style="text-align: right;"><strong>98.6%</strong></td>
+<td style="text-align: right;">46% of rides</td>
+<td style="text-align: right;">none</td>
+<td style="text-align: right;"><strong>22.1 min</strong></td>
+</tr>
+<tr>
+<td>Surge pricing</td>
+<td style="text-align: right;">91.3%</td>
+<td style="text-align: right;">none</td>
+<td style="text-align: right;">8.5%</td>
+<td style="text-align: right;">25.8 min</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Shared rides</strong> serve more people with less driving: 46% of rides are
+shared, waits fall by 16%, those who give up drop from 5.0% to 1.4%, and the
+fleet drives 14% less per rider served. The price is 2.1 extra minutes in
+the car for a shared rider. <strong>Surge pricing</strong> also shortens waits (5.2 min,
+almost nobody gives up), but by turning riders away: 8.5% decline the
+price, so fewer riders are served than with no surge at all. Without the
+extra drivers a higher price draws in, surge only rations a fixed fleet.
+That is the honest reading of the simulation, and the reason real
+platforms justify surge by its effect on supply.</p>
+<h2 id="10-the-live-map">10. The live map<a class="headerlink" href="#10-the-live-map" title="Permanent link">&para;</a></h2>
+<p>The demo in <code>web/</code> runs entirely in the browser, with no server:</p>
+<ul>
+<li><strong>Same data, same answers.</strong> <code>python -m ridegraph export-web</code> writes the
+  graph and one Contraction Hierarchy per time-of-day preset as compact,
+  gzipped binary arrays. <code>web/js/engine.js</code> is a direct port of the
+  algorithms, and a test runs it under Node and requires exact agreement
+  with the Python router on every preset.</li>
+<li><strong>The map is the graph.</strong> Rather than a tile server's picture of London,
+  the page draws the very network being searched, styled like a street
+  atlas: roads coloured by class, the Thames, and a lettered grid so routes
+  read as "5C to 9I".</li>
+<li><strong>Search you can see.</strong> Every settled junction lights up its streets in
+  the colour of the side that reached it, so Dijkstra visibly floods the
+  city while Contraction Hierarchies touches a few hundred junctions
+  scattered up the road hierarchy. All five methods (Customizable CH
+  included) run on every trip, with junctions examined and query time side
+  by side.</li>
+<li><strong>Routes, charges and closures.</strong> Each trip lists the quickest route and
+  up to two alternatives with their times and whether they enter the
+  Congestion Charge zone, which is drawn on the map; a switch adds the
+  quickest route that stays out. <em>Live roadworks and closures</em> asks TfL's
+  feed directly, draws the closed streets and re-customises the
+  hierarchy, while plain CH steps aside because its shortcuts are stale.</li>
+<li><strong>Turn costs on demand.</strong> A switch charges for turns and traffic lights.
+  The browser rebuilds the edge-expanded turn graph from per-manoeuvre turn
+  kinds in the export, numbered exactly as the Python one, and the trip
+  summary lists the right and left turns, U-turns and lights on the route.
+  Contraction Hierarchies are switched off in this mode: an edge-based
+  hierarchy for London would add around 20 MB per time of day, so turn-aware
+  hierarchies live in the Python tool instead.</li>
+<li><strong>Learned ETA beside the router's.</strong> Every trip shows both estimates and a
+  calibrated arrival window; a model card gives each model's error on
+  held-out trips and the features the model leans on, and a map layer shades
+  the city by the slowdown the model learned for the chosen time.</li>
+<li><strong>Four modes.</strong> <em>Plan a route</em>, <em>Travel-time map</em> (click anywhere; leaving
+  or arriving; each band compared with 3am), <em>Deliveries</em> (click to add up
+  to 12 stops; every ordering method compared, the best drawn and
+  numbered) and <em>Dispatch rides</em>. The browser runs the same algorithms as
+  Python, held to them by Node tests.</li>
+<li><strong>Dispatch you can watch.</strong> A <em>Dispatch rides</em> mode replays a simulated
+  morning: cars coloured by what they are doing (orange when carrying two
+  riders) move along their real routes, riders wait and are collected, surge
+  squares show their multipliers, and every method's running averages update
+  side by side. Only the decisions are stored; the browser
+  rebuilds every route with the same hierarchy, and a test holds each leg to
+  the duration the simulation recorded.</li>
+<li><strong>Built and deployed by CI.</strong> On each push, a workflow downloads central
+  London from OpenStreetMap (cached between runs), snapshots TfL's
+  disruptions, builds the graph, contracts it for each preset, trains the
+  ETA models, simulates dispatch and publishes <code>web/</code> to GitHub Pages.</li>
+</ul>
+<h2 id="11-an-http-api">11. An HTTP API<a class="headerlink" href="#11-an-http-api" title="Permanent link">&para;</a></h2>
+<p>The map needs no server, but a product would. <code>ridegraph/api.py</code> serves the
+engine as a FastAPI application with OpenAPI docs at <code>/docs</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Answers</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /route?from=lat,lon&amp;to=lat,lon&amp;at=08:15</code></td>
+<td>The quickest route as GeoJSON, with distance, Congestion Charge and the learned ETA with its arrival window; <code>alternatives=2</code> and <code>avoid_charge=true</code> add more routes</td>
+</tr>
+<tr>
+<td><code>GET /reach?from=lat,lon&amp;minutes=10,20,30&amp;arriving=false</code></td>
+<td>Area reachable within each time</td>
+</tr>
+<tr>
+<td><code>POST /tour</code></td>
+<td>Best visiting order for up to 13 stops, every method compared</td>
+</tr>
+<tr>
+<td><code>GET /health</code></td>
+<td>What is loaded</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Any minute of the day.</strong> The browser offers four preset times because each
+plain hierarchy is built for one set of travel times. The API answers for
+any time by keeping one Customizable CH and loading each quarter-hour's
+times into it on first use (tens of milliseconds), with recent quarter-hours
+cached, including the plain-list views the search loop reads.</p>
+<p><strong>Measured</strong> with <code>scripts/loadtest.py</code> on central London, one worker, on a
+2-vCPU machine that also ran the load generator: <strong>14 ms</strong> median and 21 ms
+95th-percentile latency for a route with its learned ETA, about <strong>70
+requests a second</strong> per worker, no errors over 2,000 random requests spread
+over six quarter-hours. Start-up, including building the hierarchy, takes 9 s.
+More throughput is more workers.</p>
+<div class="highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">".[api,ml]"</span>
+python<span class="w"> </span>-m<span class="w"> </span>ridegraph<span class="w"> </span>serve<span class="w"> </span>--eta-model<span class="w"> </span>web/data/eta-model.json
+curl<span class="w"> </span><span class="s2">"http://127.0.0.1:8000/route?from=51.5154,-0.1410&amp;to=51.5033,-0.1145&amp;at=08:15"</span>
+
+docker<span class="w"> </span>build<span class="w"> </span>-t<span class="w"> </span>ridegraph<span class="w"> </span>.<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>docker<span class="w"> </span>run<span class="w"> </span>-p<span class="w"> </span><span class="m">8000</span>:8000<span class="w"> </span>ridegraph
+</code></pre></div>
+<p>A CI workflow builds the image and checks the running container answers.</p>
+<h2 id="12-what-the-london-numbers-show">12. What the London numbers show<a class="headerlink" href="#12-what-the-london-numbers-show" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Contraction Hierarchies work because real roads are hierarchical.</strong> On a
+  uniform synthetic grid the reduction in search work is 24x; on London it
+  is 389x, with preprocessing adding fewer shortcuts (121k) than the map has
+  road segments. Main roads naturally end up at the top of the ranking.</li>
+<li><strong>A* barely helps in a city.</strong> Its estimate assumes the fastest road
+  speed in a straight line, but London's average route speed is about half
+  of that, so the search still covers a wide ellipse. This is why production
+  engines rely on preprocessing rather than on geometric heuristics.</li>
+<li><strong>Bidirectional search halves the work in theory but not the time in
+  Python</strong>, because juggling two frontiers costs interpreter overhead that
+  eats most of the saving.</li>
+</ul>
+<h2 id="13-measuring-fairly">13. Measuring fairly<a class="headerlink" href="#13-measuring-fairly" title="Permanent link">&para;</a></h2>
+<p>Benchmarks report <strong>nodes settled</strong> alongside wall-clock time. Settled nodes
+measure the work each algorithm does, independent of language; Python
+timings mostly measure interpreter overhead per node, which is why
+Contraction Hierarchies' 24x reduction in work shows up as a smaller time
+gain here. Every benchmark query is also cross-checked against Dijkstra, so a
+benchmark run doubles as a correctness check.</p>
+<p><strong>Against OSRM.</strong> Agreeing with Dijkstra proves the searches are right, but
+they all share this package's map parsing and speed model. OSRM shares
+neither: it parses OpenStreetMap with its own C++ code and routes with
+Multi-Level Dijkstra. The <em>Compare with OSRM</em> workflow (<code>ridegraph/osrm.py</code>)
+gives OSRM v5.27 the ways this package treats as drivable, loads ridegraph's
+free-flow speed for every one of the 127,286 road segments as a <em>segment
+speed file</em>, switches off OSRM's turn and traffic-light penalties (the
+free-flow router has none) and asks both engines the same 1,000 random
+trips:</p>
+<table>
+<thead>
+<tr>
+<th>ridegraph vs OSRM, 1,000 random central London trips</th>
+<th style="text-align: right;"></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Travel time within 1% of OSRM's</td>
+<td style="text-align: right;">83.7%</td>
+</tr>
+<tr>
+<td>Travel time within 5% of OSRM's</td>
+<td style="text-align: right;">96.9%</td>
+</tr>
+<tr>
+<td>Median time difference</td>
+<td style="text-align: right;">0.23%</td>
+</tr>
+<tr>
+<td>Same route (95%+ of junctions shared)</td>
+<td style="text-align: right;">75.0%</td>
+</tr>
+<tr>
+<td>Median share of junctions in common</td>
+<td style="text-align: right;">99.7%</td>
+</tr>
+<tr>
+<td>Median query, ridegraph CH in Python</td>
+<td style="text-align: right;">1.02 ms</td>
+</tr>
+<tr>
+<td>Median query, OSRM over local HTTP</td>
+<td style="text-align: right;">1.56 ms</td>
+</tr>
+</tbody>
+</table>
+<p>What remains comes from the parts that are genuinely independent. OSRM
+snaps a coordinate to the nearest point on a road rather than to a
+junction, stores each segment's time in tenths of a second, and applies its
+own rules about which ways a car may use. Where the routes differ but the
+times agree, the two engines have found different routes that are equally
+quick. The query times are not a like-for-like contest (OSRM's include an
+HTTP round trip), but they show the Python hierarchy is in the same league
+as a production C++ engine on a city of this size.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Code MIT. Road data © OpenStreetMap contributors. Disruptions powered by TfL Open Data.
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.top", "content.code.copy", "search.highlight"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+    
+  </body>
+</html>

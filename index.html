@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ridegraph · Routing, arrival times and ride dispatch</title>
+    <meta
+      name="description"
+      content="Click two points in London, Nicosia or Manhattan and watch Dijkstra, A*, bidirectional search and Contraction Hierarchies find the quickest route through rush-hour traffic."
+    />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23111'/%3E%3Cpath d='M7 25 L14 12 L19 18 L25 7' stroke='%23fff' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;800&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    />
+    <link rel="stylesheet" href="css/app.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <aside class="cover" aria-label="Route controls">
+        <header class="masthead">
+          <h1 class="wordmark">ridegraph</h1>
+          <p class="place" id="place">Loading…</p>
+          <nav class="cities" id="cities" aria-label="City" hidden></nav>
+          <p class="lede">
+            Uber-style routing, arrival times and ride dispatch on real city roads,
+            running entirely in your browser.
+          </p>
+          <div class="modes" role="tablist" aria-label="Mode">
+            <button type="button" role="tab" id="mode-route" aria-selected="true">Plan a route</button>
+            <button type="button" role="tab" id="mode-reach" aria-selected="false">Travel-time map</button>
+            <button type="button" role="tab" id="mode-tour" aria-selected="false">Deliveries</button>
+            <button type="button" role="tab" id="mode-dispatch" aria-selected="false" hidden>Dispatch rides</button>
+          </div>
+        </header>
+
+        <div class="mode-panel" id="route-panel">
+
+        <section class="trip" aria-live="polite" aria-atomic="true">
+          <p class="trip-eta" id="eta">Loading map…</p>
+          <p class="trip-meta" id="trip-meta">&nbsp;</p>
+          <p class="trip-learned" id="learned" hidden>
+            <span class="learned-label">Road time</span>
+            <b id="learned-eta"></b>
+            <span class="learned-delta" id="learned-delta"></span>
+          </p>
+        </section>
+
+        <fieldset class="group" id="routes-group">
+          <legend>
+            Routes
+            <span class="legend-note" id="routes-note">different ways to go</span>
+          </legend>
+          <div class="methods" id="routes"></div>
+          <label class="switch">
+            <input type="checkbox" id="avoid-zone" />
+            <span class="switch-track" aria-hidden="true"></span>
+            <span class="switch-text">
+              Avoid the Congestion Charge zone
+              <small id="charge-terms">Central London, charged on weekdays in the day.</small>
+            </span>
+          </label>
+        </fieldset>
+
+        <fieldset class="group">
+          <legend>Time of day</legend>
+          <div class="presets" id="presets"></div>
+          <label class="switch">
+            <input type="checkbox" id="turns" />
+            <span class="switch-track" aria-hidden="true"></span>
+            <span class="switch-text">
+              Charge for turns and traffic lights
+              <small>Right turns wait for oncoming traffic; lights add an average wait.</small>
+            </span>
+          </label>
+          <label class="switch" id="live-switch" hidden>
+            <input type="checkbox" id="live" />
+            <span class="switch-track" aria-hidden="true"></span>
+            <span class="switch-text">
+              Live roadworks and closures
+              <small id="live-status">From Transport for London's open data feed.</small>
+            </span>
+          </label>
+        </fieldset>
+
+        <fieldset class="group">
+          <legend>
+            Search method
+            <span class="legend-note" id="effort-label">junctions examined</span>
+          </legend>
+          <div class="methods" id="methods"></div>
+          <p class="method-note" id="method-note"></p>
+          <button type="button" class="replay" id="replay" disabled>Replay search</button>
+        </fieldset>
+
+        <details class="model-card" id="model-card" hidden>
+          <summary>How the learned ETA works</summary>
+          <p>
+            The router's estimate only knows modelled road speeds. A gradient-boosted model, trained
+            on <span id="model-trips"></span> simulated trips through a city that hides hotspots, a
+            later rush hour and real waits at turns and lights, learns how far off the router is
+            from the route's shape, its turns and the time.
+          </p>
+          <table class="model-table">
+            <thead>
+              <tr><th>On trips it never saw</th><th>Avg. error</th><th>Within 10%</th></tr>
+            </thead>
+            <tbody id="model-metrics"></tbody>
+          </table>
+          <p class="model-features">Leans most on: <span id="model-features"></span>.</p>
+          <p>
+            The graph neural network learns a slowdown for every road from its place in the network.
+            It is a little more accurate, but it needs every road's learned representation, so the
+            map runs the trees.
+          </p>
+        </details>
+        </div>
+
+        <div class="mode-panel" id="reach-panel" hidden>
+          <section class="trip" aria-live="polite">
+            <p class="trip-eta" id="reach-area">–</p>
+            <p class="trip-meta" id="reach-meta">&nbsp;</p>
+          </section>
+
+          <fieldset class="group">
+            <legend>Journeys</legend>
+            <div class="presets" id="reach-direction">
+              <label class="preset"><input type="radio" name="reach-direction" value="leave" checked /><span>Leaving here</span></label>
+              <label class="preset"><input type="radio" name="reach-direction" value="arrive" /><span>Arriving here</span></label>
+            </div>
+          </fieldset>
+
+          <fieldset class="group">
+            <legend>Time of day</legend>
+            <div class="presets" id="reach-presets"></div>
+          </fieldset>
+
+          <fieldset class="group">
+            <legend>
+              Within
+              <span class="legend-note" id="reach-compare-label">area now, and at 03:00</span>
+            </legend>
+            <div class="methods" id="reach-bands"></div>
+            <p class="method-note">
+              Click anywhere on the map to measure from there. Flat hunting? Choose <em>Arriving here</em>
+              and click your office.
+            </p>
+          </fieldset>
+        </div>
+
+        <div class="mode-panel" id="tour-panel" hidden>
+          <section class="trip" aria-live="polite">
+            <p class="trip-eta" id="tour-total">–</p>
+            <p class="trip-meta" id="tour-meta">&nbsp;</p>
+          </section>
+
+          <fieldset class="group">
+            <legend>
+              Stops
+              <span class="legend-note">click the map to add, up to 12</span>
+            </legend>
+            <ol class="stops" id="tour-stops"></ol>
+            <button type="button" class="link-button" id="tour-clear">Clear all stops</button>
+            <label class="switch">
+              <input type="checkbox" id="tour-return" checked />
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="switch-text">
+                Return to the depot
+                <small>Turn off when the route can end at the last drop.</small>
+              </span>
+            </label>
+          </fieldset>
+
+          <fieldset class="group">
+            <legend>Time of day</legend>
+            <div class="presets" id="tour-presets"></div>
+          </fieldset>
+
+          <fieldset class="group">
+            <legend>
+              Visiting order
+              <span class="legend-note">total time</span>
+            </legend>
+            <div class="methods" id="tour-methods"></div>
+            <p class="method-note">
+              The exact method checks every possible order in a fraction of a second for up to a dozen
+              stops; the improved method gets there too on most jobs and scales to larger ones.
+            </p>
+          </fieldset>
+        </div>
+
+        <div class="mode-panel" id="dispatch-panel" hidden>
+          <section class="trip">
+            <p class="trip-eta" id="clock">07:00</p>
+            <p class="trip-meta" id="dispatch-meta">&nbsp;</p>
+            <div class="playback">
+              <button type="button" class="play" id="play" aria-label="Pause">Pause</button>
+              <input type="range" id="scrub" min="0" max="10800" step="10" value="0" aria-label="Time in the simulated morning" />
+            </div>
+            <div class="speeds" id="speeds" role="radiogroup" aria-label="Replay speed"></div>
+          </section>
+
+          <fieldset class="group">
+            <legend>
+              Dispatch method
+              <span class="legend-note">average wait so far</span>
+            </legend>
+            <div class="methods" id="policies"></div>
+            <p class="method-note" id="policy-note"></p>
+          </fieldset>
+
+          <details class="model-card" id="dispatch-card">
+            <summary>Results over <span id="dispatch-days"></span></summary>
+            <p>
+              The same ride requests and the same starting fleet for every method. Waits run from
+              request to pickup; a rider gives up after ten minutes without a driver. Not served
+              counts riders who gave up or, with surge pricing, declined the price. Driving per ride
+              is the fleet's total driving, empty or not, divided by riders served.
+            </p>
+            <table class="model-table">
+              <thead>
+                <tr><th>Method</th><th>Avg. wait</th><th>Not served</th><th>Driving per ride</th></tr>
+              </thead>
+              <tbody id="dispatch-summary"></tbody>
+            </table>
+            <p>
+              The demand forecast predicts ride requests per 500 m square for the next 15 minutes from
+              what has happened so far today. On days it never saw:
+            </p>
+            <table class="model-table">
+              <thead>
+                <tr><th>Forecast</th><th>Poisson deviance</th></tr>
+              </thead>
+              <tbody id="forecast-summary"></tbody>
+            </table>
+          </details>
+        </div>
+
+        <footer class="colophon">
+          <p>
+            Traffic is a modelled weekday pattern; closures are live when switched on.
+            <span id="city-notes"></span> Road data ©
+            <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors.
+            London disruptions powered by <a href="https://tfl.gov.uk/info-for/open-data-users/">TfL Open Data</a>.
+          </p>
+          <p>
+            <a href="docs/">Documentation</a> ·
+            <a href="https://github.com/ayqon/ridegraph">Code and benchmarks</a>
+          </p>
+        </footer>
+      </aside>
+
+      <section class="atlas" aria-label="Map">
+        <canvas class="ruler ruler-top" id="ruler-top" aria-hidden="true"></canvas>
+        <canvas class="ruler ruler-left" id="ruler-left" aria-hidden="true"></canvas>
+        <div class="corner" aria-hidden="true"></div>
+        <div class="sheet" id="sheet">
+          <button type="button" class="pin pin-a" id="pin-a" aria-label="Start point A. Use arrow keys to move." hidden>A</button>
+          <button type="button" class="pin pin-b" id="pin-b" aria-label="Destination B. Use arrow keys to move." hidden>B</button>
+          <div class="zoom">
+            <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
+            <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
+          </div>
+          <button type="button" class="layer-toggle" id="heat-toggle" aria-pressed="false" hidden>
+            Learned slowdown
+          </button>
+          <p class="hint" id="hint">Click to place A, then B. Drag a pin to move it.</p>
+          <div class="key" id="key-reach" aria-label="Map key" hidden>
+            <span><i class="sw" style="background: #1b3a8c"></i>Within 10 min</span>
+            <span><i class="sw" style="background: #4f72c4"></i>Within 20 min</span>
+            <span><i class="sw" style="background: #a2b8e6"></i>Within 30 min</span>
+          </div>
+          <div class="key" id="key-tour" aria-label="Map key" hidden>
+            <span><i class="car" style="background: #111111"></i>Depot</span>
+            <span><i class="car car-idle"></i>Stop, numbered in visiting order</span>
+            <span><i class="sw sw-route"></i>Best route</span>
+          </div>
+          <div class="key key-dispatch" id="key-dispatch" aria-label="Map key" hidden>
+            <span><i class="car car-idle"></i>Free</span>
+            <span><i class="car car-pickup"></i>Heading to a rider</span>
+            <span><i class="car car-trip"></i>With a rider</span>
+            <span><i class="car car-shared"></i>Two riders</span>
+            <span><i class="car car-reposition"></i>Repositioning</span>
+            <span><i class="rider"></i>Rider waiting</span>
+            <span id="key-surge" hidden><i class="sw sw-surge"></i>Surge price</span>
+          </div>
+          <div class="key" id="key-route" aria-label="Map key">
+            <span><i class="sw sw-route"></i>Chosen route</span>
+            <span><i class="sw sw-trunk"></i>Trunk road</span>
+            <span><i class="sw sw-primary"></i>A road</span>
+            <span><i class="sw sw-secondary"></i>B road</span>
+            <span><i class="dot dot-f"></i>Searched from A</span>
+            <span><i class="dot dot-b"></i>Searched from B</span>
+            <span><i class="sw sw-alt"></i>Other routes</span>
+            <span><i class="sw sw-zone"></i>Congestion Charge zone</span>
+            <span id="key-closed" hidden><i class="sw sw-closed"></i>Closed</span>
+            <span id="key-slow" hidden><i class="sw sw-slow"></i>Slowed by roadworks</span>
+            <span class="key-heat" id="key-heat" hidden>
+              <i class="ramp"></i><span id="heat-range"></span>
+            </span>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

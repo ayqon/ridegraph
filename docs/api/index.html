@@ -1,0 +1,5771 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Routing, arrival-time prediction and ride dispatch on real city road networks, written from scratch.">
+      
+      
+      
+        <link rel="canonical" href="https://ridegraph.dev/docs/api/">
+      
+      
+        <link rel="prev" href="../cli/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.0">
+    
+    
+      
+        <title>Python API - Ridegraph</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="grey">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#python-api" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Ridegraph" class="md-header__button md-logo" aria-label="Ridegraph" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Ridegraph
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Python API
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="grey"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="grey"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/ayqon/ridegraph" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ayqon/ridegraph
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Ridegraph" class="md-nav__button md-logo" aria-label="Ridegraph" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Ridegraph
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/ayqon/ridegraph" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    ayqon/ridegraph
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-it-works/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How it works
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../decisions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design decisions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../road-rules/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Road rules
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../writeup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Results
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../http-api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    HTTP API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Command line
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        graph
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="graph">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.RoadNetwork" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RoadNetwork
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.Graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Graph
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Graph">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.Graph.out_edges" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        out_edges
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.Graph.nearest_node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        nearest_node
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.Graph.edge_between" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        edge_between
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.OffNetworkError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OffNetworkError
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.haversine_m" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        haversine_m
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.csr_sorted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        csr_sorted
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.free_flow_speeds_kph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        free_flow_speeds_kph
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.free_flow_cost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        free_flow_cost
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.snap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        snap
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.dijkstra" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dijkstra
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="dijkstra">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.dijkstra.dijkstra" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dijkstra
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.dijkstra.one_to_all" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        one_to_all
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.ch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ch
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ch">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.ch--idea" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Idea
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.ch--implementation-choices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation choices
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.ch.ContractionHierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ContractionHierarchy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ContractionHierarchy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.ch.ContractionHierarchy.query" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        query
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.ch.ContractionHierarchy.upward_search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        upward_search
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.ch.ContractionHierarchy.target_buckets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        target_buckets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.ch.ContractionHierarchy.many_to_many" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        many_to_many
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.ch.ContractionHierarchy.unpack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        unpack
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.cch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cch
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="cch">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.cch.CustomizableCH" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CustomizableCH
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CustomizableCH">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.cch.CustomizableCH.customize" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        customize
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.cch.CustomizableCH.query" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        query
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.cch.nested_dissection_order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        nested_dissection_order
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.router" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        router
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="router">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.router.Scenario" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scenario
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scenario">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.router.Scenario.file_tag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        file_tag
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.router.Trip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trip
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.router.Router" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Router
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Router">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.router.Router.nearest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        nearest
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.router.Router.search_nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        search_nodes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.router.Router.trip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        trip
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.alternatives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        alternatives
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="alternatives">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.alternatives.shortest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        shortest
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.alternatives.zone_weights" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        zone_weights
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.alternatives.is_locally_sensible" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        is_locally_sensible
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.alternatives.alternatives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        alternatives
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        live
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="live">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.live.fetch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fetch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.live.parse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        parse
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.live.match" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        match
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.reach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reach
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="reach">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.reach.times_within" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        times_within
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.tour" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tour
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="tour">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.tour.improve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        improve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.tour.held_karp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        held_karp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.tour.plan_matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        plan_matrix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.tour.plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        plan
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.matching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        matching
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="matching">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.matching.hungarian" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hungarian
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.matching.optimal_matches" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        optimal_matches
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.matching.greedy_matches" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        greedy_matches
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.eta" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        eta
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="eta">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.RouteContext" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RouteContext
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="RouteContext">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.RouteContext.edge_times" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        edge_times
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.RouteContext.path_edges" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        path_edges
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.RouteContext.turns_along" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        turns_along
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.RouteContext.light_sets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        light_sets
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.World" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        World
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="World">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.World.field_at" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        field_at
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.class_group" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        class_group
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.simulate_trips" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        simulate_trips
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.export_trees" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        export_trees
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.predict_from_json" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        predict_from_json
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.train" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        train
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.gnn_hotspot_correlation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gnn_hotspot_correlation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.slowdown_at" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        slowdown_at
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.learned_hotspot_correlation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        learned_hotspot_correlation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.conformal_margin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        conformal_margin
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.interval_metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        interval_metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.gnn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gnn
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="gnn">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.gnn.TripBatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TripBatch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.gnn.SegmentGNN" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SegmentGNN
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SegmentGNN">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.gnn.SegmentGNN.segment_log_slowdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        segment_log_slowdown
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.gnn.segment_features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        segment_features
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.gnn.line_graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        line_graph
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.gnn.propagate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        propagate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.gnn.batch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        batch
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.osrm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        osrm
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="osrm">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.osrm.write_osm_xml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        write_osm_xml
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.osrm.write_segment_speeds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        write_segment_speeds
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.osrm.osrm_route" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        osrm_route
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.osrm.compare" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        compare
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="validation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.validation.simulated_speeds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        simulated_speeds
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        api
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="api">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.api.RoutingService" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RoutingService
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.api.TourRequest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TourRequest
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.api.create_app" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        create_app
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.api.app_from_env" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        app_from_env
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://ridegraph.dev/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Live map
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        graph
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="graph">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.RoadNetwork" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RoadNetwork
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.Graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Graph
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Graph">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.Graph.out_edges" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        out_edges
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.Graph.nearest_node" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        nearest_node
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.Graph.edge_between" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        edge_between
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.OffNetworkError" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OffNetworkError
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.haversine_m" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        haversine_m
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.csr_sorted" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        csr_sorted
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.free_flow_speeds_kph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        free_flow_speeds_kph
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.free_flow_cost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        free_flow_cost
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.graph.snap" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        snap
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.dijkstra" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dijkstra
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="dijkstra">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.dijkstra.dijkstra" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dijkstra
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.dijkstra.one_to_all" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        one_to_all
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.ch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ch
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ch">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.ch--idea" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Idea
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.ch--implementation-choices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation choices
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.ch.ContractionHierarchy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ContractionHierarchy
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ContractionHierarchy">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.ch.ContractionHierarchy.query" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        query
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.ch.ContractionHierarchy.upward_search" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        upward_search
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.ch.ContractionHierarchy.target_buckets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        target_buckets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.ch.ContractionHierarchy.many_to_many" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        many_to_many
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.ch.ContractionHierarchy.unpack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        unpack
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.cch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cch
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="cch">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.cch.CustomizableCH" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CustomizableCH
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CustomizableCH">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.cch.CustomizableCH.customize" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        customize
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.cch.CustomizableCH.query" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        query
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.cch.nested_dissection_order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        nested_dissection_order
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.router" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        router
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="router">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.router.Scenario" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scenario
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Scenario">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.router.Scenario.file_tag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        file_tag
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.router.Trip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Trip
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.router.Router" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Router
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Router">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.router.Router.nearest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        nearest
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.router.Router.search_nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        search_nodes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.router.Router.trip" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        trip
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.alternatives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        alternatives
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="alternatives">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.alternatives.shortest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        shortest
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.alternatives.zone_weights" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        zone_weights
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.alternatives.is_locally_sensible" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        is_locally_sensible
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.alternatives.alternatives" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        alternatives
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.live" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        live
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="live">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.live.fetch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fetch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.live.parse" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        parse
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.live.match" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        match
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.reach" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        reach
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="reach">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.reach.times_within" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        times_within
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.tour" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tour
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="tour">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.tour.improve" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        improve
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.tour.held_karp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        held_karp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.tour.plan_matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        plan_matrix
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.tour.plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        plan
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.matching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        matching
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="matching">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.matching.hungarian" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hungarian
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.matching.optimal_matches" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        optimal_matches
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.matching.greedy_matches" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        greedy_matches
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.eta" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        eta
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="eta">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.RouteContext" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RouteContext
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="RouteContext">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.RouteContext.edge_times" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        edge_times
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.RouteContext.path_edges" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        path_edges
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.RouteContext.turns_along" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        turns_along
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.RouteContext.light_sets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        light_sets
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.World" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        World
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="World">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.World.field_at" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        field_at
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.class_group" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        class_group
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.simulate_trips" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        simulate_trips
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.export_trees" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        export_trees
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.predict_from_json" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        predict_from_json
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.train" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        train
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.gnn_hotspot_correlation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gnn_hotspot_correlation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.slowdown_at" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        slowdown_at
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.learned_hotspot_correlation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        learned_hotspot_correlation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.conformal_margin" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        conformal_margin
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.eta.interval_metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        interval_metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.gnn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        gnn
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="gnn">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.gnn.TripBatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TripBatch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.gnn.SegmentGNN" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        SegmentGNN
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="SegmentGNN">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.gnn.SegmentGNN.segment_log_slowdown" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        segment_log_slowdown
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.gnn.segment_features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        segment_features
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.gnn.line_graph" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        line_graph
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.gnn.propagate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        propagate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.gnn.batch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        batch
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.osrm" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        osrm
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="osrm">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.osrm.write_osm_xml" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        write_osm_xml
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.osrm.write_segment_speeds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        write_segment_speeds
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.osrm.osrm_route" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        osrm_route
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.osrm.compare" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        compare
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="validation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.validation.simulated_speeds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        simulated_speeds
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ridegraph.api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        api
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="api">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.api.RoutingService" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RoutingService
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.api.TourRequest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TourRequest
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.api.create_app" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        create_app
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ridegraph.api.app_from_env" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        app_from_env
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="python-api">Python API<a class="headerlink" href="#python-api" title="Permanent link">&para;</a></h1>
+<p>The modules most worth reading, with their public functions and classes.
+Generated from the docstrings.</p>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="ridegraph.graph" class="doc doc-heading">
+            <code>ridegraph.graph</code>
+
+
+<a href="#ridegraph.graph" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>Road network storage and the weighted routing graph built from it.</p>
+<p>Two layers, kept separate on purpose:</p>
+<ul>
+<li><code>RoadNetwork</code> is the raw map: where nodes are, which segments join them,
+  how long each segment is and what kind of road it is. It is what the data
+  pipeline produces and what gets saved to disk.</li>
+<li><code>Graph</code> is what algorithms run on: a compact directed graph whose edge
+  weights are travel times. Changing the cost model (traffic, time of day)
+  means building a new <code>Graph</code> from the same <code>RoadNetwork</code>.</li>
+</ul>
+<p>Edges are stored in CSR (compressed sparse row) form: all outgoing edges of
+node <code>u</code> live in <code>head[first_out[u]:first_out[u + 1]]</code>. It is the layout
+production routing engines use, being cache friendly and trivially serialised.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="ridegraph.graph.RoadNetwork" class="doc doc-heading">
+            <code>RoadNetwork</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#ridegraph.graph.RoadNetwork" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>Raw directed road segments, before any cost model is applied.</p>
+<p>Two-way streets appear as two edges, one per direction.
+<code>maxspeed_kph</code> is NaN where OSM has no usable limit. <code>traffic_signals</code>
+marks nodes with lights; networks saved before it existed load as all-False.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="ridegraph.graph.Graph" class="doc doc-heading">
+            <code>Graph</code>
+
+
+<a href="#ridegraph.graph.Graph" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>Directed graph in CSR form with travel-time weights in seconds.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ridegraph.graph.Graph.out_edges" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">out_edges</span><span class="p">(</span><span class="n">u</span><span class="p">)</span></code>
+
+<a href="#ridegraph.graph.Graph.out_edges" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Yield <code>(neighbour, seconds)</code> for each edge leaving <code>u</code>.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ridegraph.graph.Graph.nearest_node" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">nearest_node</span><span class="p">(</span><span class="n">lat</span><span class="p">,</span> <span class="n">lon</span><span class="p">)</span></code>
+
+<a href="#ridegraph.graph.Graph.nearest_node" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Index of the node closest to a coordinate (equirectangular, fine at city scale).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ridegraph.graph.Graph.edge_between" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">edge_between</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">v</span><span class="p">)</span></code>
+
+<a href="#ridegraph.graph.Graph.edge_between" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Index of the cheapest edge <code>u -&gt; v</code>; raises if none exists.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="ridegraph.graph.OffNetworkError" class="doc doc-heading">
+            <code>OffNetworkError</code>
+
+
+<a href="#ridegraph.graph.OffNetworkError" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="ValueError">ValueError</span></code></p>
+
+
+
+        <p>A coordinate too far from any road in the network.</p>
+
+
+
+
+
+
+
+
+
+    </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.graph.haversine_m" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">haversine_m</span><span class="p">(</span><span class="n">lat1</span><span class="p">,</span> <span class="n">lon1</span><span class="p">,</span> <span class="n">lat2</span><span class="p">,</span> <span class="n">lon2</span><span class="p">)</span></code>
+
+<a href="#ridegraph.graph.haversine_m" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Great-circle distance in metres.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.graph.csr_sorted" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">csr_sorted</span><span class="p">(</span><span class="n">network</span><span class="p">)</span></code>
+
+<a href="#ridegraph.graph.csr_sorted" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>The same network with edges stored in CSR order (stably sorted by source).</p>
+<p>After this, an edge's index in the network equals its index in <code>Graph</code>,
+so edge-indexed data (turn graphs, exports) lines up without remapping.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.graph.free_flow_speeds_kph" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">free_flow_speeds_kph</span><span class="p">(</span><span class="n">network</span><span class="p">)</span></code>
+
+<a href="#ridegraph.graph.free_flow_speeds_kph" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Free-flow speed per edge, vectorised (same rule as <code>speeds.free_flow_speed_kph</code>).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.graph.free_flow_cost" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">free_flow_cost</span><span class="p">(</span><span class="n">network</span><span class="p">)</span></code>
+
+<a href="#ridegraph.graph.free_flow_cost" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Seconds per edge at free-flow speed (no traffic).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.graph.snap" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">snap</span><span class="p">(</span><span class="n">network</span><span class="p">,</span> <span class="n">lat</span><span class="p">,</span> <span class="n">lon</span><span class="p">,</span> <span class="n">max_m</span><span class="o">=</span><span class="mf">500.0</span><span class="p">)</span></code>
+
+<a href="#ridegraph.graph.snap" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Nearest junction to a coordinate; raises <code>OffNetworkError</code> beyond <code>max_m</code>.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="ridegraph.dijkstra" class="doc doc-heading">
+            <code>ridegraph.dijkstra</code>
+
+
+<a href="#ridegraph.dijkstra" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>Dijkstra's algorithm: the correctness baseline every faster method is tested against.</p>
+<p>It grows a ball of settled nodes around the source in order of travel time,
+so by the time the target is settled its time is provably optimal. The cost
+is that the ball covers everything closer than the target in every direction,
+which is exactly the waste A* and Contraction Hierarchies remove.</p>
+<p>Implementation notes:</p>
+<ul>
+<li>Binary heap with lazy deletion. Instead of a decrease-key operation, a
+  better distance is simply pushed again and stale entries are skipped when
+  popped. In Python this beats any hand-rolled indexed heap.</li>
+<li>Distances live in a dict touched only for reached nodes, so a short query on
+  a big graph does not pay to initialise an array of every node.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.dijkstra.dijkstra" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">dijkstra</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span></code>
+
+<a href="#ridegraph.dijkstra.dijkstra" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Quickest route from <code>source</code> to <code>target</code> (node indices).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.dijkstra.one_to_all" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">one_to_all</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">source</span><span class="p">)</span></code>
+
+<a href="#ridegraph.dijkstra.one_to_all" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Travel time from <code>source</code> to every node (<code>inf</code> if unreachable).</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="ridegraph.ch" class="doc doc-heading">
+            <code>ridegraph.ch</code>
+
+
+<a href="#ridegraph.ch" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>Contraction Hierarchies: the preprocessing trick behind production routing engines.</p>
+<h4 id="ridegraph.ch--idea">Idea<a class="headerlink" href="#ridegraph.ch--idea" title="Permanent link">&para;</a></h4>
+<p>Rank every node by "importance", then remove (<em>contract</em>) them one at a time,
+least important first. Removing node <code>v</code> can break quickest routes that pass
+through it, so for each neighbour pair <code>u -&gt; v -&gt; w</code> we check whether some
+other route from <code>u</code> to <code>w</code> is at least as quick (a <em>witness</em>). If not, we
+add a <strong>shortcut</strong> edge <code>u -&gt; w</code> with the combined cost and remember it skips
+<code>v</code>.</p>
+<p>After all nodes are contracted, every quickest route in the original graph has
+an equivalent route in the augmented graph that only goes <em>up</em> the ranking
+from the source and then only <em>down</em> the ranking into the target. A query is
+therefore a bidirectional Dijkstra in which each side may only climb. Each
+side sees a tiny "upward cone" of the graph instead of a ball of the city,
+which is where the orders-of-magnitude speedup comes from.</p>
+<h4 id="ridegraph.ch--implementation-choices">Implementation choices<a class="headerlink" href="#ridegraph.ch--implementation-choices" title="Permanent link">&para;</a></h4>
+<ul>
+<li><strong>Node order</strong> by lazy priority updates: priority is the <em>edge difference</em>
+  (shortcuts added minus edges removed) plus the number of already-contracted
+  neighbours, which spreads contraction evenly across the map. A node's
+  priority is recomputed when it reaches the top of the queue; if it is no
+  longer the minimum it goes back in.</li>
+<li><strong>Witness search</strong> is a local Dijkstra capped by cost and settled count. If
+  the cap is hit we add the shortcut anyway: an unneeded shortcut costs a
+  little space, never correctness.</li>
+<li><strong>Stall-on-demand</strong> at query time: if a node can be reached more cheaply
+  through a higher-ranked node the search has already seen, its upward
+  distance is provably not optimal and its edges are not expanded.</li>
+<li><strong>Path unpacking</strong>: each shortcut stores its middle node, so a route of
+  shortcuts expands recursively back into real road segments.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="ridegraph.ch.ContractionHierarchy" class="doc doc-heading">
+            <code>ContractionHierarchy</code>
+
+
+<a href="#ridegraph.ch.ContractionHierarchy" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>A contracted road graph that answers quickest-route queries fast.</p>
+<p><code>up_*</code> arrays hold, for each node <code>u</code>, edges <code>u -&gt; v</code> to higher-ranked
+nodes. <code>down_*</code> arrays hold, for each node <code>v</code>, edges <code>u -&gt; v</code> <em>from</em>
+higher-ranked nodes, indexed at <code>v</code> so the backward search can climb
+from the target.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ridegraph.ch.ContractionHierarchy.query" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">query</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span></code>
+
+<a href="#ridegraph.ch.ContractionHierarchy.query" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Quickest route from <code>source</code> to <code>target</code>.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ridegraph.ch.ContractionHierarchy.upward_search" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">upward_search</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">backward</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+
+<a href="#ridegraph.ch.ContractionHierarchy.upward_search" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Exhaustive search up the hierarchy from <code>start</code>, with stall-on-demand.</p>
+<p>Returns the settled, unstalled nodes and their distances. Every quickest
+route meets at a node that both ends' upward searches settle correctly,
+which is what makes bucket-based many-to-many queries work.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ridegraph.ch.ContractionHierarchy.target_buckets" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">target_buckets</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span></code>
+
+<a href="#ridegraph.ch.ContractionHierarchy.target_buckets" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Backward upward searches from each target, filed by the node they reach.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ridegraph.ch.ContractionHierarchy.many_to_many" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">many_to_many</span><span class="p">(</span><span class="n">sources</span><span class="p">,</span> <span class="n">targets</span><span class="p">,</span> <span class="n">buckets</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#ridegraph.ch.ContractionHierarchy.many_to_many" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Travel time from every source to every target (<code>inf</code> if unreachable).</p>
+<p>Bucket-based many-to-many (Knopp et al., 2007): one backward upward
+search per target files its distances in buckets at the nodes it
+reaches; one forward upward search per source then reads the buckets
+of the nodes it reaches. Cost grows with sources + targets, not their
+product, which is what lets a dispatcher price every driver against
+every waiting rider at once. Reuse <code>buckets</code> when targets repeat.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ridegraph.ch.ContractionHierarchy.unpack" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">unpack</span><span class="p">(</span><span class="n">hierarchy_path</span><span class="p">)</span></code>
+
+<a href="#ridegraph.ch.ContractionHierarchy.unpack" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Expand a route over shortcut edges into the original road nodes.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="ridegraph.cch" class="doc doc-heading">
+            <code>ridegraph.cch</code>
+
+
+<a href="#ridegraph.cch" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>Customizable Contraction Hierarchies: preprocessing once, new traffic in milliseconds.</p>
+<p>Ordinary Contraction Hierarchies (<code>ch.py</code>) choose which shortcuts to add by
+running witness searches with the current travel times. Change the times
+(a closure, a jam) and the whole hierarchy is stale. Customizable CH
+(Dibbelt, Strasser and Wagner, 2016) splits the work in three:</p>
+<ol>
+<li><strong>Metric-independent preprocessing</strong> (slow, once per map). Order the
+   junctions by <em>nested dissection</em>: cut the city in two along a thin
+   separator, order each half recursively, and put the separator last. Then
+   contract in that order <em>without</em> witness searches: every pair of higher
+   neighbours gets a shortcut. The result is a fixed "chordal" graph whose
+   size does not depend on travel times.</li>
+<li><strong>Customization</strong> (fast, whenever times change). Give every original road
+   its current time, then sweep the <em>lower triangles</em> bottom-up: for a
+   shortcut u-w over a lower junction v, <code>u-&gt;w = min(u-&gt;w, u-&gt;v + v-&gt;w)</code>.
+   Every shortcut now holds the true quickest time between its ends using
+   only lower junctions, which is exactly what the CH query needs.</li>
+<li><strong>Queries</strong> as in CH: two upward searches meeting at the top.</li>
+</ol>
+<p>Because step 1 never looks at travel times, the separators come from the
+road layout alone: a geometric cut picks the direction (north-south,
+east-west or a diagonal) that crosses the fewest roads, the way rivers and
+parks make natural cuts in a real city.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="ridegraph.cch.CustomizableCH" class="doc doc-heading">
+            <code>CustomizableCH</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#ridegraph.cch.CustomizableCH" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>Chordal graph from contracting in a fixed order, with per-metric weights.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ridegraph.cch.CustomizableCH.customize" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">customize</span><span class="p">(</span><span class="n">road_seconds</span><span class="p">)</span></code>
+
+<a href="#ridegraph.cch.CustomizableCH.customize" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Load travel times for every original road and sweep the lower triangles.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ridegraph.cch.CustomizableCH.query" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">query</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">target</span><span class="p">)</span></code>
+
+<a href="#ridegraph.cch.CustomizableCH.query" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Quickest time and junction path; <code>customize</code> must have run.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.cch.nested_dissection_order" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">nested_dissection_order</span><span class="p">(</span><span class="n">network</span><span class="p">,</span> <span class="n">leaf_size</span><span class="o">=</span><span class="n">LEAF_SIZE</span><span class="p">)</span></code>
+
+<a href="#ridegraph.cch.nested_dissection_order" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Rank of every junction; separators are ranked above the parts they split.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="ridegraph.router" class="doc doc-heading">
+            <code>ridegraph.router</code>
+
+
+<a href="#ridegraph.router" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>One entry point for routing under a scenario: time of day, weekday or weekend, turns.</p>
+<p>The algorithms only know about graphs and node ids. <code>Router</code> builds the
+right graph for a scenario and translates both ways, so callers think in
+intersections and coordinates while the search runs on whichever graph
+(plain or turn-expanded) the scenario needs.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="ridegraph.router.Scenario" class="doc doc-heading">
+            <code>Scenario</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#ridegraph.router.Scenario" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ridegraph.router.Scenario.file_tag" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">file_tag</span><span class="p">()</span></code>
+
+<a href="#ridegraph.router.Scenario.file_tag" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Distinguishes cached hierarchies built for different scenarios.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="ridegraph.router.Trip" class="doc doc-heading">
+            <code>Trip</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#ridegraph.router.Trip" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>A route expressed in intersections of the original road network.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="ridegraph.router.Router" class="doc doc-heading">
+            <code>Router</code>
+
+
+<a href="#ridegraph.router.Router" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ridegraph.router.Router.nearest" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">nearest</span><span class="p">(</span><span class="n">lat</span><span class="p">,</span> <span class="n">lon</span><span class="p">)</span></code>
+
+<a href="#ridegraph.router.Router.nearest" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Nearest intersection to a coordinate.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ridegraph.router.Router.search_nodes" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">search_nodes</span><span class="p">(</span><span class="n">origin</span><span class="p">,</span> <span class="n">destination</span><span class="p">)</span></code>
+
+<a href="#ridegraph.router.Router.search_nodes" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Graph node ids to search between for two intersections.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ridegraph.router.Router.trip" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">trip</span><span class="p">(</span><span class="n">origin</span><span class="p">,</span> <span class="n">destination</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s1">'bidirectional'</span><span class="p">,</span> <span class="n">ch</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#ridegraph.router.Router.trip" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Quickest trip between two intersections.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="ridegraph.alternatives" class="doc doc-heading">
+            <code>ridegraph.alternatives</code>
+
+
+<a href="#ridegraph.alternatives" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>Alternative routes: a few genuinely different ways to make the same trip.</p>
+<p>A map app that shows only the quickest route hides useful choices: a route a
+minute slower that avoids a charge, or stays on main roads. Good
+alternatives must be (Abraham et al., "Alternative routes in road networks"):</p>
+<ul>
+<li><strong>different</strong>: share at most <code>max_overlap</code> of their length with any route
+  already offered;</li>
+<li><strong>not much slower</strong>: at most <code>max_stretch</code> times the quickest;</li>
+<li><strong>sensible</strong>: no pointless detours.</li>
+</ul>
+<p>This module uses the <em>penalty method</em>: find the quickest route, make every road
+on it a little slower, search again, and repeat. Each search is pushed off the
+roads already used, so it finds the next most natural corridor. Candidates
+are judged on the real travel times, not the penalised ones. A detour check
+then rejects candidates that leave a road only to rejoin it: every short
+stretch of the route must be close to the quickest way between its ends.</p>
+<p>The same machinery avoids an area: roads into it cost infinity, so every
+route found keeps out. That is how the Congestion Charge zone is avoided.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.alternatives.shortest" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">shortest</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">weight</span><span class="p">)</span></code>
+
+<a href="#ridegraph.alternatives.shortest" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Dijkstra on custom weights, returning (seconds, CSR edge ids).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.alternatives.zone_weights" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">zone_weights</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">zone</span><span class="p">)</span></code>
+
+<a href="#ridegraph.alternatives.zone_weights" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Travel times with every road into the zone closed.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.alternatives.is_locally_sensible" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">is_locally_sensible</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">alt</span><span class="p">,</span> <span class="n">window_s</span><span class="p">,</span> <span class="n">tolerance</span><span class="p">,</span> <span class="n">weight</span><span class="p">,</span> <span class="n">samples</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span></code>
+
+<a href="#ridegraph.alternatives.is_locally_sensible" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Stretches of about <code>window_s</code> are within <code>tolerance</code> of their quickest way.</p>
+<p>Checks <code>samples</code> stretches spread along the route, which catches the
+detours the penalty method produces (leaving a road only to rejoin it)
+without a search from every junction.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.alternatives.alternatives" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">alternatives</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">count</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">penalty</span><span class="o">=</span><span class="mf">1.4</span><span class="p">,</span> <span class="n">max_stretch</span><span class="o">=</span><span class="mf">1.3</span><span class="p">,</span> <span class="n">max_overlap</span><span class="o">=</span><span class="mf">0.65</span><span class="p">,</span> <span class="n">attempts</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">zone</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">avoid_zone</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">local_check</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+
+<a href="#ridegraph.alternatives.alternatives" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Up to <code>count</code> routes, quickest first; <code>avoid_zone</code> keeps them out of <code>zone</code>.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="ridegraph.live" class="doc doc-heading">
+            <code>ridegraph.live</code>
+
+
+<a href="#ridegraph.live" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>Live road disruptions from Transport for London, matched onto the graph.</p>
+<p>TfL's open Unified API lists current roadworks, closures and incidents on
+London's streets, each as a polyline with a severity and a closure state
+(<code>/Road/all/Street/Disruption</code>). This module</p>
+<ol>
+<li>fetches and parses that feed (standard library only, no key needed for
+   light use),</li>
+<li><em>map-matches</em> each disrupted stretch onto graph edges: an edge is on the
+   stretch when both its ends and its midpoint lie within <code>MATCH_M</code> metres
+   of the polyline, and</li>
+<li>turns the result into a time multiplier per edge: infinity for a closed
+   road, a slowdown for the rest by severity.</li>
+</ol>
+<p>The multipliers are applied to the time-of-day weights, and a Customizable
+Contraction Hierarchy (<code>cch.py</code>) re-customises in milliseconds, so the
+quickest-route queries stay instant with live closures in force.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.live.fetch" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">fetch</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mf">30.0</span><span class="p">)</span></code>
+
+<a href="#ridegraph.live.fetch" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Current street disruptions as parsed JSON.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.live.parse" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">parse</span><span class="p">(</span><span class="n">payload</span><span class="p">)</span></code>
+
+<a href="#ridegraph.live.parse" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Every disrupted stretch in the feed, wherever it sits in the JSON.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.live.match" class="doc doc-heading">
+            <code class="highlight language-python"><span class="k">match</span><span class="p">(</span><span class="n">network</span><span class="p">,</span> <span class="n">disruptions</span><span class="p">)</span></code>
+
+<a href="#ridegraph.live.match" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Time multiplier per edge (1 where clear), and how many edges each stretch hit.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="ridegraph.reach" class="doc doc-heading">
+            <code>ridegraph.reach</code>
+
+
+<a href="#ridegraph.reach" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>Travel-time maps: everywhere reachable within a time budget.</p>
+<p>An isochrone answers "where can I get to in 20 minutes from here?" (or, for
+someone choosing where to live, "from where can I get <em>to</em> my office in 20
+minutes?"). It is a single-source search that settles every junction in time
+order and stops at the budget, so it touches only the reachable part of the
+city. Run on the reverse graph, the same search measures journeys <em>into</em> a
+point.</p>
+<p>Reachable area is reported by counting 250 m squares that contain a reached
+junction, which tracks what a map reader sees better than a convex hull
+would around a river or a park.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.reach.times_within" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">times_within</span><span class="p">(</span><span class="n">graph</span><span class="p">,</span> <span class="n">origin</span><span class="p">,</span> <span class="n">budget_s</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">arriving</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+
+<a href="#ridegraph.reach.times_within" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Seconds from <code>origin</code> (or to it, if <code>arriving</code>) for every junction within budget.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="ridegraph.tour" class="doc doc-heading">
+            <code>ridegraph.tour</code>
+
+
+<a href="#ridegraph.tour" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>Multi-stop routes: the best order to visit a list of addresses.</p>
+<p>A courier with a van and ten drops wants the order that gets them all done
+soonest: the travelling salesman problem, on real one-way streets, so the
+time from A to B is not the time from B to A. The pipeline:</p>
+<ol>
+<li><strong>One matrix of travel times.</strong> A many-to-many Contraction Hierarchies
+   query prices every stop against every other stop at the chosen time of
+   day.</li>
+<li><strong>Exact for small jobs.</strong> Held-Karp dynamic programming finds the
+   provably best order in O(n^2 2^n) time, which is instant up to about a
+   dozen stops.</li>
+<li><strong>Heuristics for comparison and for larger jobs.</strong> Nearest-next-stop
+   construction, then 2-opt and Or-opt improvement (re-evaluating whole
+   tours, since reversing a stretch of an asymmetric tour changes its cost).</li>
+</ol>
+<p>The first stop is the depot. Tours either return to it or end at the last
+drop.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.tour.improve" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">improve</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="n">order</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">return_to_start</span><span class="p">)</span></code>
+
+<a href="#ridegraph.tour.improve" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>2-opt and Or-opt moves until no move shortens the tour (depot stays first).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.tour.held_karp" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">held_karp</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">return_to_start</span><span class="p">)</span></code>
+
+<a href="#ridegraph.tour.held_karp" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Provably optimal order starting at stop 0 (Held-Karp dynamic programming).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.tour.plan_matrix" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">plan_matrix</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">return_to_start</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+
+<a href="#ridegraph.tour.plan_matrix" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Compare visiting orders for a travel-time matrix (stop 0 is the depot).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.tour.plan" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">plan</span><span class="p">(</span><span class="n">ch</span><span class="p">,</span> <span class="n">stops</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">return_to_start</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+
+<a href="#ridegraph.tour.plan" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Compare visiting orders for <code>stops</code> (depot first).</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="ridegraph.matching" class="doc doc-heading">
+            <code>ridegraph.matching</code>
+
+
+<a href="#ridegraph.matching" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>Assigning drivers to riders.</p>
+<p>Given a matrix of pickup times (driver x rider), find the assignment that
+minimises the total. This is the linear assignment problem; the Hungarian
+algorithm solves it exactly in O(n^2 m) using dual potentials, here in the
+compact shortest-augmenting-path form.</p>
+<p>Rectangular inputs are fine: with more drivers than riders every rider is
+matched; with more riders than drivers every driver is. Pairs that must not
+be matched (pickup too far away) carry <code>FORBIDDEN</code> and are dropped from the
+result afterwards.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.matching.hungarian" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">hungarian</span><span class="p">(</span><span class="n">cost</span><span class="p">)</span></code>
+
+<a href="#ridegraph.matching.hungarian" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Minimum-cost assignment as <code>(row, col)</code> pairs, one per row or column.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.matching.optimal_matches" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">optimal_matches</span><span class="p">(</span><span class="n">cost</span><span class="p">,</span> <span class="n">limit</span><span class="p">)</span></code>
+
+<a href="#ridegraph.matching.optimal_matches" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Minimum total cost matching that never uses a pair above <code>limit</code>.</p>
+<p>Pairs over the limit (or infinite) cost <code>FORBIDDEN</code>, so the assignment
+first matches as many pairs as it can, then minimises their total.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.matching.greedy_matches" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">greedy_matches</span><span class="p">(</span><span class="n">cost</span><span class="p">,</span> <span class="n">limit</span><span class="p">)</span></code>
+
+<a href="#ridegraph.matching.greedy_matches" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Riders in arrival order (columns) each take the nearest free driver (rows).</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="ridegraph.eta" class="doc doc-heading">
+            <code>ridegraph.eta</code>
+
+
+<a href="#ridegraph.eta" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>Learned ETA: correcting the router's estimate from how trips actually go.</p>
+<p>Production ride-hailing systems do not trust the routing engine's ETA as is.
+The graph knows road speeds, but not the queue that always forms at a
+particular junction, how long lights really hold you at 8:30, or that the
+evening peak arrives later than the timetable says. The approach popularised
+by Uber's DeepETA keeps the routing engine and trains a model to predict the
+<em>residual</em>: the gap between the engine's ETA and the trip time actually
+observed, from features of the route and the moment.</p>
+<p>Real trip logs for London are not public, so this module also provides the
+observations: <code>World</code> is a hidden ground truth, a city that differs from the
+router's model in ways a real one would. It has congestion hotspots, a later
+and stronger peak, extra slowdown on main roads, waits at turns and lights,
+occasional incidents and noise. Trips are routed with the router, timed by
+the world, and models learn the correction from route features alone. They
+are judged on trips they never saw.</p>
+<p>Everything a feature uses is something a production system would know at
+request time: the route, its geometry and road mix, its manoeuvres and the
+time. Nothing reads the hidden world.</p>
+<p>The model runs in the browser too: the gradient-boosted trees export to JSON
+and <code>web/js/eta.js</code> computes the same features and walks the same trees.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="ridegraph.eta.RouteContext" class="doc doc-heading">
+            <code>RouteContext</code>
+
+
+<a href="#ridegraph.eta.RouteContext" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>Everything needed to describe a route, built once per network.</p>
+<p>The network is put in CSR order so edge ids match <code>Graph</code> and the turn
+graph, exactly as in the browser export.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ridegraph.eta.RouteContext.edge_times" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">edge_times</span><span class="p">(</span><span class="n">hour</span><span class="p">,</span> <span class="n">weekend</span><span class="p">)</span></code>
+
+<a href="#ridegraph.eta.RouteContext.edge_times" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Router's seconds per edge at a time of day (same model as <code>traffic.py</code>).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ridegraph.eta.RouteContext.path_edges" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">path_edges</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">times</span><span class="p">)</span></code>
+
+<a href="#ridegraph.eta.RouteContext.path_edges" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Cheapest edge between each consecutive pair of junctions.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ridegraph.eta.RouteContext.turns_along" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">turns_along</span><span class="p">(</span><span class="n">edges</span><span class="p">)</span></code>
+
+<a href="#ridegraph.eta.RouteContext.turns_along" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Turn kind of each manoeuvre between consecutive edges of a route.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ridegraph.eta.RouteContext.light_sets" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">light_sets</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">edges</span><span class="p">)</span></code>
+
+<a href="#ridegraph.eta.RouteContext.light_sets" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Sets of traffic lights a route passes.</p>
+<p>OpenStreetMap often tags lights on each approach to a junction and on
+nearby crossings, so signal nodes closer than <code>LIGHT_SET_GAP_M</code> along
+the route count as one set.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="ridegraph.eta.World" class="doc doc-heading">
+            <code>World</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#ridegraph.eta.World" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>The hidden ground truth that trip times are drawn from.</p>
+<p>None of this is visible to the router or to the features; the models must
+infer its effects from routes and outcomes.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ridegraph.eta.World.field_at" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">field_at</span><span class="p">(</span><span class="n">x_km</span><span class="p">,</span> <span class="n">y_km</span><span class="p">)</span></code>
+
+<a href="#ridegraph.eta.World.field_at" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Hidden hotspot intensity at a point (km from the network's centre).</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.eta.class_group" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">class_group</span><span class="p">(</span><span class="n">road_class</span><span class="p">)</span></code>
+
+<a href="#ridegraph.eta.class_group" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>0 for major roads, 1 for secondary/tertiary, 2 for minor roads.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.eta.simulate_trips" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">simulate_trips</span><span class="p">(</span><span class="n">ctx</span><span class="p">,</span> <span class="n">world</span><span class="p">,</span> <span class="n">hierarchies</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">min_crow_km</span><span class="o">=</span><span class="mf">0.4</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="k">lambda</span> <span class="n">msg</span><span class="p">:</span> <span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#ridegraph.eta.simulate_trips" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Route random trips with the router and time them in the hidden world.</p>
+<p>Trips are routed with the hierarchy of the nearest preset time, like an app
+whose routes are refreshed a few times a day, then timed at their own hour.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.eta.export_trees" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">export_trees</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">features</span><span class="o">=</span><span class="n">FEATURES</span><span class="p">)</span></code>
+
+<a href="#ridegraph.eta.export_trees" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Gradient-boosted trees as compact arrays the browser can walk.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.eta.predict_from_json" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">predict_from_json</span><span class="p">(</span><span class="n">model_json</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span></code>
+
+<a href="#ridegraph.eta.predict_from_json" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Reference implementation of the browser's tree walk, used in tests.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.eta.train" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">train</span><span class="p">(</span><span class="n">network</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">trips</span><span class="o">=</span><span class="mi">20000</span><span class="p">,</span> <span class="n">hierarchies</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">gnn_epochs</span><span class="o">=</span><span class="mi">25</span><span class="p">,</span> <span class="n">log</span><span class="o">=</span><span class="k">lambda</span> <span class="n">msg</span><span class="p">:</span> <span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#ridegraph.eta.train" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Simulate trips, train and compare ETA models, return the best for export.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.eta.gnn_hotspot_correlation" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">gnn_hotspot_correlation</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">world</span><span class="p">)</span></code>
+
+<a href="#ridegraph.eta.gnn_hotspot_correlation" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Correlation of the GNN's per-road slowdown at 08:30 with the hidden truth.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.eta.slowdown_at" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">slowdown_at</span><span class="p">(</span><span class="n">model_json</span><span class="p">,</span> <span class="n">x_km</span><span class="p">,</span> <span class="n">y_km</span><span class="p">,</span> <span class="n">hour</span><span class="p">,</span> <span class="n">weekend</span><span class="p">)</span></code>
+
+<a href="#ridegraph.eta.slowdown_at" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Model's expected slowdown for a typical trip placed at a point (as in the map).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.eta.learned_hotspot_correlation" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">learned_hotspot_correlation</span><span class="p">(</span><span class="n">model_json</span><span class="p">,</span> <span class="n">ctx</span><span class="p">,</span> <span class="n">world</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">hour</span><span class="o">=</span><span class="mf">8.5</span><span class="p">)</span></code>
+
+<a href="#ridegraph.eta.learned_hotspot_correlation" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Pearson correlation between the model's slowdown map and the hidden hotspots.</p>
+<p>The model never sees the hotspots; a strong correlation means it recovered
+where they are from trip outcomes alone.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.eta.conformal_margin" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">conformal_margin</span><span class="p">(</span><span class="n">low</span><span class="p">,</span> <span class="n">high</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">coverage</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span></code>
+
+<a href="#ridegraph.eta.conformal_margin" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Widening (in log space) that gives <code>coverage</code> on new data.</p>
+<p>Conformalized quantile regression (Romano et al., 2019): score each
+calibration trip by how far it falls outside the predicted range (negative
+when inside), and widen both ends by the right quantile of those scores.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.eta.interval_metrics" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">interval_metrics</span><span class="p">(</span><span class="n">low</span><span class="p">,</span> <span class="n">high</span><span class="p">,</span> <span class="n">middle</span><span class="p">,</span> <span class="n">observed</span><span class="p">)</span></code>
+
+<a href="#ridegraph.eta.interval_metrics" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>How often observed times fall inside the window, and how wide it is.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="ridegraph.gnn" class="doc doc-heading">
+            <code>ridegraph.gnn</code>
+
+
+<a href="#ridegraph.gnn" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>A graph neural network ETA: learn a slowdown for every road, from trips alone.</p>
+<p>The gradient-boosted model (<code>eta.py</code>) sees a route as one row of summary
+features. A graph neural network instead works on the roads themselves, the
+way DeepMind's model for Google Maps does: it learns a representation of
+every road segment from the segment and its neighbourhood in the network,
+predicts how much slower than the router each segment really is at a given
+time, and adds the segments of a route up.</p>
+<p>Architecture (numpy only, gradients written out by hand):</p>
+<ul>
+<li><strong>Message passing, precomputed.</strong> Each road segment starts with its own
+  features: road class, length, traffic lights, junction size, and its
+  position encoded with sines and cosines. Features are then averaged over
+  the <em>line graph</em> (segments are neighbours when one leads into the other)
+  for 1, 2, 4 and 8 hops with symmetric normalisation, and all hops are
+  concatenated. Precomputing the propagation is the SIGN approach (Frasca et
+  al., 2020): it scales to every road in a city, and a learned network on
+  top decides which hop to trust for each road.</li>
+<li><strong>A segment network.</strong> A two-layer MLP reads a segment's representation
+  together with the time of day and predicts <code>g</code>, the log of its slowdown.</li>
+<li><strong>A route readout.</strong> Predicted time is the sum over the route's segments
+  of <code>router seconds x exp(g)</code>, plus a learned wait for each kind of turn
+  and each set of traffic lights, also by time of day.</li>
+</ul>
+<p>The loss is the squared error of log(predicted / observed), trained with
+Adam on minibatches of trips.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="ridegraph.gnn.TripBatch" class="doc doc-heading">
+            <code>TripBatch</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#ridegraph.gnn.TripBatch" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>Trips as segment occurrences: which trip, which segment, router seconds.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="ridegraph.gnn.SegmentGNN" class="doc doc-heading">
+            <code>SegmentGNN</code>
+
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-dataclass"><code>dataclass</code></small>
+  </span>
+
+<a href="#ridegraph.gnn.SegmentGNN" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="ridegraph.gnn.SegmentGNN.segment_log_slowdown" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">segment_log_slowdown</span><span class="p">(</span><span class="n">edges</span><span class="p">,</span> <span class="n">tau</span><span class="p">)</span></code>
+
+<a href="#ridegraph.gnn.SegmentGNN.segment_log_slowdown" class="headerlink" title="Permanent link">&para;</a></h4>
+
+
+    <div class="doc doc-contents ">
+
+        <p>g for given segments at one time of day.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.gnn.segment_features" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">segment_features</span><span class="p">(</span><span class="n">network</span><span class="p">,</span> <span class="n">graph</span><span class="p">,</span> <span class="n">group</span><span class="p">,</span> <span class="n">x_km</span><span class="p">,</span> <span class="n">y_km</span><span class="p">)</span></code>
+
+<a href="#ridegraph.gnn.segment_features" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Own features of every segment (CSR edge order).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.gnn.line_graph" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">line_graph</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span></code>
+
+<a href="#ridegraph.gnn.line_graph" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Normalised adjacency of segments: e follows f when f ends where e starts.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.gnn.propagate" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">propagate</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">adjacency</span><span class="p">)</span></code>
+
+<a href="#ridegraph.gnn.propagate" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Concatenate the features averaged over 0, 1, 2, 4 and 8 hops.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.gnn.batch" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">batch</span><span class="p">(</span><span class="n">trips</span><span class="p">,</span> <span class="n">idx</span><span class="p">)</span></code>
+
+<a href="#ridegraph.gnn.batch" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Gather selected trips (edges, router seconds, counts, time features, observed).</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="ridegraph.osrm" class="doc doc-heading">
+            <code>ridegraph.osrm</code>
+
+
+<a href="#ridegraph.osrm" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>A head-to-head with OSRM, the open-source routing engine used in production.</p>
+<p>Agreeing with yourself proves little: every algorithm here is tested against
+Dijkstra, but all of them share this package's map parsing and speed model.
+OSRM (Open Source Routing Machine) shares neither. It parses OpenStreetMap
+with its own C++ code and routes with Multi-Level Dijkstra, the engine
+behind many commercial map products.</p>
+<p>To compare like with like, OSRM is given the same roads and the same speeds:</p>
+<ul>
+<li><code>write_osm_xml</code> writes the ways this package treats as drivable, with
+  their tags, as OSM XML for <code>osrm-extract</code>;</li>
+<li><code>write_segment_speeds</code> writes this package's free-flow speed for every
+  road segment as an OSRM <em>segment speed file</em>, which <code>osrm-customize</code>
+  loads in place of OSRM's own speed guesses;</li>
+<li>the CI workflow switches off OSRM's turn and traffic-light penalties, since
+  the free-flow router here has none.</li>
+</ul>
+<p><code>compare</code> then asks both engines the same random questions and reports how
+often the travel times agree, how much of the two routes coincide, and how
+long each takes to answer. Differences that remain come from the parts that
+are genuinely independent: OSM parsing, which ways each engine accepts, how
+coordinates snap to roads, and OSRM storing times in tenths of a second.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.osrm.write_osm_xml" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">write_osm_xml</span><span class="p">(</span><span class="n">payload</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span></code>
+
+<a href="#ridegraph.osrm.write_osm_xml" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Drivable ways and the nodes they use, as OSM XML; returns (nodes, ways).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.osrm.write_segment_speeds" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">write_segment_speeds</span><span class="p">(</span><span class="n">network</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span></code>
+
+<a href="#ridegraph.osrm.write_segment_speeds" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p><code>from_osm_id,to_osm_id,speed_kmh</code> for every directed road segment.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.osrm.osrm_route" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">osrm_route</span><span class="p">(</span><span class="n">base_url</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span></code>
+
+<a href="#ridegraph.osrm.osrm_route" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>One OSRM route request (coordinates are (lat, lon)).</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.osrm.compare" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">compare</span><span class="p">(</span><span class="n">network</span><span class="p">,</span> <span class="n">route</span><span class="p">,</span> <span class="n">ask_osrm</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">queries</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">7</span><span class="p">,</span> <span class="n">min_km</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span></code>
+
+<a href="#ridegraph.osrm.compare" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Ask both engines the same questions and summarise how they agree.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="ridegraph.validation" class="doc doc-heading">
+            <code>ridegraph.validation</code>
+
+
+<a href="#ridegraph.validation" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>How realistic is the simulated London? A check against published speeds.</p>
+<p>The learned ETA is trained and scored on trips timed in a hidden simulated
+city (<code>eta.World</code>), because real trip data is not available to a personal
+project. That makes one question unavoidable: are its speeds plausible for
+central London? This module times random trips in the simulated city at
+several times of day and sets the results beside independent published
+figures:</p>
+<ul>
+<li><strong>Department for Transport</strong>, <em>Travel time measures for local 'A' roads,
+  2022</em> (tables CGN0503b and CGN0503d): average speed on local A roads in
+  the City of London 7.7 mph and Camden 8.1 mph, the two slowest local
+  authorities in England, and 14.4 mph across Greater London.</li>
+<li><strong>TomTom Traffic Index 2023</strong>: London's city centre averaged about 10 mph,
+  falling to 8.5 mph at peak hours.</li>
+</ul>
+<p>The definitions differ (DfT measures A roads only, TomTom whole trips in its
+own city-centre area), so the comparison is about the range, not a single
+target.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.validation.simulated_speeds" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">simulated_speeds</span><span class="p">(</span><span class="n">network</span><span class="p">,</span> <span class="n">hours</span><span class="o">=</span><span class="p">(</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">13.0</span><span class="p">,</span> <span class="mf">17.5</span><span class="p">),</span> <span class="n">trips</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">min_km</span><span class="o">=</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span></code>
+
+<a href="#ridegraph.validation.simulated_speeds" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Distance-weighted average speed of random trips at each hour (weekday).</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="ridegraph.api" class="doc doc-heading">
+            <code>ridegraph.api</code>
+
+
+<a href="#ridegraph.api" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>An HTTP routing service: the engine behind a JSON API.</p>
+<p>The map runs in the browser; a product would also want a backend. This
+module wraps the package as a FastAPI application:</p>
+<ul>
+<li><code>GET /route</code>: the quickest route at any time of day, optionally with
+  alternatives and Congestion Charge avoidance, as GeoJSON, with the learned
+  ETA and its arrival window when a model is loaded.</li>
+<li><code>GET /reach</code>: area reachable within some minutes, leaving or arriving.</li>
+<li><code>POST /tour</code>: the best order for a round of stops.</li>
+<li><code>GET /health</code>: what is loaded.</li>
+</ul>
+<p><strong>Any time of day, not just presets.</strong> Queries run on a Customizable
+Contraction Hierarchy (<code>cch.py</code>) built once at start-up. A request for
+08:15 loads that quarter-hour's travel times into it, which takes tens of
+milliseconds, and the result is kept in a small cache, so later requests in
+the same quarter-hour pay nothing. A plain CH would need seconds of
+preprocessing per time.</p>
+<p>Searches share one hierarchy, so they run under a lock; each takes a few
+milliseconds, and the service scales by running more worker processes.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="ridegraph.api.RoutingService" class="doc doc-heading">
+            <code>RoutingService</code>
+
+
+<a href="#ridegraph.api.RoutingService" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>Everything the endpoints need, loaded once.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="ridegraph.api.TourRequest" class="doc doc-heading">
+            <code>TourRequest</code>
+
+
+<a href="#ridegraph.api.TourRequest" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><span title="pydantic.BaseModel">BaseModel</span></code></p>
+
+
+
+        <p>Stops as [lat, lon] pairs, depot first.</p>
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.api.create_app" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">create_app</span><span class="p">(</span><span class="n">service</span><span class="p">)</span></code>
+
+<a href="#ridegraph.api.create_app" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>The FastAPI application around a loaded <code>RoutingService</code>.</p>
+
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="ridegraph.api.app_from_env" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">app_from_env</span><span class="p">()</span></code>
+
+<a href="#ridegraph.api.app_from_env" class="headerlink" title="Permanent link">&para;</a></h3>
+
+
+    <div class="doc doc-contents ">
+
+        <p>App factory for <code>uvicorn --factory</code> and multi-worker serving.</p>
+<p>Reads <code>RIDEGRAPH_NETWORK</code> (default <code>data/central-london.npz</code>) and the
+optional <code>RIDEGRAPH_ETA_MODEL</code>.</p>
+
+
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Code MIT. Road data © OpenStreetMap contributors. Disruptions powered by TfL Open Data.
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "navigation.top", "content.code.copy", "search.highlight"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.c21346df.min.js"></script>
+      
+    
+  </body>
+</html>

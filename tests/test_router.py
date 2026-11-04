@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from fastroute.__main__ import main
-from fastroute.ch import ContractionHierarchy
-from fastroute.router import Router, Scenario
-from fastroute.synthetic import grid_network
+from ridegraph.__main__ import main
+from ridegraph.ch import ContractionHierarchy
+from ridegraph.router import Router, Scenario
+from ridegraph.synthetic import grid_network
 
 # Opposite corners of the synthetic grid (it sits around Holborn).
 A, B = "51.515,-0.12", "51.5249,-0.1041"

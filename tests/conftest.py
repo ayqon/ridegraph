@@ -5,9 +5,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from fastroute.graph import RoadNetwork
-from fastroute.speeds import CLASS_INDEX
-from fastroute.synthetic import grid_network
+from ridegraph.graph import RoadNetwork
+from ridegraph.speeds import CLASS_INDEX
+from ridegraph.synthetic import grid_network
 
 __all__ = ["grid_network", "make_network"]
 

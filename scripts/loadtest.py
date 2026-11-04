@@ -1,6 +1,6 @@
-"""Load-test a running fastroute API with random London routes.
+"""Load-test a running ridegraph API with random London routes.
 
-    python -m fastroute serve --network data/central-london.npz &
+    python -m ridegraph serve --network data/central-london.npz &
     python scripts/loadtest.py --requests 2000 --concurrency 16
 
 Origins and destinations are random junctions of the network, so every

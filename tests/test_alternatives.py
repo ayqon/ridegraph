@@ -9,12 +9,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from fastroute import charges
-from fastroute.alternatives import alternatives, shortest
-from fastroute.dijkstra import one_to_all
-from fastroute.graph import Graph, csr_sorted
-from fastroute.synthetic import grid_network
-from fastroute.traffic import traffic_cost
+from ridegraph import charges
+from ridegraph.alternatives import alternatives, shortest
+from ridegraph.dijkstra import one_to_all
+from ridegraph.graph import Graph, csr_sorted
+from ridegraph.synthetic import grid_network
+from ridegraph.traffic import traffic_cost
 
 
 @pytest.fixture(scope="module")
@@ -94,7 +94,7 @@ def test_shortest_handles_closed_roads(graph) -> None:
 
 
 def test_browser_matches_python(tmp_path) -> None:
-    from fastroute.web_export import export
+    from ridegraph.web_export import export
 
     node = shutil.which("node")
     if node is None:

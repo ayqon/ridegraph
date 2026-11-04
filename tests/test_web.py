@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from fastroute.router import Router, Scenario
-from fastroute.synthetic import grid_network
-from fastroute.web_export import PRESETS, export
+from ridegraph.router import Router, Scenario
+from ridegraph.synthetic import grid_network
+from ridegraph.web_export import PRESETS, export
 
 ROOT = Path(__file__).resolve().parent.parent
 NODE = shutil.which("node")
@@ -75,7 +75,7 @@ def test_javascript_engine_matches_python(tmp_path) -> None:
 
 
 def test_river_lines_are_extracted() -> None:
-    from fastroute.web_export import river_lines
+    from ridegraph.web_export import river_lines
 
     payload = {
         "elements": [

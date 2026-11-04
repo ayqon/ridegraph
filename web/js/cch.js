@@ -1,4 +1,4 @@
-// Customizable Contraction Hierarchies in the browser, ported from fastroute/cch.py.
+// Customizable Contraction Hierarchies in the browser, ported from ridegraph/cch.py.
 //
 // The exported topology (junction ranks from nested dissection and the upward
 // neighbours of every junction after contraction with all fill-in) never

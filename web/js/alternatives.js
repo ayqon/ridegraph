@@ -1,5 +1,5 @@
 // Alternative routes and the Congestion Charge zone, ported from
-// fastroute/alternatives.py and fastroute/charges.py.
+// ridegraph/alternatives.py and ridegraph/charges.py.
 //
 // Penalty method: find the quickest route, make the roads on it slower, search
 // again, and keep candidates that are different enough, not much slower, and

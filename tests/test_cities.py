@@ -4,10 +4,10 @@ import json
 
 import pytest
 
-from fastroute import cities
-from fastroute.__main__ import main
-from fastroute.synthetic import grid_network
-from fastroute.web_export import export, write_city_index
+from ridegraph import cities
+from ridegraph.__main__ import main
+from ridegraph.synthetic import grid_network
+from ridegraph.web_export import export, write_city_index
 
 
 @pytest.mark.parametrize("city", list(cities.CITIES.values()), ids=list(cities.CITIES))

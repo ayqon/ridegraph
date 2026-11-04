@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from fastroute.speeds import (
+from ridegraph.speeds import (
     DEFAULT_SPEED_KPH,
     LIMIT_REALISATION,
     MPH_TO_KPH,
@@ -53,9 +53,9 @@ def test_vectorised_speeds_match_scalar_rule() -> None:
 
     import numpy as np
 
-    from fastroute.graph import free_flow_speeds_kph
-    from fastroute.speeds import ROAD_CLASSES
-    from fastroute.synthetic import grid_network
+    from ridegraph.graph import free_flow_speeds_kph
+    from ridegraph.speeds import ROAD_CLASSES
+    from ridegraph.synthetic import grid_network
 
     network = grid_network(8, 8, seed=1)
     limits = np.where(np.arange(network.num_edges) % 3 == 0, 48.0, np.nan).astype(np.float32)

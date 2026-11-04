@@ -6,19 +6,19 @@ import random
 import numpy as np
 import pytest
 
-from fastroute.ch import ContractionHierarchy
-from fastroute.dijkstra import one_to_all
-from fastroute.graph import Graph
-from fastroute.reach import reach, times_within
-from fastroute.synthetic import grid_network
-from fastroute.tour import (
+from ridegraph.ch import ContractionHierarchy
+from ridegraph.dijkstra import one_to_all
+from ridegraph.graph import Graph
+from ridegraph.reach import reach, times_within
+from ridegraph.synthetic import grid_network
+from ridegraph.tour import (
     held_karp,
     improve,
     nearest_neighbour,
     plan,
     tour_cost,
 )
-from fastroute.traffic import traffic_cost
+from ridegraph.traffic import traffic_cost
 
 
 @pytest.fixture(scope="module")
@@ -105,9 +105,9 @@ def test_browser_matches_python(tmp_path) -> None:
     import subprocess
     from pathlib import Path
 
-    from fastroute.graph import csr_sorted
-    from fastroute.router import Router, Scenario
-    from fastroute.web_export import export
+    from ridegraph.graph import csr_sorted
+    from ridegraph.router import Router, Scenario
+    from ridegraph.web_export import export
 
     node = shutil.which("node")
     if node is None:

@@ -1447,7 +1447,7 @@ async function main() {
   $("place").textContent = engine.manifest.name;
   applyCity(engine.manifest.city);
   buildCitySwitcher();
-  document.title = `fastroute · Quickest routes across ${engine.manifest.name}`;
+  document.title = `ridegraph · Quickest routes across ${engine.manifest.name}`;
 
   atlas = new Atlas($("sheet"), engine, { rivers: engine.manifest.rivers ?? [], landmarks: LANDMARKS });
   atlas.on("view", () => {
@@ -1498,7 +1498,7 @@ async function main() {
     if (r?.found) atlas.fitNodes(r.junctions, 56);
   }
   document.body.dataset.ready = "true";
-  window.fastroute = { engine, atlas, state, sim, reach, tour }; // for debugging and automated checks
+  window.ridegraph = { engine, atlas, state, sim, reach, tour }; // for debugging and automated checks
 }
 
 main();

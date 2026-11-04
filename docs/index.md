@@ -1,4 +1,4 @@
-# fastroute
+# ridegraph
 
 Quickest routes, live closures, travel-time maps, delivery rounds, learned
 arrival times and ride dispatch on central London's road network, with every
@@ -6,8 +6,8 @@ algorithm written from first principles and checked against a reference.
 
 ![The live map](demo.gif)
 
-[Open the live map](https://fastroute.ioannikons.com/){ .md-button .md-button--primary }
-[Read the code](https://github.com/ayqon/fastroute){ .md-button }
+[Open the live map](https://ridegraph.dev/){ .md-button .md-button--primary }
+[Read the code](https://github.com/ayqon/ridegraph){ .md-button }
 
 ## At a glance
 

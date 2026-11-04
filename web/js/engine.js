@@ -6,12 +6,12 @@
 // Searches run on a "graph" object: either the plain road graph (nodes are
 // junctions) or the turn-expanded graph (nodes are road segments, edges are
 // manoeuvres), which is rebuilt here from the exported turn kinds exactly as
-// fastroute/turns.py builds it. Every search records the order in which it
+// ridegraph/turns.py builds it. Every search records the order in which it
 // settles nodes, which is what the map animates.
 
 const DTYPES = { float32: Float32Array, float64: Float64Array, int32: Int32Array, uint8: Uint8Array };
 const EARTH_RADIUS_M = 6371008.8;
-const ASTAR_SAFETY = 0.9999; // matches fastroute/astar.py
+const ASTAR_SAFETY = 0.9999; // matches ridegraph/astar.py
 const NO_MIDDLE = -1;
 export const TURN = { NONE: 0, STRAIGHT: 1, LEFT: 2, RIGHT: 3, SHARP_LEFT: 4, SHARP_RIGHT: 5, U_TURN: 6 };
 
@@ -272,7 +272,7 @@ export class Engine {
   // ---------------------------------------------------------------- turns
 
   /**
-   * Build the edge-expanded graph, numbered exactly like fastroute/turns.py:
+   * Build the edge-expanded graph, numbered exactly like ridegraph/turns.py:
    * segments 0..m-1 (CSR edge ids), start(x) = m + x, end(x) = m + n + x.
    */
   buildTurnGraph() {

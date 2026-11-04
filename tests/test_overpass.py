@@ -6,8 +6,8 @@ import urllib.error
 
 import pytest
 
-from fastroute.__main__ import main
-from fastroute.overpass import OverpassError, download
+from ridegraph.__main__ import main
+from ridegraph.overpass import OverpassError, download
 
 GOOD = json.dumps({"elements": [{"type": "node", "id": 1, "lat": 51.5, "lon": -0.1}]}).encode()
 
@@ -77,7 +77,7 @@ def test_gives_up_with_summary() -> None:
 
 
 def test_missing_inputs_give_clear_messages(tmp_path) -> None:
-    with pytest.raises(SystemExit, match="fastroute fetch"):
+    with pytest.raises(SystemExit, match="ridegraph fetch"):
         main(["build", "--raw", str(tmp_path / "missing.json.gz")])
-    with pytest.raises(SystemExit, match="fastroute build"):
+    with pytest.raises(SystemExit, match="ridegraph build"):
         main(["contract", "--network", str(tmp_path / "missing.npz")])

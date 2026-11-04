@@ -9,7 +9,7 @@ MARKER = "<!-- cli-reference -->"
 
 
 def _reference() -> str:
-    from fastroute.__main__ import build_parser
+    from ridegraph.__main__ import build_parser
 
     parser = build_parser()
     out = [f"```text\n{parser.format_help()}```\n"]

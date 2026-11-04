@@ -10,11 +10,11 @@ pytest.importorskip("httpx")
 
 from fastapi.testclient import TestClient  # noqa: E402
 
-from fastroute.api import RoutingService, create_app, parse_time  # noqa: E402
-from fastroute.dijkstra import one_to_all  # noqa: E402
-from fastroute.graph import Graph, csr_sorted  # noqa: E402
-from fastroute.synthetic import grid_network  # noqa: E402
-from fastroute.traffic import traffic_cost  # noqa: E402
+from ridegraph.api import RoutingService, create_app, parse_time  # noqa: E402
+from ridegraph.dijkstra import one_to_all  # noqa: E402
+from ridegraph.graph import Graph, csr_sorted  # noqa: E402
+from ridegraph.synthetic import grid_network  # noqa: E402
+from ridegraph.traffic import traffic_cost  # noqa: E402
 
 # The synthetic grid sits around Holborn, straddling the Congestion Charge
 # zone's northern edge.
@@ -111,7 +111,7 @@ def test_bad_requests_are_rejected_clearly(client, params) -> None:
 
 
 def test_learned_eta_is_reported_when_a_model_is_loaded(network) -> None:
-    from fastroute.eta import train
+    from ridegraph.eta import train
 
     model = train(network, trips=600, seed=1, gnn_epochs=0).model_json
     client = TestClient(create_app(RoutingService(network, model)))

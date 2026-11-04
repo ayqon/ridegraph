@@ -1,13 +1,13 @@
 name: Compare with OSRM
 
 # Runs OSRM, the production open-source routing engine, on the same roads and
-# speeds as fastroute and compares the answers to 1,000 random trips.
+# speeds as ridegraph and compares the answers to 1,000 random trips.
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - "fastroute/**"
+      - "ridegraph/**"
       - ".github/workflows/osrm.yml"
 
 permissions:
@@ -35,15 +35,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data/raw
-          key: osm-central-london-${{ hashFiles('fastroute/overpass.py') }}
+          key: osm-central-london-${{ hashFiles('ridegraph/overpass.py') }}
       - name: Download central London
         if: steps.osm.outputs.cache-hit != 'true'
-        run: python -m fastroute fetch
+        run: python -m ridegraph fetch
       - name: Build routing graph
-        run: python -m fastroute build
+        run: python -m ridegraph build
 
       - name: Write the same roads and speeds for OSRM
-        run: python -m fastroute osrm-prepare --out data/osrm
+        run: python -m ridegraph osrm-prepare --out data/osrm
 
       # OSRM's car profile, with the turn and traffic-light penalties the
       # free-flow router here does not have switched off, and plain duration
@@ -60,7 +60,7 @@ jobs:
             data/osrm/car.lua
           grep -nE "turn_penalty|traffic_light_penalty|u_turn_penalty|weight_name" data/osrm/car.lua
 
-      - name: Extract, partition and customise with fastroute's speeds
+      - name: Extract, partition and customise with ridegraph's speeds
         run: |
           run() { docker run --rm -v "$PWD/data/osrm:/data" "$OSRM_IMAGE" "$@"; }
           run osrm-extract -p /data/car.lua /data/map.osm
@@ -79,7 +79,7 @@ jobs:
 
       - name: Compare 1,000 random trips
         run: |
-          python -m fastroute compare-osrm --queries 1000 --out osrm-comparison.json | tee osrm-comparison.md
+          python -m ridegraph compare-osrm --queries 1000 --out osrm-comparison.json | tee osrm-comparison.md
           cat osrm-comparison.md >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:

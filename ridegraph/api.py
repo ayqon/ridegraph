@@ -303,7 +303,7 @@ def create_app(service: RoutingService):
     from . import __version__
 
     app = FastAPI(
-        title="fastroute",
+        title="ridegraph",
         version=__version__,
         description=(
             "Quickest routes, alternatives, Congestion Charge avoidance, travel-time maps "
@@ -391,11 +391,11 @@ def load_service(network_path: Path, eta_model_path: Path | None = None) -> Rout
 def app_from_env():
     """App factory for ``uvicorn --factory`` and multi-worker serving.
 
-    Reads ``FASTROUTE_NETWORK`` (default ``data/central-london.npz``) and the
-    optional ``FASTROUTE_ETA_MODEL``.
+    Reads ``RIDEGRAPH_NETWORK`` (default ``data/central-london.npz``) and the
+    optional ``RIDEGRAPH_ETA_MODEL``.
     """
     import os
 
-    network = Path(os.environ.get("FASTROUTE_NETWORK", "data/central-london.npz"))
-    model = os.environ.get("FASTROUTE_ETA_MODEL")
+    network = Path(os.environ.get("RIDEGRAPH_NETWORK", "data/central-london.npz"))
+    model = os.environ.get("RIDEGRAPH_ETA_MODEL")
     return create_app(load_service(network, Path(model) if model else None))

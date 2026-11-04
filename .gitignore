@@ -6,10 +6,11 @@ __pycache__/
 build/
 dist/
 
-# Raw OSM downloads are large and reproducible with `python -m fastroute fetch`.
+# Raw OSM downloads are large and reproducible with `python -m ridegraph fetch`.
 data/raw/
 
-# Built by CI from OpenStreetMap: python -m fastroute export-web
+# Built by CI from OpenStreetMap: python -m ridegraph export-web
 web/data/
 site/
 web/docs/
+.coverage

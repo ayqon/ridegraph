@@ -4,8 +4,8 @@ import pytest
 
 pytest.importorskip("sklearn")
 
-from fastroute.synthetic import grid_network  # noqa: E402
-from fastroute.validation import REFERENCES, markdown, simulated_speeds  # noqa: E402
+from ridegraph.synthetic import grid_network  # noqa: E402
+from ridegraph.validation import REFERENCES, markdown, simulated_speeds  # noqa: E402
 
 
 def test_simulated_city_is_slower_at_peak_and_slower_than_the_router() -> None:

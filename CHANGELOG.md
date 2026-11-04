@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to fastroute. The format follows
+All notable changes to ridegraph. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 uses [semantic versioning](https://semver.org/).
 
@@ -47,4 +47,4 @@ First public release.
 - Property-based tests, mypy, 92% line coverage, CI on Python 3.10, 3.12 and
   3.13, documentation site, automated build and deployment.
 
-[1.0.0]: https://github.com/ayqon/fastroute/releases/tag/v1.0.0
+[1.0.0]: https://github.com/ayqon/ridegraph/releases/tag/v1.0.0

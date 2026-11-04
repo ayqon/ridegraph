@@ -3,7 +3,7 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "fastroute"
+name = "ridegraph"
 version = "1.0.0"
 description = "Quickest routes, live closures, learned ETAs and ride dispatch on real road networks, built from first principles."
 readme = "README.md"
@@ -30,16 +30,16 @@ api = ["fastapi>=0.110", "uvicorn>=0.29"]
 docs = ["mkdocs>=1.6,<2", "mkdocs-material>=9.5,<10", "mkdocstrings[python]>=0.25"]
 
 [project.scripts]
-fastroute = "fastroute.__main__:main"
+ridegraph = "ridegraph.__main__:main"
 
 [tool.setuptools.packages.find]
-include = ["fastroute*"]
+include = ["ridegraph*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
 [tool.coverage.run]
-source = ["fastroute"]
+source = ["ridegraph"]
 
 [tool.mypy]
 python_version = "3.12"

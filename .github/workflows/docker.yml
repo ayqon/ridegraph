@@ -6,7 +6,7 @@ on:
     branches: [main]
     paths:
       - "Dockerfile"
-      - "fastroute/**"
+      - "ridegraph/**"
       - "pyproject.toml"
       - ".github/workflows/docker.yml"
   pull_request:
@@ -20,12 +20,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build (map download skipped; a synthetic network is used below)
-        run: docker build --build-arg FETCH=0 -t fastroute .
+        run: docker build --build-arg FETCH=0 -t ridegraph .
       - name: Run against a synthetic street grid
         run: |
-          docker run -d --name api -p 8000:8000 fastroute sh -c \
-            "python -c \"from fastroute.synthetic import grid_network; grid_network(30, 30, seed=1).save('data/central-london.npz')\" \
-             && uvicorn fastroute.api:app_from_env --factory --host 0.0.0.0 --port 8000"
+          docker run -d --name api -p 8000:8000 ridegraph sh -c \
+            "python -c \"from ridegraph.synthetic import grid_network; grid_network(30, 30, seed=1).save('data/central-london.npz')\" \
+             && uvicorn ridegraph.api:app_from_env --factory --host 0.0.0.0 --port 8000"
           for i in $(seq 1 60); do curl -sf http://127.0.0.1:8000/health && break; sleep 2; done
           echo
       - name: Smoke test

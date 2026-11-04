@@ -49,7 +49,7 @@ def write_osm_xml(payload: Mapping[str, Any], path: Path) -> tuple[int, int]:
     nodes = [el for el in elements if el.get("type") == "node" and int(el["id"]) in used]
     with open(path, "w", encoding="utf-8") as fh:
         fh.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-        fh.write('<osm version="0.6" generator="fastroute">\n')
+        fh.write('<osm version="0.6" generator="ridegraph">\n')
         for n in nodes:
             tags = n.get("tags", {})
             attrs = f'id="{int(n["id"])}" version="1" lat="{n["lat"]:.7f}" lon="{n["lon"]:.7f}"'
@@ -170,14 +170,14 @@ def markdown(summary: dict[str, Any]) -> str:
     s = summary
     return "\n".join(
         [
-            f"| fastroute vs OSRM, {s['both_found']:,} random central London trips | |",
+            f"| ridegraph vs OSRM, {s['both_found']:,} random central London trips | |",
             "|---|---:|",
             f"| Travel time within 1% of OSRM's | {s['time_within_1pct']:.1f}% |",
             f"| Travel time within 5% of OSRM's | {s['time_within_5pct']:.1f}% |",
             f"| Median time difference | {s['median_abs_time_diff_pct']:.2f}% |",
             f"| Same route (95%+ of junctions shared) | {s['same_route_pct']:.1f}% |",
             f"| Median share of junctions in common | {s['median_overlap_pct']:.1f}% |",
-            f"| Median query, fastroute CH in Python | {s['ours_median_ms']:.2f} ms |",
+            f"| Median query, ridegraph CH in Python | {s['ours_median_ms']:.2f} ms |",
             f"| Median query, OSRM over HTTP | {s['osrm_median_ms']:.2f} ms |",
         ]
     )

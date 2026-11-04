@@ -13,14 +13,14 @@ import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
-from fastroute.astar import astar
-from fastroute.bidirectional import bidirectional_dijkstra
-from fastroute.cch import CustomizableCH
-from fastroute.ch import ContractionHierarchy
-from fastroute.dijkstra import one_to_all
-from fastroute.graph import Graph, RoadNetwork, haversine_m
-from fastroute.matching import greedy_matches, hungarian, optimal_matches
-from fastroute.tour import held_karp, tour_cost
+from ridegraph.astar import astar
+from ridegraph.bidirectional import bidirectional_dijkstra
+from ridegraph.cch import CustomizableCH
+from ridegraph.ch import ContractionHierarchy
+from ridegraph.dijkstra import one_to_all
+from ridegraph.graph import Graph, RoadNetwork, haversine_m
+from ridegraph.matching import greedy_matches, hungarian, optimal_matches
+from ridegraph.tour import held_karp, tour_cost
 
 SETTINGS = settings(max_examples=60, deadline=None, suppress_health_check=[HealthCheck.too_slow])
 
@@ -89,7 +89,7 @@ def test_every_method_agrees_with_dijkstra(network) -> None:
 
 
 def _seconds(network) -> np.ndarray:
-    from fastroute.graph import free_flow_cost
+    from ridegraph.graph import free_flow_cost
 
     return np.asarray(free_flow_cost(network), dtype=np.float64)
 

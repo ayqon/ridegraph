@@ -5,13 +5,13 @@ import random
 import numpy as np
 import pytest
 
-from fastroute.astar import astar
-from fastroute.bidirectional import bidirectional_dijkstra
-from fastroute.ch import ContractionHierarchy
-from fastroute.dijkstra import dijkstra
-from fastroute.graph import Graph, free_flow_cost
-from fastroute.synthetic import grid_network
-from fastroute.turns import NO_PENALTIES, Turn, TurnGraph, TurnPenalties
+from ridegraph.astar import astar
+from ridegraph.bidirectional import bidirectional_dijkstra
+from ridegraph.ch import ContractionHierarchy
+from ridegraph.dijkstra import dijkstra
+from ridegraph.graph import Graph, free_flow_cost
+from ridegraph.synthetic import grid_network
+from ridegraph.turns import NO_PENALTIES, Turn, TurnGraph, TurnPenalties
 
 from .conftest import make_network
 

@@ -1,4 +1,4 @@
-// Replays a simulated morning of ride dispatch, exported by fastroute/dispatch.py.
+// Replays a simulated morning of ride dispatch, exported by ridegraph/dispatch.py.
 //
 // Only the decisions are stored (which driver drove from where to where, and
 // when). Each leg's road route is rebuilt here with the same Contraction

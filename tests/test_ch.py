@@ -4,9 +4,9 @@ import random
 
 import pytest
 
-from fastroute.ch import NO_MIDDLE, ContractionHierarchy
-from fastroute.dijkstra import dijkstra
-from fastroute.graph import Graph
+from ridegraph.ch import NO_MIDDLE, ContractionHierarchy
+from ridegraph.dijkstra import dijkstra
+from ridegraph.graph import Graph
 
 from .conftest import grid_network, make_network
 

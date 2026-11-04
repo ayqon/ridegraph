@@ -2,7 +2,7 @@
 
 ## Three cities, one engine
 
-Nothing in the engine is London-specific. `fastroute/cities.py` gives each
+Nothing in the engine is London-specific. `ridegraph/cities.py` gives each
 city its area, the places a person would name on the map, where ride demand
 concentrates and which side of the road traffic drives on; the same
 pipeline downloads, builds, contracts, trains and simulates each one, and
@@ -22,7 +22,7 @@ been checked against real figures.
 Intersections become **nodes** and road segments become directed **edges**.
 A two-way street is two edges; a one-way street or roundabout is one.
 
-The pipeline (`fastroute/osm.py`) pulls drivable ways from OpenStreetMap,
+The pipeline (`ridegraph/osm.py`) pulls drivable ways from OpenStreetMap,
 drops what a car cannot use (footpaths, private roads, car park aisles),
 applies `oneway`, roundabout and motorway direction rules, then keeps only the
 largest strongly connected component. That last step matters: cutting a city
@@ -32,7 +32,7 @@ router that starts there would fail.
 ## 2. Edges cost seconds, not metres
 
 The quickest route is not the shortest one. Each edge's weight is its travel
-time (`fastroute/speeds.py`):
+time (`ridegraph/speeds.py`):
 
 ```
 seconds = length / free-flow speed
@@ -110,7 +110,7 @@ Hierarchies included, since it is just another weighted graph. A `Router`
 intersections.
 
 ```
-$ python -m fastroute eta <from> <to> --turns
+$ python -m ridegraph eta <from> <to> --turns
 03:00 weekday, with turn costs    2 min 20 s   1.01 km  reference route
 08:00 weekday, with turn costs    3 min 59 s   0.99 km  different route (30% shared)
 13:00 weekday, with turn costs    3 min 06 s   1.01 km  same route
@@ -124,7 +124,7 @@ $ python -m fastroute eta <from> <to> --turns
 Contraction Hierarchies are fast because they are built for one set of
 travel times. A closure on Oxford Street makes them stale, and rebuilding
 takes far longer than a user will wait. Production engines (OSRM's MLD, Bing
-Maps) separate the road layout from the times. `fastroute/cch.py` implements
+Maps) separate the road layout from the times. `ridegraph/cch.py` implements
 **Customizable CH** (Dibbelt, Strasser and Wagner, 2016):
 
 1. **Once per map:** order junctions by *nested dissection* (cut the city
@@ -139,7 +139,7 @@ Maps) separate the road layout from the times. `fastroute/cch.py` implements
    through the triangles.
 
 The times come from **Transport for London's open disruption feed**
-(`fastroute/live.py`). Each disrupted stretch is map-matched onto the graph
+(`ridegraph/live.py`). Each disrupted stretch is map-matched onto the graph
 (both ends and the middle of an edge within 18 m of the line). Closed roads
 get an infinite time, and open ones are slowed by severity. The map asks
 TfL directly when you switch on *Live roadworks and closures*. If the feed
@@ -147,14 +147,14 @@ can't be reached from the browser, it falls back to a snapshot taken when CI
 built the page.
 
 ```bash
-python -m fastroute live                      # what is disrupted right now
-python -m fastroute route 51.5130,-0.1590 51.5160,-0.1300 --at 13:00 --live
+python -m ridegraph live                      # what is disrupted right now
+python -m ridegraph route 51.5130,-0.1590 51.5160,-0.1300 --at 13:00 --live
 ```
 
 ## 6. Alternative routes and the Congestion Charge
 
 Map apps offer two or three routes because the quickest is not always the one
-you want. `fastroute/alternatives.py` finds them with the **penalty method**:
+you want. `ridegraph/alternatives.py` finds them with the **penalty method**:
 take the quickest route, make every road on it 40% slower, search again, and
 repeat. Each search is pushed off the corridor already used. A candidate is
 kept only if it is
@@ -165,7 +165,7 @@ kept only if it is
   each be within 15% of the quickest way between their ends.
 
 Closing roads is the same machinery with infinite penalties, which is how a
-route **avoids the Congestion Charge zone** (`fastroute/charges.py`: the zone
+route **avoids the Congestion Charge zone** (`ridegraph/charges.py`: the zone
 polygon, £18 a day, 07:00 to 18:00 on weekdays and 12:00 to 18:00 at
 weekends; the boundary roads are free). From Paddington to Aldgate at 8am:
 
@@ -181,7 +181,7 @@ saved. The browser runs the same method (A\* on the penalised weights, under
 100 ms on London) and a Node test holds it to Python.
 
 ```bash
-python -m fastroute route 51.5265,-0.1820 51.5100,-0.0700 --at 08:00 --alternatives --avoid-charge
+python -m ridegraph route 51.5265,-0.1820 51.5100,-0.0700 --at 08:00 --alternatives --avoid-charge
 ```
 
 ## 7. The learned ETA
@@ -191,7 +191,7 @@ know that lights on a particular corridor hold you for half a minute at
 8:30, that one junction always queues, or that the evening peak arrives later
 than the timetable. Production ride-hailing systems therefore keep the
 routing engine and learn the **residual**: given a route and a moment, how
-far off will the engine be? `fastroute/eta.py` follows that design.
+far off will the engine be? `ridegraph/eta.py` follows that design.
 
 **Features** are things a production system knows when the trip is
 requested: the router's ETA, route length, straight-line distance and
@@ -237,7 +237,7 @@ at peak; hotspots matter only when the route passes through them).
 Gradient-boosted trees win among the models that read one row per trip and,
 being a few hundred small trees, are also the easiest to ship.
 
-**A graph neural network** (`fastroute/gnn.py`) works on the roads instead
+**A graph neural network** (`ridegraph/gnn.py`) works on the roads instead
 of on trip summaries, the approach DeepMind took for Google Maps. Every road
 segment starts with its own features (class, length, lights, junction size,
 position as sines and cosines), which are then averaged over the *line
@@ -278,7 +278,7 @@ square accordingly. Against the hidden hotspot field this map correlates at
 r = 0.83 on London (0.91 on a synthetic grid): the model has located the
 congestion from trip outcomes alone.
 
-**How realistic is the simulated city?** `python -m fastroute validate`
+**How realistic is the simulated city?** `python -m ridegraph validate`
 times random weekday trips (about 6 km) in it and sets the speeds beside
 published figures:
 
@@ -313,7 +313,7 @@ places.
 
 ## 8. Travel-time maps and delivery rounds
 
-**Travel-time maps** (`fastroute/reach.py`) answer "where can I get to in 20
+**Travel-time maps** (`ridegraph/reach.py`) answer "where can I get to in 20
 minutes from here?", or, for someone choosing where to live, "from where can
 I get *to* my office in 20 minutes?". It is a single-source search that
 settles junctions in time order and stops at the budget, run on the reverse
@@ -321,7 +321,7 @@ graph for journeys into a point. Reachable area is counted over 250 m
 squares. From Holborn, 10 minutes reaches 12.2 km² at 08:00 against
 36.6 km² at 03:00: rush hour shrinks a 10-minute radius to a third.
 
-**Delivery rounds** (`fastroute/tour.py`) find the best order to visit a
+**Delivery rounds** (`ridegraph/tour.py`) find the best order to visit a
 list of stops, the travelling salesman problem on one-way streets, where
 A to B and B to A take different times:
 
@@ -342,18 +342,18 @@ A to B and B to A take different times:
 | **Optimal (Held-Karp)** | **1 h 05 min** |
 
 ```bash
-python -m fastroute reach 51.5174,-0.1200 --at 08:00
-python -m fastroute tour 51.5174,-0.1200 51.5308,-0.1238 51.5033,-0.1145 ...
+python -m ridegraph reach 51.5174,-0.1200 --at 08:00
+python -m ridegraph tour 51.5174,-0.1200 51.5308,-0.1238 51.5033,-0.1145 ...
 ```
 
 ## 9. Ride dispatch and demand forecasting
 
 Routing exists to answer a business question: which driver should take this
-ride? `fastroute/dispatch.py` simulates a fleet over the 07:00 to 10:00
+ride? `ridegraph/dispatch.py` simulates a fleet over the 07:00 to 10:00
 morning peak and compares six ways of answering it, on exactly the same
 ride requests and the same starting fleet.
 
-**Demand** (`fastroute/demand.py`) comes from places with their own rhythm:
+**Demand** (`ridegraph/demand.py`) comes from places with their own rhythm:
 main-line stations busy at commuting hours, the City and Holborn filling in
 the morning and emptying in the evening, Soho, Covent Garden and Shoreditch
 at night, plus requests from anywhere. Every day has its own level, its own
@@ -369,7 +369,7 @@ per rider, then join them through buckets at the nodes they share.
 **The methods compared:**
 
 * *Nearest driver.* Riders, oldest first, each take the closest free driver.
-* *Optimal matching.* The **Hungarian algorithm** (`fastroute/matching.py`)
+* *Optimal matching.* The **Hungarian algorithm** (`ridegraph/matching.py`)
   assigns the whole batch at once to minimise total pickup time, with each
   rider's cost reduced by how long they have already waited so that
   hard-to-reach riders are not left until they give up.
@@ -445,7 +445,7 @@ platforms justify surge by its effect on supply.
 
 The demo in `web/` runs entirely in the browser, with no server:
 
-* **Same data, same answers.** `python -m fastroute export-web` writes the
+* **Same data, same answers.** `python -m ridegraph export-web` writes the
   graph and one Contraction Hierarchy per time-of-day preset as compact,
   gzipped binary arrays. `web/js/engine.js` is a direct port of the
   algorithms, and a test runs it under Node and requires exact agreement
@@ -496,7 +496,7 @@ The demo in `web/` runs entirely in the browser, with no server:
 
 ## 11. An HTTP API
 
-The map needs no server, but a product would. `fastroute/api.py` serves the
+The map needs no server, but a product would. `ridegraph/api.py` serves the
 engine as a FastAPI application with OpenAPI docs at `/docs`:
 
 | Endpoint | Answers |
@@ -521,10 +521,10 @@ More throughput is more workers.
 
 ```bash
 pip install -e ".[api,ml]"
-python -m fastroute serve --eta-model web/data/eta-model.json
+python -m ridegraph serve --eta-model web/data/eta-model.json
 curl "http://127.0.0.1:8000/route?from=51.5154,-0.1410&to=51.5033,-0.1145&at=08:15"
 
-docker build -t fastroute . && docker run -p 8000:8000 fastroute
+docker build -t ridegraph . && docker run -p 8000:8000 ridegraph
 ```
 
 A CI workflow builds the image and checks the running container answers.
@@ -555,21 +555,21 @@ benchmark run doubles as a correctness check.
 **Against OSRM.** Agreeing with Dijkstra proves the searches are right, but
 they all share this package's map parsing and speed model. OSRM shares
 neither: it parses OpenStreetMap with its own C++ code and routes with
-Multi-Level Dijkstra. The *Compare with OSRM* workflow (`fastroute/osrm.py`)
-gives OSRM v5.27 the ways this package treats as drivable, loads fastroute's
+Multi-Level Dijkstra. The *Compare with OSRM* workflow (`ridegraph/osrm.py`)
+gives OSRM v5.27 the ways this package treats as drivable, loads ridegraph's
 free-flow speed for every one of the 127,286 road segments as a *segment
 speed file*, switches off OSRM's turn and traffic-light penalties (the
 free-flow router has none) and asks both engines the same 1,000 random
 trips:
 
-| fastroute vs OSRM, 1,000 random central London trips | |
+| ridegraph vs OSRM, 1,000 random central London trips | |
 |---|---:|
 | Travel time within 1% of OSRM's | 83.7% |
 | Travel time within 5% of OSRM's | 96.9% |
 | Median time difference | 0.23% |
 | Same route (95%+ of junctions shared) | 75.0% |
 | Median share of junctions in common | 99.7% |
-| Median query, fastroute CH in Python | 1.02 ms |
+| Median query, ridegraph CH in Python | 1.02 ms |
 | Median query, OSRM over local HTTP | 1.56 ms |
 
 What remains comes from the parts that are genuinely independent. OSRM

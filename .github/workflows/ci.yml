@@ -24,7 +24,7 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       # Type checking once, against the newest supported Python and numpy.
-      - run: mypy fastroute
+      - run: mypy ridegraph
         if: matrix.python-version == '3.12'
       - name: Documentation builds cleanly
         if: matrix.python-version == '3.12'

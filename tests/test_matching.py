@@ -6,11 +6,11 @@ import random
 import numpy as np
 import pytest
 
-from fastroute.ch import ContractionHierarchy
-from fastroute.dijkstra import one_to_all
-from fastroute.graph import Graph
-from fastroute.matching import greedy_matches, hungarian, optimal_matches
-from fastroute.synthetic import grid_network
+from ridegraph.ch import ContractionHierarchy
+from ridegraph.dijkstra import one_to_all
+from ridegraph.graph import Graph
+from ridegraph.matching import greedy_matches, hungarian, optimal_matches
+from ridegraph.synthetic import grid_network
 
 
 def brute_force(cost: np.ndarray) -> float:

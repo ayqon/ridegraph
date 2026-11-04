@@ -7,11 +7,11 @@ from collections.abc import Callable
 
 import pytest
 
-from fastroute.astar import astar
-from fastroute.bidirectional import bidirectional_dijkstra
-from fastroute.dijkstra import dijkstra
-from fastroute.graph import Graph
-from fastroute.result import Route
+from ridegraph.astar import astar
+from ridegraph.bidirectional import bidirectional_dijkstra
+from ridegraph.dijkstra import dijkstra
+from ridegraph.graph import Graph
+from ridegraph.result import Route
 
 from .conftest import grid_network, make_network
 

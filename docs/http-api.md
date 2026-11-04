@@ -1,6 +1,6 @@
 # HTTP API
 
-`python -m fastroute serve` (or the Docker image) runs the engine as a JSON
+`python -m ridegraph serve` (or the Docker image) runs the engine as a JSON
 API. Interactive OpenAPI documentation is served at `/docs` by the running
 service.
 

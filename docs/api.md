@@ -3,32 +3,32 @@
 The modules most worth reading, with their public functions and classes.
 Generated from the docstrings.
 
-::: fastroute.graph
+::: ridegraph.graph
 
-::: fastroute.dijkstra
+::: ridegraph.dijkstra
 
-::: fastroute.ch
+::: ridegraph.ch
 
-::: fastroute.cch
+::: ridegraph.cch
 
-::: fastroute.router
+::: ridegraph.router
 
-::: fastroute.alternatives
+::: ridegraph.alternatives
 
-::: fastroute.live
+::: ridegraph.live
 
-::: fastroute.reach
+::: ridegraph.reach
 
-::: fastroute.tour
+::: ridegraph.tour
 
-::: fastroute.matching
+::: ridegraph.matching
 
-::: fastroute.eta
+::: ridegraph.eta
 
-::: fastroute.gnn
+::: ridegraph.gnn
 
-::: fastroute.osrm
+::: ridegraph.osrm
 
-::: fastroute.validation
+::: ridegraph.validation
 
-::: fastroute.api
+::: ridegraph.api

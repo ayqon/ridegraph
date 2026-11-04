@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import numpy as np
 
-from fastroute.graph import Graph
-from fastroute.osm import directions, is_drivable, network_from_overpass
-from fastroute.speeds import CLASS_INDEX
+from ridegraph.graph import Graph
+from ridegraph.osm import directions, is_drivable, network_from_overpass
+from ridegraph.speeds import CLASS_INDEX
 
 
 def node(i: int, lat: float, lon: float) -> dict:

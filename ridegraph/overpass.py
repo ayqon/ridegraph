@@ -1,6 +1,6 @@
 """Download drivable roads from the Overpass API.
 
-Kept free of third-party imports so ``python -m fastroute fetch`` works on a
+Kept free of third-party imports so ``python -m ridegraph fetch`` works on a
 bare Python install.
 
 The public Overpass servers are shared and frequently overloaded, answering
@@ -26,7 +26,7 @@ OVERPASS_URLS: tuple[str, ...] = (
     "https://overpass.kumi.systems/api/interpreter",
     "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 )
-USER_AGENT = "fastroute (github.com/ayqon/fastroute)"
+USER_AGENT = "ridegraph (github.com/ayqon/ridegraph)"
 _RETRYABLE_HTTP = {429, 500, 502, 503, 504}
 
 

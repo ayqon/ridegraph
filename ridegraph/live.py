@@ -72,7 +72,7 @@ def feed_url(now: datetime | None = None, hours: float = 1.0) -> str:
 
 def fetch(timeout: float = 30.0) -> object:
     """Current street disruptions as parsed JSON."""
-    req = urllib.request.Request(feed_url(), headers={"User-Agent": "fastroute"})
+    req = urllib.request.Request(feed_url(), headers={"User-Agent": "ridegraph"})
     with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 - fixed https URL
         return json.loads(resp.read())
 

@@ -1,4 +1,4 @@
-// Learned ETA in the browser: the same features as fastroute/eta.py,
+// Learned ETA in the browser: the same features as ridegraph/eta.py,
 // fed through the same gradient-boosted trees exported from scikit-learn.
 //
 // The model predicts log(observed / graph ETA) for a route, so its output is
@@ -78,7 +78,7 @@ export class EtaModel {
       if (kind in counts) counts[kind]++;
     }
     // Sets of lights: signal nodes closer than 60 m along the route count once
-    // (same rule as RouteContext.light_sets in fastroute/eta.py).
+    // (same rule as RouteContext.light_sets in ridegraph/eta.py).
     let lights = 0;
     let since = Infinity;
     for (let i = 1; i < path.length - 1; i++) {

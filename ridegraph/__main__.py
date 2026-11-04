@@ -1,9 +1,9 @@
 """Command line interface.
 
-python -m fastroute fetch            # download central London from OpenStreetMap
-python -m fastroute build            # raw OSM JSON -> compact road network
-python -m fastroute info             # graph statistics
-python -m fastroute route 51.5154,-0.1410 51.5033,-0.1196
+python -m ridegraph fetch            # download central London from OpenStreetMap
+python -m ridegraph build            # raw OSM JSON -> compact road network
+python -m ridegraph info             # graph statistics
+python -m ridegraph route 51.5154,-0.1410 51.5033,-0.1196
 """
 
 from __future__ import annotations
@@ -71,7 +71,7 @@ def _snap(network, point: tuple[float, float]) -> int:
 def _require(path: Path, how_to_make: str) -> Path:
     """Exit with a helpful message if a pipeline step's input is missing."""
     if not path.exists():
-        raise SystemExit(f"{path} not found. Run `python -m fastroute {how_to_make}` first.")
+        raise SystemExit(f"{path} not found. Run `python -m ridegraph {how_to_make}` first.")
     return path
 
 
@@ -167,7 +167,7 @@ def _contract_command(network_path: Path, scenario) -> str:
     flags = _scenario_flags(scenario)
     if Path(network_path) != DEFAULT_NETWORK:
         flags.insert(0, f"--network {network_path}")
-    return " ".join(["python -m fastroute contract", *flags])
+    return " ".join(["python -m ridegraph contract", *flags])
 
 
 def _load_ch(network_path: Path, scenario, *, required: bool = True):
@@ -555,16 +555,16 @@ def cmd_serve(args: argparse.Namespace) -> int:
     except ImportError:
         raise SystemExit('Serving needs the API extras: pip install -e ".[api]"') from None
     _require(args.network, "build")
-    os.environ["FASTROUTE_NETWORK"] = str(args.network)
+    os.environ["RIDEGRAPH_NETWORK"] = str(args.network)
     if args.eta_model:
-        os.environ["FASTROUTE_ETA_MODEL"] = str(_require(args.eta_model, "eta-train --out FILE"))
+        os.environ["RIDEGRAPH_ETA_MODEL"] = str(_require(args.eta_model, "eta-train --out FILE"))
     print(
         f"Loading {args.network} and building the Customizable CH, then serving on "
         f"http://{args.host}:{args.port} (API docs at /docs)",
         file=sys.stderr,
     )
     uvicorn.run(
-        "fastroute.api:app_from_env",
+        "ridegraph.api:app_from_env",
         factory=True,
         host=args.host,
         port=args.port,
@@ -688,7 +688,7 @@ def cmd_tour(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     """The full command-line interface (also used to generate the docs)."""
     parser = argparse.ArgumentParser(
-        prog="fastroute", description="Quickest-route search on real road networks."
+        prog="ridegraph", description="Quickest-route search on real road networks."
     )
     sub = parser.add_subparsers(dest="command", required=True)
 

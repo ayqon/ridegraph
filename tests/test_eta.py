@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from fastroute.eta import (
+from ridegraph.eta import (
     FEATURES,
     RouteContext,
     World,
@@ -18,9 +18,9 @@ from fastroute.eta import (
     predict_from_json,
     train,
 )
-from fastroute.router import Router, Scenario
-from fastroute.synthetic import grid_network
-from fastroute.web_export import PRESETS, export
+from ridegraph.router import Router, Scenario
+from ridegraph.synthetic import grid_network
+from ridegraph.web_export import PRESETS, export
 
 pytest.importorskip("sklearn")
 
@@ -100,7 +100,7 @@ def test_model_recovers_hidden_hotspots(trained) -> None:
 
 
 def test_conformal_margin_reaches_target_coverage() -> None:
-    from fastroute.eta import conformal_margin
+    from ridegraph.eta import conformal_margin
 
     rng = np.random.default_rng(0)
     y = rng.normal(size=5000)

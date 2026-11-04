@@ -3,12 +3,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from fastroute.ch import ContractionHierarchy
-from fastroute.eta import RouteContext, World, simulate_trips, train
-from fastroute.gnn import SegmentGNN, batch, line_graph, propagate, segment_features
-from fastroute.graph import Graph
-from fastroute.router import Router, Scenario
-from fastroute.synthetic import grid_network
+from ridegraph.ch import ContractionHierarchy
+from ridegraph.eta import RouteContext, World, simulate_trips, train
+from ridegraph.gnn import SegmentGNN, batch, line_graph, propagate, segment_features
+from ridegraph.graph import Graph
+from ridegraph.router import Router, Scenario
+from ridegraph.synthetic import grid_network
 
 pytest.importorskip("scipy")
 

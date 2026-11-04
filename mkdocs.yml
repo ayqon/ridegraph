@@ -1,8 +1,8 @@
-site_name: fastroute
+site_name: Ridegraph
 site_description: Routing, arrival-time prediction and ride dispatch on real city road networks, written from scratch.
-site_url: https://fastroute.ioannikons.com/docs/
-repo_url: https://github.com/ayqon/fastroute
-repo_name: ayqon/fastroute
+site_url: https://ridegraph.dev/docs/
+repo_url: https://github.com/ayqon/ridegraph
+repo_name: ayqon/ridegraph
 edit_uri: edit/main/docs/
 copyright: Code MIT. Road data © OpenStreetMap contributors. Disruptions powered by TfL Open Data.
 
@@ -36,7 +36,7 @@ nav:
   - HTTP API: http-api.md
   - Command line: cli.md
   - Python API: api.md
-  - Live map: https://fastroute.ioannikons.com/
+  - Live map: https://ridegraph.dev/
 
 markdown_extensions:
   - admonition

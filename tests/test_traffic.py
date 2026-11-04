@@ -3,10 +3,10 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from fastroute.dijkstra import dijkstra
-from fastroute.graph import Graph, free_flow_cost
-from fastroute.speeds import CLASS_INDEX
-from fastroute.traffic import DEFAULT_PROFILE, TrafficProfile, parse_time, traffic_cost
+from ridegraph.dijkstra import dijkstra
+from ridegraph.graph import Graph, free_flow_cost
+from ridegraph.speeds import CLASS_INDEX
+from ridegraph.traffic import DEFAULT_PROFILE, TrafficProfile, parse_time, traffic_cost
 
 from .conftest import make_network
 

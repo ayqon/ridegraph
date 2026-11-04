@@ -1,6 +1,6 @@
 # Architecture
 
-fastroute is a Python package that does the heavy lifting offline and a
+ridegraph is a Python package that does the heavy lifting offline and a
 static web page that runs the same algorithms in the browser. There is no
 server: CI builds everything and publishes files.
 

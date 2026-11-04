@@ -3,11 +3,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from fastroute.ch import ContractionHierarchy
-from fastroute.demand import SLOTS_PER_DAY, DemandWorld, forecast_features, train_forecaster
-from fastroute.dispatch import POLICIES, DispatchConfig, compare, generate_rides, simulate
-from fastroute.graph import Graph, csr_sorted
-from fastroute.synthetic import grid_network
+from ridegraph.ch import ContractionHierarchy
+from ridegraph.demand import SLOTS_PER_DAY, DemandWorld, forecast_features, train_forecaster
+from ridegraph.dispatch import POLICIES, DispatchConfig, compare, generate_rides, simulate
+from ridegraph.graph import Graph, csr_sorted
+from ridegraph.synthetic import grid_network
 
 pytest.importorskip("sklearn")
 
@@ -90,7 +90,7 @@ def test_policies_run_on_identical_requests(city, forecaster) -> None:
 
 
 def test_optimal_matching_never_has_a_longer_total_pickup_per_batch(city) -> None:
-    from fastroute.matching import greedy_matches, optimal_matches
+    from ridegraph.matching import greedy_matches, optimal_matches
 
     _, ch, world = city
     rng = np.random.default_rng(0)
@@ -114,7 +114,7 @@ def test_unknown_policy_rejected(city) -> None:
 def test_export_writes_a_consistent_replay(tmp_path) -> None:
     import json
 
-    from fastroute.web_export import export
+    from ridegraph.web_export import export
 
     network = grid_network(20, 20, seed=6)
     manifest = export(network, tmp_path, dispatch_days=1, log=lambda m: None)
@@ -126,7 +126,7 @@ def test_export_writes_a_consistent_replay(tmp_path) -> None:
     # The browser rebuilds every leg with the exported morning hierarchy, so
     # each recorded duration must be what that hierarchy says.
     preset = next(p for p in manifest["presets"] if p["id"] == info["preset"])
-    from fastroute.router import Router, Scenario
+    from ridegraph.router import Router, Scenario
 
     ch = ContractionHierarchy.build(
         Router(csr_sorted(network), Scenario(hour=preset["hour"])).graph

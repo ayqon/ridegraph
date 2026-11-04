@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from fastroute import bench
-from fastroute.__main__ import main
-from fastroute.ch import ContractionHierarchy
-from fastroute.graph import Graph
-from fastroute.synthetic import grid_network
+from ridegraph import bench
+from ridegraph.__main__ import main
+from ridegraph.ch import ContractionHierarchy
+from ridegraph.graph import Graph
+from ridegraph.synthetic import grid_network
 
 
 def test_bench_rows_and_markdown() -> None:

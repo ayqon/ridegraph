@@ -3,7 +3,7 @@ name: Deploy map demo
 on:
   push:
     branches: [main]
-    paths: ["web/**", "fastroute/**", ".github/workflows/pages.yml"]
+    paths: ["web/**", "ridegraph/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:
@@ -35,26 +35,26 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data/raw
-          key: osm-cities-${{ hashFiles('fastroute/overpass.py', 'fastroute/cities.py') }}
+          key: osm-cities-${{ hashFiles('ridegraph/overpass.py', 'ridegraph/cities.py') }}
           restore-keys: osm-
       - name: Download each city that is missing
         run: |
           for city in london nicosia new-york; do
-            raw=$(python -c "from fastroute.cities import get; print(get('$city').raw_path)")
-            [ -f "$raw" ] || python -m fastroute fetch --city "$city"
+            raw=$(python -c "from ridegraph.cities import get; print(get('$city').raw_path)")
+            [ -f "$raw" ] || python -m ridegraph fetch --city "$city"
           done
 
       - name: Build the routing graphs
-        run: for city in london nicosia new-york; do python -m fastroute build --city "$city"; done
+        run: for city in london nicosia new-york; do python -m ridegraph build --city "$city"; done
       # The page asks TfL for live disruptions itself; this snapshot is the
       # fallback when the feed can't be reached from the viewer's browser.
       - name: Snapshot live road disruptions from TfL
-        run: python -m fastroute live --out data/tfl.json || echo "TfL feed unavailable; no snapshot"
+        run: python -m ridegraph live --out data/tfl.json || echo "TfL feed unavailable; no snapshot"
       - name: Export each city for the browser
         run: |
-          python -m fastroute export-web --city london --tfl data/tfl.json
-          python -m fastroute export-web --city nicosia
-          python -m fastroute export-web --city new-york
+          python -m ridegraph export-web --city london --tfl data/tfl.json
+          python -m ridegraph export-web --city nicosia
+          python -m ridegraph export-web --city new-york
 
       - name: Build the documentation into the site
         run: mkdocs build --strict -d web/docs
@@ -83,8 +83,8 @@ jobs:
           accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
           preCommands: |
             rm -rf /tmp/site/.git
-            wrangler pages project create fastroute --production-branch=main || true
-          command: pages deploy /tmp/site --project-name=fastroute --branch=main --commit-dirty=true
+            wrangler pages project create ridegraph --production-branch=main || true
+          command: pages deploy /tmp/site --project-name=ridegraph --branch=main --commit-dirty=true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web

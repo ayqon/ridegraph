@@ -1,14 +1,14 @@
-# fastroute
+# Ridegraph
 
-[![CI](https://github.com/ayqon/fastroute/actions/workflows/ci.yml/badge.svg)](https://github.com/ayqon/fastroute/actions/workflows/ci.yml)
-[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fayqon%2Ffastroute%2Fbadges%2Fcoverage.json)](https://github.com/ayqon/fastroute/actions/workflows/ci.yml)
+[![CI](https://github.com/ayqon/ridegraph/actions/workflows/ci.yml/badge.svg)](https://github.com/ayqon/ridegraph/actions/workflows/ci.yml)
+[![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fayqon%2Fridegraph%2Fbadges%2Fcoverage.json)](https://github.com/ayqon/ridegraph/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 Routing, arrival-time prediction and ride dispatch on real city road networks
 (central London, Nicosia and Manhattan), written from scratch in Python and
 JavaScript.
 
-Live map: **https://fastroute.ioannikons.com**
+Live map: **https://ridegraph.dev**
 
 ![Searching for a route across central London, then a travel-time map, a delivery round and ride dispatch](docs/demo.gif)
 
@@ -70,15 +70,15 @@ Requires Python 3.10 or newer.
 ```bash
 pip install -e ".[dev]"
 
-python -m fastroute fetch        # download central London from OpenStreetMap
-python -m fastroute build        # turn it into a routing graph
-python -m fastroute contract     # preprocess for Contraction Hierarchies
+python -m ridegraph fetch        # download central London from OpenStreetMap
+python -m ridegraph build        # turn it into a routing graph
+python -m ridegraph contract     # preprocess for Contraction Hierarchies
 
 # Oxford Circus to Waterloo
-python -m fastroute route 51.5154,-0.1410 51.5033,-0.1196
+python -m ridegraph route 51.5154,-0.1410 51.5033,-0.1196
 
 # Compare the search methods
-python -m fastroute bench
+python -m ridegraph bench
 ```
 
 Other cities: add `--city nicosia` or `--city new-york` to `fetch`, `build`
@@ -88,25 +88,25 @@ and `export-web`. All commands are listed in the
 More examples:
 
 ```bash
-python -m fastroute route 51.5265,-0.1820 51.5100,-0.0700 --at 08:00 --alternatives --avoid-charge
-python -m fastroute reach 51.5174,-0.1200 --at 08:00
-python -m fastroute tour 51.5174,-0.1200 51.5308,-0.1238 51.5033,-0.1145 51.5154,-0.1410
-python -m fastroute eta-train --trips 20000 --out data/eta-model.json
-python -m fastroute dispatch --drivers 115 --days 6
-python -m fastroute serve        # HTTP API on port 8000
+python -m ridegraph route 51.5265,-0.1820 51.5100,-0.0700 --at 08:00 --alternatives --avoid-charge
+python -m ridegraph reach 51.5174,-0.1200 --at 08:00
+python -m ridegraph tour 51.5174,-0.1200 51.5308,-0.1238 51.5033,-0.1145 51.5154,-0.1410
+python -m ridegraph eta-train --trips 20000 --out data/eta-model.json
+python -m ridegraph dispatch --drivers 115 --days 6
+python -m ridegraph serve        # HTTP API on port 8000
 ```
 
 ## Running the map locally
 
 ```bash
-python -m fastroute export-web             # writes web/data/london
+python -m ridegraph export-web             # writes web/data/london
 python -m http.server -d web 8000          # then open http://localhost:8000
 ```
 
 ## Project layout
 
 ```
-fastroute/      Python package: graph, searches, traffic, learning, dispatch, API
+ridegraph/      Python package: graph, searches, traffic, learning, dispatch, API
 web/            The browser map (plain JavaScript, no build step)
 tests/          pytest suite, including property-based tests
 docs/           Documentation site (MkDocs)

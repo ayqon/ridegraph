@@ -6,8 +6,8 @@ import random
 import networkx as nx
 import pytest
 
-from fastroute.dijkstra import dijkstra, one_to_all
-from fastroute.graph import Graph
+from ridegraph.dijkstra import dijkstra, one_to_all
+from ridegraph.graph import Graph
 
 from .conftest import grid_network, make_network
 

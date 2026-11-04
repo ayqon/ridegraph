@@ -5,10 +5,10 @@ import xml.etree.ElementTree as ET
 
 import pytest
 
-from fastroute.ch import ContractionHierarchy
-from fastroute.graph import Graph, free_flow_cost
-from fastroute.osm import network_from_overpass
-from fastroute.osrm import compare, markdown, write_osm_xml, write_segment_speeds
+from ridegraph.ch import ContractionHierarchy
+from ridegraph.graph import Graph, free_flow_cost
+from ridegraph.osm import network_from_overpass
+from ridegraph.osrm import compare, markdown, write_osm_xml, write_segment_speeds
 
 PAYLOAD = {
     "elements": [

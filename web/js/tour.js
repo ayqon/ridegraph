@@ -1,4 +1,4 @@
-// Best order to visit several stops (mirrors fastroute/tour.py).
+// Best order to visit several stops (mirrors ridegraph/tour.py).
 // Stop 0 is the depot; the matrix is asymmetric travel time in seconds.
 
 export const MAX_EXACT_STOPS = 13;
@@ -105,7 +105,7 @@ export function heldKarp(m, returnToStart) {
   return [0, ...order.reverse()];
 }
 
-/** Every method's order and total, as fastroute.tour.plan does. */
+/** Every method's order and total, as ridegraph.tour.plan does. */
 export function planTour(m, returnToStart) {
   const orders = {
     "As entered": m.map((_, i) => i),

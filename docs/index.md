@@ -6,7 +6,7 @@ algorithm written from first principles and checked against a reference.
 
 ![The live map](demo.gif)
 
-[Open the live map](https://ayqon.github.io/fastroute/){ .md-button .md-button--primary }
+[Open the live map](https://fastroute.ioannikons.com/){ .md-button .md-button--primary }
 [Read the code](https://github.com/ayqon/fastroute){ .md-button }
 
 ## At a glance

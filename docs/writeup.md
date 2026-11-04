@@ -9,7 +9,7 @@ there? Behind them sits a third, the one the business runs on: which driver
 should take this ride? I built all three from scratch on OpenStreetMap's map
 of central London (72,637 junctions, 127,286 road segments) to see where the
 real difficulty lies. Everything is in [the repository](https://github.com/ayqon/fastroute), and
-[the live map](https://ayqon.github.io/fastroute/) runs the same algorithms
+[the live map](https://fastroute.ioannikons.com/) runs the same algorithms
 in the browser.
 
 ## 1. Fast routes come from preprocessing, not cleverness at query time

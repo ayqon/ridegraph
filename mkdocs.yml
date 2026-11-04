@@ -1,6 +1,6 @@
 site_name: fastroute
-site_description: Quickest routes, live closures, learned arrival times and ride dispatch on London's road network, built from first principles.
-site_url: https://ayqon.github.io/fastroute/docs/
+site_description: Routing, arrival-time prediction and ride dispatch on real city road networks, written from scratch.
+site_url: https://fastroute.ioannikons.com/docs/
 repo_url: https://github.com/ayqon/fastroute
 repo_name: ayqon/fastroute
 edit_uri: edit/main/docs/
@@ -29,13 +29,14 @@ theme:
 
 nav:
   - Overview: index.md
+  - How it works: how-it-works.md
   - Architecture: architecture.md
   - Design decisions: decisions.md
   - Results: writeup.md
   - HTTP API: http-api.md
   - Command line: cli.md
   - Python API: api.md
-  - Live map: https://ayqon.github.io/fastroute/
+  - Live map: https://fastroute.ioannikons.com/
 
 markdown_extensions:
   - admonition

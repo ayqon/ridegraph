@@ -18,6 +18,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -70,6 +73,18 @@ jobs:
           git add -A
           git commit -qm "Site preview built from ${GITHUB_SHA::7}"
           git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:site-preview
+      # Cloudflare Pages hosts the public site while the repository is
+      # private. Runs once the two repository secrets are set.
+      - name: Deploy to Cloudflare Pages
+        if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ env.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
+          preCommands: |
+            rm -rf /tmp/site/.git
+            wrangler pages project create fastroute --production-branch=main || true
+          command: pages deploy /tmp/site --project-name=fastroute --branch=main --commit-dirty=true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web

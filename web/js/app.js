@@ -105,6 +105,21 @@ function formatEta(seconds) {
   return m ? `${m}<small>min</small>${s}<small>s</small>` : `${total % 60}<small>s</small>`;
 }
 
+/** "14 min 23 s" as plain text. */
+function formatPlain(seconds) {
+  const total = Math.round(seconds);
+  const m = Math.floor(total / 60);
+  return m ? `${m} min ${String(total % 60).padStart(2, "0")} s` : `${total % 60} s`;
+}
+
+/** A short difference: "+51 s", "+1 min 18 s". */
+function formatExtra(seconds) {
+  const total = Math.round(seconds);
+  if (total < 60) return `+${total} s`;
+  const s = total % 60;
+  return s ? `+${Math.floor(total / 60)} min ${s} s` : `+${Math.floor(total / 60)} min`;
+}
+
 function formatMs(ms) {
   if (ms < 0.1) return "under 0.1 ms";
   return `${ms < 10 ? ms.toFixed(2) : ms.toFixed(0)} ms`;
@@ -288,16 +303,18 @@ function showTrip() {
   if (!r.found) {
     $("eta").textContent = "No route";
     $("trip-meta").textContent = "These two points are not connected by road.";
-  } else {
-    $("eta").innerHTML = formatEta(r.seconds);
-    const from = atlas.gridRef(atlas.X[state.a], atlas.Y[state.a]);
-    const to = atlas.gridRef(atlas.X[state.b], atlas.Y[state.b]);
-    const parts = [`${(r.metres / 1000).toFixed(2)} km`, `${from} to ${to}`, `${state.preset.label.toLowerCase()} traffic`];
-    if (r.alt) parts.unshift(r.alt.label);
-    if (r.manoeuvres) parts.push(describeManoeuvres(r.manoeuvres));
-    $("trip-meta").textContent = parts.join(" · ");
+    $("learned").hidden = true;
+    return;
   }
-  showLearnedEta(r);
+  const learned = etaModel ? etaModel.predict(r.junctions) : null;
+  // The learned arrival time leads: it is what a rider would be told. The
+  // router's road time sits underneath with the gap the model adds explained.
+  $("eta").innerHTML = formatEta(learned ? learned.seconds : r.seconds);
+  const parts = [`${placeName(state.a, false)} to ${placeName(state.b, false)}`, `${(r.metres / 1000).toFixed(1)} km`, `${state.preset.label.toLowerCase()} traffic`];
+  if (r.alt) parts.unshift(r.alt.label);
+  if (r.manoeuvres) parts.push(describeManoeuvres(r.manoeuvres));
+  $("trip-meta").textContent = parts.join(" · ");
+  showLearnedEta(r, learned);
 }
 
 // ------------------------------------------------------------------ alternative routes
@@ -353,8 +370,8 @@ function updateOptions() {
   const best = list[0]?.seconds ?? 0;
   box.innerHTML = list
     .map((r, i) => {
-      const extra = Math.round((r.seconds - best) / 60);
-      const delta = i === 0 ? "" : extra >= 1 ? ` · +${extra} min` : " · about the same";
+      const extra = r.seconds - best;
+      const delta = i === 0 ? "" : extra >= 5 ? ` · ${formatExtra(extra)}` : " · about the same";
       return `<label class="method${r.entersZone && chargeApplies() ? " is-charged" : ""}"><input type="radio" name="route" value="${i}" ${i === options.chosen ? "checked" : ""}>
         <span class="method-row">
           <span class="method-name">${r.label}</span>
@@ -412,7 +429,7 @@ function drawDisruptions(ctx) {
       else ctx.lineTo(x, y);
     });
     ctx.setLineDash(d.closed ? [6, 4] : []);
-    ctx.strokeStyle = d.closed ? "#7a0019" : "#e86a10";
+    ctx.strokeStyle = d.closed ? "#111111" : "#777777";
     ctx.lineWidth = d.closed ? 5 : 4;
     ctx.stroke();
   }
@@ -431,11 +448,11 @@ function drawRouteOptions(ctx) {
     });
     ctx.closePath();
     if (chargeApplies()) {
-      ctx.fillStyle = "rgba(200, 16, 46, 0.06)";
+      ctx.fillStyle = "rgba(17, 17, 17, 0.05)";
       ctx.fill();
     }
     ctx.setLineDash([7, 5]);
-    ctx.strokeStyle = "rgba(200, 16, 46, 0.75)";
+    ctx.strokeStyle = "rgba(17, 17, 17, 0.6)";
     ctx.lineWidth = 2;
     ctx.stroke();
     ctx.setLineDash([]);
@@ -453,7 +470,7 @@ function drawRouteOptions(ctx) {
     ctx.strokeStyle = "#111111";
     ctx.lineWidth = 6.5;
     ctx.stroke();
-    ctx.strokeStyle = "#9a9a90";
+    ctx.strokeStyle = "#9a9a9a";
     ctx.lineWidth = 3;
     ctx.stroke();
   });
@@ -483,19 +500,19 @@ function play() {
   state.animation = requestAnimationFrame(step);
 }
 
-function showLearnedEta(r) {
-  const learned = etaModel && r.found ? etaModel.predict(r.junctions) : null;
+function showLearnedEta(r, learned) {
   $("learned").hidden = !learned;
   if (!learned) return;
-  $("learned-eta").innerHTML = formatEta(learned.seconds).replaceAll("<small>", " ").replaceAll("</small>", " ").trim();
+  $("learned-eta").textContent = formatPlain(r.seconds);
   const change = Math.round((learned.seconds / r.seconds - 1) * 100);
-  const parts = [`${change >= 0 ? "+" : ""}${change}% on the router's estimate`];
+  const parts = [];
   if (learned.low !== null) {
     const lo = Math.max(1, Math.round(learned.low / 60));
     const hi = Math.max(lo, Math.round(learned.high / 60));
-    parts.unshift(lo === hi ? `usually about ${lo} min` : `usually ${lo} to ${hi} min`);
+    parts.push(lo === hi ? `Arrival usually about ${lo} min` : `Arrival usually ${lo} to ${hi} min`);
   }
-  $("learned-delta").textContent = parts.join(" · ");
+  parts.push(`the learned model adds ${change >= 0 ? "" : "minus "}${Math.abs(change)}% for traffic lights, junctions and slow areas the road times leave out`);
+  $("learned-delta").textContent = `${parts.join("; ")}.`;
 }
 
 // ------------------------------------------------------------------ learned slowdown layer
@@ -679,8 +696,8 @@ function drawRulers() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = "#111111";
     ctx.fillRect(0, 0, w, h);
-    ctx.fillStyle = "#ffd21f";
-    ctx.strokeStyle = "rgba(255, 210, 31, 0.35)";
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
     ctx.lineWidth = 1;
     ctx.font = "600 13px 'Barlow Condensed', 'Arial Narrow', sans-serif";
     ctx.textAlign = "center";
@@ -721,7 +738,7 @@ const POLICY_NOTES = {
     "The forecast method, and prices rise where riders outnumber free drivers nearby. Some riders decline the higher price, and idle drivers head for the surge. Squares show the multiplier.",
 };
 const SPEEDS = [30, 60, 180];
-const CAR_COLOURS = { idle: "#ffffff", pickup: "#1b3a8c", trip: "#ffd21f", shared: "#e86a10", reposition: "#9a9a90" };
+const CAR_COLOURS = { idle: "#ffffff", pickup: "#9a9a9a", trip: "#111111", shared: "#555555", reposition: "#dcdcdc" };
 
 const sim = { replay: null, policy: 3, t: 0, speed: 60, playing: true, frame: 0, last: 0 };
 
@@ -889,10 +906,10 @@ function drawSurge(ctx, r) {
     const [ax, ay] = atlas.toScreen(...atlas.local(aLat, aLon));
     const [bx, by] = atlas.toScreen(...atlas.local(bLat, bLon));
     const t = Math.min(1, (m - 1) / 1.5);
-    ctx.fillStyle = `rgba(232, 106, 16, ${(0.12 + 0.45 * t).toFixed(2)})`;
+    ctx.fillStyle = `rgba(17, 17, 17, ${(0.06 + 0.3 * t).toFixed(2)})`;
     ctx.fillRect(Math.min(ax, bx), Math.min(ay, by), Math.abs(bx - ax), Math.abs(by - ay));
     if (Math.abs(bx - ax) > 34) {
-      ctx.fillStyle = "#5a2400";
+      ctx.fillStyle = "#111111";
       ctx.fillText(`×${m.toFixed(1)}`, (ax + bx) / 2, (ay + by) / 2);
     }
   }
@@ -907,12 +924,12 @@ function drawDispatch(ctx) {
   const size = Math.max(5, Math.min(10, atlas.view.scale * 60));
 
   // Fade the street map a little so the fleet reads first.
-  ctx.fillStyle = "rgba(229, 231, 227, 0.55)";
+  ctx.fillStyle = "rgba(241, 241, 241, 0.6)";
   ctx.fillRect(0, 0, atlas.width, atlas.height);
   drawSurge(ctx, r);
 
   // Lines from cars on their way to the rider they will collect.
-  ctx.strokeStyle = "rgba(27, 58, 140, 0.55)";
+  ctx.strokeStyle = "rgba(17, 17, 17, 0.35)";
   ctx.lineWidth = 1.2;
   ctx.beginPath();
   const rides = r.policies[sim.policy].rideList;
@@ -930,18 +947,18 @@ function drawDispatch(ctx) {
     const urgency = Math.min(1, w.waited / PATIENCE_S);
     ctx.beginPath();
     ctx.arc(x, y, 3 + urgency * 4, 0, 2 * Math.PI);
-    ctx.fillStyle = `rgba(163, 38, 143, ${(0.15 + 0.25 * urgency).toFixed(2)})`;
+    ctx.fillStyle = `rgba(17, 17, 17, ${(0.1 + 0.2 * urgency).toFixed(2)})`;
     ctx.fill();
     ctx.beginPath();
     ctx.arc(x, y, 3, 0, 2 * Math.PI);
     if (w.assigned) {
-      ctx.strokeStyle = "#a3268f";
+      ctx.strokeStyle = "#111111";
       ctx.lineWidth = 1.5;
       ctx.fillStyle = "#ffffff";
       ctx.fill();
       ctx.stroke();
     } else {
-      ctx.fillStyle = "#a3268f";
+      ctx.fillStyle = "#111111";
       ctx.fill();
     }
   }
@@ -1006,11 +1023,11 @@ function hhmm(hour) {
 }
 
 /** A name a person recognises for a junction: a nearby landmark, else its grid square. */
-function placeName(node) {
+function placeName(node, withRef = true) {
   const lat = engine.lat[node];
   const lon = engine.lon[node];
   let best = null;
-  let bestD = 0.6; // km
+  let bestD = 1.0; // km
   for (const l of LANDMARKS) {
     const dx = (l.lon - lon) * 111.32 * Math.cos((lat * Math.PI) / 180);
     const dy = (l.lat - lat) * 111.32;
@@ -1021,7 +1038,9 @@ function placeName(node) {
     }
   }
   const ref = atlas.gridRef(atlas.X[node], atlas.Y[node]);
-  return best ? `near ${best} (${ref})` : `square ${ref}`;
+  if (!best) return `square ${ref}`;
+  const name = bestD < 0.2 ? best : `near ${best}`;
+  return withRef ? `${name} (${ref})` : name;
 }
 
 function drawWorldPaths(ctx, paths, colours, widthPx) {
@@ -1041,7 +1060,7 @@ function drawWorldPaths(ctx, paths, colours, widthPx) {
 }
 
 function fadeMap(ctx, alpha = 0.55) {
-  ctx.fillStyle = `rgba(229, 231, 227, ${alpha})`;
+  ctx.fillStyle = `rgba(241, 241, 241, ${alpha})`;
   ctx.fillRect(0, 0, atlas.width, atlas.height);
 }
 
@@ -1053,7 +1072,7 @@ function drawMarker(ctx, node, text, dark) {
   ctx.lineWidth = 2;
   ctx.fillRect(x - size / 2, y - size / 2, size, size);
   ctx.strokeRect(x - size / 2, y - size / 2, size, size);
-  ctx.fillStyle = dark ? "#ffd21f" : "#111111";
+  ctx.fillStyle = dark ? "#ffffff" : "#111111";
   ctx.font = "800 13px 'Barlow Condensed', 'Arial Narrow', sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -1070,7 +1089,7 @@ function formatLong(seconds) {
 // ------------------------------------------------------------------ travel-time map
 
 const BANDS_MIN = [10, 20, 30];
-const BAND_COLOURS = ["#1b3a8c", "#4f72c4", "#a2b8e6"];
+const BAND_COLOURS = ["#111111", "#666666", "#b3b3b3"];
 const AREA_CELL_KM = 0.25;
 const reach = { origin: null, arriving: false, band: 1, preset: "0800", built: false, paths: null, areas: null, night: null };
 
@@ -1344,8 +1363,8 @@ function drawTour(ctx) {
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   for (const [width, colour] of [
-    [8, "#111111"],
-    [3.5, "#ffd21f"],
+    [9, "#ffffff"],
+    [5, "#111111"],
   ]) {
     ctx.strokeStyle = colour;
     ctx.lineWidth = width;

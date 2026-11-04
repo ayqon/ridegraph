@@ -11,19 +11,20 @@ export const GRID_METRES = 500;
 
 // Road buckets, drawn bottom to top. Width is real-world metres, with a
 // minimum on-screen width so the network stays legible when zoomed out.
+// Black and white: bigger roads are drawn wider and a shade darker.
 const BUCKETS = [
-  { name: "service", classes: [13], fill: "#ffffff", casing: "#d3d4cf", metres: 5, minPx: 0.35, minScale: 0.25 },
-  { name: "minor", classes: [10, 11, 12], fill: "#ffffff", casing: "#b9bbb5", metres: 8, minPx: 0.55, minScale: 0 },
-  { name: "tertiary", classes: [8, 9], fill: "#fbe58b", casing: "#b49d43", metres: 11, minPx: 1.0, minScale: 0 },
-  { name: "secondary", classes: [6, 7], fill: "#f4a524", casing: "#a46705", metres: 13, minPx: 1.4, minScale: 0 },
-  { name: "primary", classes: [4, 5], fill: "#e3404a", casing: "#9c1d27", metres: 16, minPx: 1.8, minScale: 0 },
-  { name: "trunk", classes: [2, 3], fill: "#3a9d65", casing: "#1c623b", metres: 18, minPx: 2.1, minScale: 0 },
-  { name: "motorway", classes: [0, 1], fill: "#3a78d4", casing: "#1d4b95", metres: 22, minPx: 2.4, minScale: 0 },
+  { name: "service", classes: [13], fill: "#ffffff", casing: "#dedede", metres: 5, minPx: 0.35, minScale: 0.25 },
+  { name: "minor", classes: [10, 11, 12], fill: "#ffffff", casing: "#cccccc", metres: 8, minPx: 0.55, minScale: 0 },
+  { name: "tertiary", classes: [8, 9], fill: "#ffffff", casing: "#a8a8a8", metres: 11, minPx: 1.0, minScale: 0 },
+  { name: "secondary", classes: [6, 7], fill: "#e4e4e4", casing: "#8f8f8f", metres: 13, minPx: 1.4, minScale: 0 },
+  { name: "primary", classes: [4, 5], fill: "#cfcfcf", casing: "#777777", metres: 16, minPx: 1.8, minScale: 0 },
+  { name: "trunk", classes: [2, 3], fill: "#b8b8b8", casing: "#5e5e5e", metres: 18, minPx: 2.1, minScale: 0 },
+  { name: "motorway", classes: [0, 1], fill: "#9e9e9e", casing: "#474747", metres: 22, minPx: 2.4, minScale: 0 },
 ];
-const RIVER = { fill: "#a3cdea", edge: "#76abd4", metres: 230 };
-const LAND = "#e5e7e3";
-const GRID_LINE = "rgba(17, 17, 17, 0.08)";
-const SEARCH_COLOURS = ["#1b3a8c", "#a3268f"];
+const RIVER = { fill: "#dadada", edge: "#c6c6c6", metres: 230 };
+const LAND = "#f1f1f1";
+const GRID_LINE = "rgba(17, 17, 17, 0.07)";
+const SEARCH_COLOURS = ["#111111", "#9a9a9a"];
 
 export function gridLabel(col, row) {
   let letters = "";
@@ -181,7 +182,8 @@ export class Atlas {
     this.view = { cx: (min[0] + max[0]) / 2, cy: (min[1] + max[1]) / 2, scale: Math.min(sx, sy) };
     // Never zoom out beyond the whole city: there is nothing else to see.
     this.minScale = this.view.scale;
-    this.maxScale = 12;
+    // Street level at most: further in, a road is wider than the screen.
+    this.maxScale = this.minScale * 10;
     this.invalidate();
   }
 
@@ -541,11 +543,11 @@ export class Atlas {
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       });
-      ctx.strokeStyle = "#111111";
-      ctx.lineWidth = 8;
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 9;
       ctx.stroke();
-      ctx.strokeStyle = "#ffd21f";
-      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = "#111111";
+      ctx.lineWidth = 5;
       ctx.stroke();
     }
     if (this.extras) this.extras(ctx);

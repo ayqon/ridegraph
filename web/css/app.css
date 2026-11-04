@@ -1,17 +1,16 @@
-/* fastroute map demo. A street-atlas look: the controls are the atlas cover,
-   the map is a page with its grid letters and numbers around the edge. */
+/* fastroute map demo. A black and white street-atlas look: the controls are
+   the atlas cover, the map is a page with its grid letters and numbers around
+   the edge. */
 
 :root {
-  --cover: #ffd21f;
+  --cover: #ffffff;
   --ink: #111111;
-  --ink-soft: #3b3a33;
-  --land: #e5e7e3;
+  --ink-soft: #4a4a4a;
+  --land: #f1f1f1;
   --paper: #ffffff;
-  --search-a: #1b3a8c;
-  --search-b: #a3268f;
-  --a-road: #e3404a;
-  --b-road: #f4a524;
-  --primary-route: #3a9d65;
+  --search-a: #111111;
+  --search-b: #9a9a9a;
+  --muted: #9a9a9a;
 
   --display: "Barlow Condensed", "Arial Narrow", sans-serif;
   --body: "Barlow", "Helvetica Neue", Arial, sans-serif;
@@ -282,20 +281,20 @@ a {
   background: var(--paper);
 }
 .car-pickup {
-  background: var(--search-a);
+  background: #9a9a9a;
 }
 .car-trip {
-  background: var(--cover);
+  background: var(--ink);
 }
 .car-reposition {
-  background: #9a9a90;
+  background: #dcdcdc;
 }
 .car-shared {
-  background: #e86a10;
+  background: #555555;
 }
 .sw-surge {
   height: 10px;
-  background: rgba(232, 106, 16, 0.45);
+  background: rgba(17, 17, 17, 0.3);
 }
 
 .key .rider {
@@ -303,7 +302,7 @@ a {
   height: 9px;
   border-radius: 50%;
   display: inline-block;
-  background: var(--search-b);
+  background: var(--ink);
 }
 
 .trip {
@@ -349,7 +348,7 @@ a {
 }
 
 .trip-learned b {
-  font: 800 24px/1 var(--display);
+  font: 700 19px/1 var(--display);
   font-variant-numeric: tabular-nums;
 }
 
@@ -784,7 +783,7 @@ legend {
 }
 
 .pin:focus-visible {
-  outline: 3px solid var(--search-a);
+  outline: 3px solid var(--ink);
   outline-offset: 2px;
 }
 
@@ -890,29 +889,26 @@ legend {
   display: inline-block;
 }
 
-.sw-trunk {
-  background: var(--primary-route);
-}
-.sw-primary {
-  background: var(--a-road);
-}
-.sw-secondary {
-  background: var(--b-road);
+.sw-route {
+  height: 5px;
+  background: var(--ink);
 }
 .sw-alt {
-  background: #9a9a90;
+  height: 4px;
+  background: var(--muted);
   box-shadow: 0 0 0 1.5px var(--ink);
 }
 .sw-zone {
   height: 0;
-  border-top: 2px dashed rgba(200, 16, 46, 0.85);
+  border-top: 2px dashed var(--ink-soft);
 }
 .sw-closed {
   height: 0;
-  border-top: 4px dashed #7a0019;
+  border-top: 4px dashed var(--ink);
 }
 .sw-slow {
-  background: #e86a10;
+  height: 4px;
+  background: #777777;
 }
 
 .dot {

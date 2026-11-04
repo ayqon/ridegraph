@@ -8,7 +8,7 @@
       name="description"
       content="Click two points in London, Nicosia or Manhattan and watch Dijkstra, A*, bidirectional search and Contraction Hierarchies find the quickest route through rush-hour traffic."
     />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23ffd21f'/%3E%3Cpath d='M7 25 L14 12 L19 18 L25 7' stroke='%23111' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23111'/%3E%3Cpath d='M7 25 L14 12 L19 18 L25 7' stroke='%23fff' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -25,9 +25,8 @@
           <p class="place" id="place">Loading…</p>
           <nav class="cities" id="cities" aria-label="City" hidden></nav>
           <p class="lede">
-            Quickest routes over a real city's road network, how much of it each
-            algorithm searches to find them, deliveries and ride dispatch, with a learned
-            ETA on top, and in London live closures and the Congestion Charge.
+            Uber-style routing, arrival times and ride dispatch on real city roads,
+            running entirely in your browser.
           </p>
           <div class="modes" role="tablist" aria-label="Mode">
             <button type="button" role="tab" id="mode-route" aria-selected="true">Plan a route</button>
@@ -43,7 +42,7 @@
           <p class="trip-eta" id="eta">Loading map…</p>
           <p class="trip-meta" id="trip-meta">&nbsp;</p>
           <p class="trip-learned" id="learned" hidden>
-            <span class="learned-label">Learned ETA</span>
+            <span class="learned-label">Road time</span>
             <b id="learned-eta"></b>
             <span class="learned-delta" id="learned-delta"></span>
           </p>
@@ -269,14 +268,14 @@
           </button>
           <p class="hint" id="hint">Click to place A, then B. Drag a pin to move it.</p>
           <div class="key" id="key-reach" aria-label="Map key" hidden>
-            <span><i class="sw" style="background: #1b3a8c"></i>Within 10 min</span>
-            <span><i class="sw" style="background: #4f72c4"></i>Within 20 min</span>
-            <span><i class="sw" style="background: #a2b8e6"></i>Within 30 min</span>
+            <span><i class="sw" style="background: #111111"></i>Within 10 min</span>
+            <span><i class="sw" style="background: #666666"></i>Within 20 min</span>
+            <span><i class="sw" style="background: #b3b3b3"></i>Within 30 min</span>
           </div>
           <div class="key" id="key-tour" aria-label="Map key" hidden>
             <span><i class="car" style="background: #111111"></i>Depot</span>
             <span><i class="car car-idle"></i>Stop, numbered in visiting order</span>
-            <span><i class="sw" style="background: #ffd21f; outline: 2px solid #111111"></i>Best route</span>
+            <span><i class="sw sw-route"></i>Best route</span>
           </div>
           <div class="key key-dispatch" id="key-dispatch" aria-label="Map key" hidden>
             <span><i class="car car-idle"></i>Free</span>
@@ -288,9 +287,7 @@
             <span id="key-surge" hidden><i class="sw sw-surge"></i>Surge price</span>
           </div>
           <div class="key" id="key-route" aria-label="Map key">
-            <span><i class="sw sw-trunk"></i>Primary route</span>
-            <span><i class="sw sw-primary"></i>A road</span>
-            <span><i class="sw sw-secondary"></i>B road</span>
+            <span><i class="sw sw-route"></i>Chosen route</span>
             <span><i class="dot dot-f"></i>Searched from A</span>
             <span><i class="dot dot-b"></i>Searched from B</span>
             <span><i class="sw sw-alt"></i>Other routes</span>

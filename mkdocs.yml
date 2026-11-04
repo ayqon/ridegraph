@@ -11,13 +11,13 @@ theme:
   palette:
     - scheme: default
       primary: black
-      accent: amber
+      accent: grey
       toggle:
         icon: material/brightness-7
         name: Dark mode
     - scheme: slate
       primary: black
-      accent: amber
+      accent: grey
       toggle:
         icon: material/brightness-4
         name: Light mode

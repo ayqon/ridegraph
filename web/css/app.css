@@ -122,6 +122,33 @@ a {
   outline-offset: -5px;
 }
 
+.cities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 2px;
+}
+
+.cities a {
+  padding: 4px 10px 3px;
+  border: 2px solid var(--ink);
+  font: 600 14px/1.1 var(--display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.cities a[aria-current="page"] {
+  background: var(--ink);
+  color: var(--cover);
+}
+
+.cities a:focus-visible {
+  outline: 3px solid var(--ink);
+  outline-offset: 2px;
+}
+
 .stops {
   list-style: none;
   margin: 0;

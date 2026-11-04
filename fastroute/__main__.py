@@ -18,9 +18,33 @@ from typing import Any
 
 # Central London: Paddington and Notting Hill across to Whitechapel,
 # King's Cross down to Vauxhall and Elephant & Castle.
-DEFAULT_BBOX = (51.485, -0.205, 51.540, -0.065)
 DEFAULT_RAW = Path("data/raw/central-london.json.gz")
 DEFAULT_NETWORK = Path("data/central-london.npz")
+
+
+def _city(args: argparse.Namespace):
+    """The chosen city, filling in any per-city defaults the user left out."""
+    from . import cities
+
+    city = cities.get(args.city)
+    defaults = {
+        "bbox": list(city.bbox),
+        "raw": Path(city.raw_path),
+        "network": Path(city.network_path),
+        "name": city.name,
+        "eta_trips": city.eta_trips,
+        "dispatch_days": city.dispatch_days,
+    }
+    for key, value in defaults.items():
+        if getattr(args, key, "absent") is None:
+            setattr(args, key, value)
+    if getattr(args, "out", "absent") is None:
+        args.out = {
+            "fetch": Path(city.raw_path),
+            "build": Path(city.network_path),
+            "export-web": Path("web/data") / city.key,
+        }[args.command]
+    return city
 
 
 def _parse_point(text: str) -> tuple[float, float]:
@@ -55,6 +79,7 @@ def cmd_fetch(args: argparse.Namespace) -> int:
     # Standard library only, so this step runs on any machine with Python.
     from .overpass import OVERPASS_URLS, OverpassError, download, overpass_query
 
+    _city(args)
     urls = [args.url] if args.url else list(OVERPASS_URLS)
     print(f"Downloading roads in bbox {tuple(args.bbox)} from OpenStreetMap", file=sys.stderr)
     started = time.perf_counter()
@@ -79,7 +104,8 @@ def cmd_fetch(args: argparse.Namespace) -> int:
 def cmd_build(args: argparse.Namespace) -> int:
     from .osm import network_from_overpass
 
-    with gzip.open(_require(args.raw, "fetch"), "rb") as fh:
+    _city(args)
+    with gzip.open(_require(args.raw, f"fetch --city {args.city}"), "rb") as fh:
         payload = json.load(fh)
     network = network_from_overpass(payload)
     args.out.parent.mkdir(parents=True, exist_ok=True)
@@ -414,8 +440,9 @@ def cmd_bench(args: argparse.Namespace) -> int:
 
 
 def cmd_export_web(args: argparse.Namespace) -> int:
-    from .web_export import export
+    from .web_export import export, write_city_index
 
+    city = _city(args)
     network = _load_network(args.network)
     raw = None
     if args.raw.exists():
@@ -431,8 +458,12 @@ def cmd_export_web(args: argparse.Namespace) -> int:
         name=args.name,
         eta_trips=args.eta_trips,
         dispatch_days=args.dispatch_days,
-        **_tfl_snapshot(args.tfl),
+        city=city,
+        **(_tfl_snapshot(args.tfl) if city.tfl_disruptions else {}),
     )
+    index = write_city_index(args.out.parent)
+    keys = ", ".join(str(c["key"]) for c in index)
+    print(f"Cities in {args.out.parent}: {keys}", file=sys.stderr)
     return 0
 
 
@@ -661,21 +692,29 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
+    from .cities import CITIES, DEFAULT_CITY
+
+    def add_city(p: argparse.ArgumentParser) -> None:
+        p.add_argument("--city", choices=list(CITIES), default=DEFAULT_CITY)
+
     p = sub.add_parser("fetch", help="download drivable roads from OpenStreetMap")
+    add_city(p)
     p.add_argument(
         "--bbox",
         type=float,
         nargs=4,
-        default=DEFAULT_BBOX,
+        default=None,
         metavar=("SOUTH", "WEST", "NORTH", "EAST"),
+        help="override the city's area",
     )
-    p.add_argument("--out", type=Path, default=DEFAULT_RAW)
+    p.add_argument("--out", type=Path, default=None)
     p.add_argument("--url", help="use only this Overpass server (default: try several)")
     p.set_defaults(func=cmd_fetch)
 
     p = sub.add_parser("build", help="convert raw OSM JSON into a road network")
-    p.add_argument("--raw", type=Path, default=DEFAULT_RAW)
-    p.add_argument("--out", type=Path, default=DEFAULT_NETWORK)
+    add_city(p)
+    p.add_argument("--raw", type=Path, default=None)
+    p.add_argument("--out", type=Path, default=None)
     p.set_defaults(func=cmd_build)
 
     p = sub.add_parser("info", help="print graph statistics")
@@ -787,22 +826,23 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_dispatch)
 
     p = sub.add_parser("export-web", help="export graph and hierarchies for the map demo")
-    p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
-    p.add_argument("--out", type=Path, default=Path("web/data"))
-    p.add_argument("--raw", type=Path, default=DEFAULT_RAW, help="raw OSM download, for rivers")
+    add_city(p)
+    p.add_argument("--network", type=Path, default=None)
+    p.add_argument("--out", type=Path, default=None, help="default web/data/<city>")
+    p.add_argument("--raw", type=Path, default=None, help="raw OSM download, for rivers")
     p.add_argument(
         "--eta-trips",
         type=int,
-        default=20_000,
+        default=None,
         help="simulated trips to train the ETA model on (0 to skip; needs scikit-learn)",
     )
     p.add_argument(
         "--dispatch-days",
         type=int,
-        default=6,
+        default=None,
         help="simulated mornings for the dispatch comparison (0 to skip; needs scikit-learn)",
     )
-    p.add_argument("--name", default="Central London")
+    p.add_argument("--name", default=None)
     p.add_argument("--tfl", type=Path, help="saved TfL disruptions (from `live --out`)")
     p.set_defaults(func=cmd_export_web)
     return parser

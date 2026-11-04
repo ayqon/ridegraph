@@ -9,8 +9,8 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 Quickest routes, live closures, travel-time maps, delivery rounds, learned
-arrival times and ride dispatch on London's real road network, built from
-first principles.
+arrival times and ride dispatch on real road networks (central London,
+Nicosia and Manhattan), built from first principles.
 
 **[Try the live map →](https://ayqon.github.io/fastroute/)** Click two points in
 central London, pick a time of day, and watch how much of the city each
@@ -94,6 +94,23 @@ intersections; Dijkstra looks at 27,278.
 why. Reproduce with `python -m fastroute eta-train`.</sub>
 
 ## How it works
+
+### Three cities, one engine
+
+Nothing in the engine is London-specific. `fastroute/cities.py` gives each
+city its area, the places a person would name on the map, where ride demand
+concentrates and which side of the road traffic drives on; the same
+pipeline downloads, builds, contracts, trains and simulates each one, and
+the map switches between them, keeping the view inside the chosen city.
+
+| City | Area | Extras |
+|---|---|---|
+| **Central London** | Paddington to Whitechapel, King's Cross to Vauxhall | Congestion Charge, live TfL closures, checked against OSRM and published speeds |
+| **Nicosia** | The south of the city, stopping short of the buffer zone so no route crosses the Green Line | Drives on the left, like London |
+| **Manhattan** | Battery to Central Park South, with the bridges to Brooklyn and Queens | Drives on the right, so turn costs are mirrored |
+
+The time-of-day traffic pattern is London's everywhere; only London's has
+been checked against real figures.
 
 ### 1. The map is a graph
 
@@ -653,7 +670,7 @@ as a production C++ engine on a city of this size.
 ```bash
 pip install -e ".[dev]"     # or ".[ml]" for just the ETA model extras
 
-python -m fastroute fetch      # download central London from OpenStreetMap
+python -m fastroute fetch      # download central London (or --city nicosia / new-york)
 python -m fastroute build      # turn it into a routing graph
 python -m fastroute contract   # one-off Contraction Hierarchies preprocessing
 python -m fastroute info
@@ -699,7 +716,9 @@ busy; it retries and falls back across mirrors automatically.
 To run the map locally after `fetch` and `build`:
 
 ```bash
-python -m fastroute export-web
+python -m fastroute export-web                     # writes web/data/london
+python -m fastroute fetch --city nicosia && python -m fastroute build --city nicosia
+python -m fastroute export-web --city nicosia      # adds Nicosia to the city switcher
 python -m http.server -d web 8000   # then open http://localhost:8000
 ```
 

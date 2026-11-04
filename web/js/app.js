@@ -55,7 +55,8 @@ const METHODS = {
   },
 };
 
-const LANDMARKS = [
+// London's, used only if an older export has no city section.
+let LANDMARKS = [
   ["Paddington", 51.5154, -0.1755],
   ["Marble Arch", 51.5131, -0.1589],
   ["Oxford Circus", 51.5152, -0.1419],
@@ -81,7 +82,7 @@ const LANDMARKS = [
   ["Covent Garden", 51.5117, -0.124],
 ].map(([name, lat, lon]) => ({ name, lat, lon }));
 
-const DEFAULT_TRIP = { a: [51.5152, -0.1419], b: [51.5033, -0.1145] }; // Oxford Circus to Waterloo
+let DEFAULT_TRIP = { a: [51.5152, -0.1419], b: [51.5033, -0.1145] }; // Oxford Circus to Waterloo
 const DEFAULT_PRESET = "0800";
 
 const $ = (id) => document.getElementById(id);
@@ -173,6 +174,7 @@ function buildControls() {
   });
   const charge = engine.manifest.charge;
   $("routes-group").querySelector(".switch").hidden = !charge;
+  document.querySelector("#key-route .sw-zone").parentElement.hidden = !charge;
   if (charge) {
     options.zone = zoneNodes(engine, charge);
     const hours = (h) => `${hhmm(h[0])} to ${hhmm(h[1])}`;
@@ -369,7 +371,7 @@ async function fetchLive() {
   $("live-status").textContent = "Checking Transport for London…";
   let got = null;
   try {
-    got = await loadDisruptions(info);
+    got = await loadDisruptions(info, state.base);
   } catch (err) {
     console.warn("No disruption data", err);
   }
@@ -730,7 +732,7 @@ async function enterDispatch() {
   setModeTabs();
   if (!sim.replay) {
     $("clock").textContent = "Loading…";
-    const res = await fetch(`data/${info.file}`);
+    const res = await fetch(`${state.base}/${info.file}`);
     if (!res.ok) {
       $("clock").textContent = "Replay didn't load";
       $("dispatch-meta").textContent = "Refresh the page to try again.";
@@ -1190,7 +1192,7 @@ function drawReach(ctx) {
 
 // ------------------------------------------------------------------ deliveries
 
-const DEFAULT_TOUR = [
+let DEFAULT_TOUR = [
   [51.5174, -0.12], // Holborn (depot)
   [51.5308, -0.1238],
   [51.5033, -0.1145],
@@ -1366,9 +1368,55 @@ function drawTour(ctx) {
 
 // ------------------------------------------------------------------ start
 
+// ------------------------------------------------------------------ cities
+
+async function loadCityIndex() {
+  try {
+    const res = await fetch("data/cities.json");
+    if (res.ok) return await res.json();
+  } catch {
+    // An older single-city export: data/manifest.json directly.
+  }
+  return [];
+}
+
+function chooseCity(cities) {
+  if (!cities.length) return null;
+  const wanted = new URLSearchParams(location.search).get("city");
+  return cities.find((c) => c.key === wanted) ?? cities[0];
+}
+
+/** Landmarks, default trip and default round from the city's export. */
+function applyCity(info) {
+  if (!info) return;
+  LANDMARKS = info.landmarks.map(({ name, lat, lon }) => ({ name, lat, lon }));
+  DEFAULT_TRIP = { a: info.default_trip[0], b: info.default_trip[1] };
+  DEFAULT_TOUR = info.default_tour;
+  $("sheet").closest("section").setAttribute("aria-label", `Map of ${info.name}`);
+}
+
+function buildCitySwitcher() {
+  const box = $("cities");
+  if (state.cities.length < 2) {
+    box.hidden = true;
+    return;
+  }
+  box.innerHTML = state.cities
+    .map((c) => {
+      const current = c.key === state.city.key;
+      return `<a href="?city=${encodeURIComponent(c.key)}" ${current ? 'aria-current="page"' : ""}>${c.name}</a>`;
+    })
+    .join("");
+  box.hidden = false;
+  $("place").hidden = true; // the highlighted city says it
+}
+
 async function main() {
   try {
-    engine = await loadEngine("data");
+    state.cities = await loadCityIndex();
+    state.city = chooseCity(state.cities);
+    state.base = state.city ? `data/${state.city.key}` : "data";
+    engine = await loadEngine(state.base);
   } catch (err) {
     console.error(err);
     $("eta").textContent = "Map didn't load";
@@ -1376,7 +1424,9 @@ async function main() {
     return;
   }
   $("place").textContent = engine.manifest.name;
-  document.title = `fastroute · Quickest routes across ${engine.manifest.name.toLowerCase()}`;
+  applyCity(engine.manifest.city);
+  buildCitySwitcher();
+  document.title = `fastroute · Quickest routes across ${engine.manifest.name}`;
 
   atlas = new Atlas($("sheet"), engine, { rivers: engine.manifest.rivers ?? [], landmarks: LANDMARKS });
   atlas.on("view", () => {
@@ -1388,7 +1438,7 @@ async function main() {
   bindPins();
   if (engine.manifest.eta) {
     try {
-      const res = await fetch(`data/${engine.manifest.eta.file}`);
+      const res = await fetch(`${state.base}/${engine.manifest.eta.file}`);
       if (res.ok) etaModel = new EtaModel(await res.json(), engine);
       buildModelCard();
       if (etaModel?.model.reference) {

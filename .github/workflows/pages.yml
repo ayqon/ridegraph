@@ -26,26 +26,32 @@ jobs:
           cache: pip
       - run: pip install -e ".[ml,docs]"
 
-      # Reuse the OpenStreetMap download between deploys so the shared
-      # Overpass servers are only queried when the query itself changes.
-      - name: Restore OpenStreetMap download
-        id: osm
+      # Reuse the OpenStreetMap downloads between deploys so the shared
+      # Overpass servers are only queried when a query or a city changes.
+      - name: Restore OpenStreetMap downloads
         uses: actions/cache@v4
         with:
           path: data/raw
-          key: osm-central-london-${{ hashFiles('fastroute/overpass.py') }}
-      - name: Download central London
-        if: steps.osm.outputs.cache-hit != 'true'
-        run: python -m fastroute fetch
+          key: osm-cities-${{ hashFiles('fastroute/overpass.py', 'fastroute/cities.py') }}
+          restore-keys: osm-
+      - name: Download each city that is missing
+        run: |
+          for city in london nicosia new-york; do
+            raw=$(python -c "from fastroute.cities import get; print(get('$city').raw_path)")
+            [ -f "$raw" ] || python -m fastroute fetch --city "$city"
+          done
 
-      - name: Build routing graph
-        run: python -m fastroute build
+      - name: Build the routing graphs
+        run: for city in london nicosia new-york; do python -m fastroute build --city "$city"; done
       # The page asks TfL for live disruptions itself; this snapshot is the
       # fallback when the feed can't be reached from the viewer's browser.
       - name: Snapshot live road disruptions from TfL
         run: python -m fastroute live --out data/tfl.json || echo "TfL feed unavailable; no snapshot"
-      - name: Export graph, hierarchies and learned ETA model for the browser
-        run: python -m fastroute export-web --out web/data --eta-trips 20000 --tfl data/tfl.json
+      - name: Export each city for the browser
+        run: |
+          python -m fastroute export-web --city london --tfl data/tfl.json
+          python -m fastroute export-web --city nicosia
+          python -m fastroute export-web --city new-york
 
       - name: Build the documentation into the site
         run: mkdocs build --strict -d web/docs

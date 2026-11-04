@@ -179,7 +179,8 @@ export class Atlas {
     const sx = (this.width - 2 * pad) / (max[0] - min[0]);
     const sy = (this.height - 2 * pad) / (max[1] - min[1]);
     this.view = { cx: (min[0] + max[0]) / 2, cy: (min[1] + max[1]) / 2, scale: Math.min(sx, sy) };
-    this.minScale = this.view.scale * 0.8;
+    // Never zoom out beyond the whole city: there is nothing else to see.
+    this.minScale = this.view.scale;
     this.maxScale = 12;
     this.invalidate();
   }
@@ -230,10 +231,18 @@ export class Atlas {
     this.invalidate();
   }
 
+  /** Keep the city filling the view: no panning off its edges. */
   clampView() {
     const { min, max } = this.bounds;
-    this.view.cx = Math.min(max[0], Math.max(min[0], this.view.cx));
-    this.view.cy = Math.min(max[1], Math.max(min[1], this.view.cy));
+    const v = this.view;
+    const pad = 24 / v.scale; // the same margin fit() leaves
+    for (const [axis, lo, hi, half] of [
+      ["cx", min[0] - pad, max[0] + pad, this.width / 2 / v.scale],
+      ["cy", min[1] - pad, max[1] + pad, this.height / 2 / v.scale],
+    ]) {
+      // Wider than the city: centre it; otherwise keep both edges in view.
+      v[axis] = hi - lo <= 2 * half ? (lo + hi) / 2 : Math.min(hi - half, Math.max(lo + half, v[axis]));
+    }
   }
 
   bindEvents() {

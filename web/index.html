@@ -3,10 +3,10 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>fastroute · Quickest routes across central London</title>
+    <title>fastroute · Quickest routes across a real city</title>
     <meta
       name="description"
-      content="Click two points in central London and watch Dijkstra, A*, bidirectional search and Contraction Hierarchies find the quickest route through rush-hour traffic."
+      content="Click two points in London, Nicosia or Manhattan and watch Dijkstra, A*, bidirectional search and Contraction Hierarchies find the quickest route through rush-hour traffic."
     />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%23ffd21f'/%3E%3Cpath d='M7 25 L14 12 L19 18 L25 7' stroke='%23111' stroke-width='4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -22,11 +22,12 @@
       <aside class="cover" aria-label="Route controls">
         <header class="masthead">
           <h1 class="wordmark">fastroute</h1>
-          <p class="place" id="place">Central London</p>
+          <p class="place" id="place">Loading…</p>
+          <nav class="cities" id="cities" aria-label="City" hidden></nav>
           <p class="lede">
-            Quickest routes over London's real road network, how much of the city each
-            algorithm searches to find them, live closures, charges, deliveries and ride
-            dispatch, with a learned ETA on top.
+            Quickest routes over a real city's road network, how much of it each
+            algorithm searches to find them, deliveries and ride dispatch, with a learned
+            ETA on top, and in London live closures and the Congestion Charge.
           </p>
           <div class="modes" role="tablist" aria-label="Mode">
             <button type="button" role="tab" id="mode-route" aria-selected="true">Plan a route</button>
@@ -251,7 +252,7 @@
         </footer>
       </aside>
 
-      <section class="atlas" aria-label="Map of central London">
+      <section class="atlas" aria-label="Map">
         <canvas class="ruler ruler-top" id="ruler-top" aria-hidden="true"></canvas>
         <canvas class="ruler ruler-left" id="ruler-left" aria-hidden="true"></canvas>
         <div class="corner" aria-hidden="true"></div>

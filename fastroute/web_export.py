@@ -23,6 +23,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
@@ -32,6 +33,9 @@ from .router import Router, Scenario
 from .speeds import ROAD_CLASSES
 from .traffic import DEFAULT_PROFILE
 from .turns import UK_PENALTIES, Turn, TurnGraph, TurnPenalties, penalty_seconds
+
+if TYPE_CHECKING:
+    from .cities import City
 
 FORMAT_VERSION = 1
 
@@ -147,16 +151,22 @@ def export(
     out_dir: Path,
     *,
     raw: dict | None = None,
-    name: str = "Central London",
+    name: str | None = None,
     eta_trips: int = 0,
     dispatch_days: int = 0,
     tfl: object | None = None,
     tfl_fetched: str | None = None,
+    city: City | None = None,
     presets: tuple[Preset, ...] = PRESETS,
     log: Callable[[str], None] = lambda msg: print(msg, file=sys.stderr),
 ) -> dict[str, object]:
     out_dir.mkdir(parents=True, exist_ok=True)
     network = csr_sorted(network)
+    if city is None:
+        from .cities import LONDON
+
+        city = LONDON
+    name = name or city.name
     blob, layout = _pack(graph_arrays(network))
     size = _write(out_dir / "graph.bin.gz", blob)
     log(f"  graph: {network.num_nodes:,} nodes, {network.num_edges:,} edges, {size / 1e6:.2f} MB")
@@ -204,13 +214,16 @@ def export(
             "sensitivity": list(DEFAULT_PROFILE.sensitivity),
         },
         "graph": {"file": "graph.bin.gz", "arrays": layout},
-        "turns": turn_penalty_table(),
+        "turns": turn_penalty_table(TurnPenalties(drive_on_left=city.drive_on_left)),
         "rivers": river_lines(raw) if raw else [],
         "presets": preset_entries,
-        "charge": charge_info(),
+        "city": city.browser_info(),
     }
+    if city.congestion_charge:
+        manifest["charge"] = charge_info()
     manifest["cch"] = export_cch(network, out_dir, log)
-    manifest["live"] = export_live(network, out_dir, tfl, tfl_fetched, log)
+    if city.tfl_disruptions:
+        manifest["live"] = export_live(network, out_dir, tfl, tfl_fetched, log)
     if eta_trips:
         from .eta import train
 
@@ -251,7 +264,9 @@ def export(
             "importance": result.importance[:8],
         }
     if dispatch_days:
-        manifest["dispatch"] = export_dispatch(network, hierarchies, out_dir, dispatch_days, log)
+        manifest["dispatch"] = export_dispatch(
+            network, hierarchies, out_dir, dispatch_days, log, city=city
+        )
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=1))
     return manifest
 
@@ -319,6 +334,27 @@ def export_live(
     return info
 
 
+def write_city_index(data_dir: Path) -> list[dict[str, object]]:
+    """``cities.json``: every exported city under ``data_dir``, for the map's switcher."""
+    from .cities import CITIES
+
+    found = []
+    for key, city in CITIES.items():
+        manifest = data_dir / key / "manifest.json"
+        if manifest.exists():
+            info = json.loads(manifest.read_text())
+            found.append(
+                {
+                    "key": key,
+                    "name": city.name,
+                    "nodes": info.get("nodes"),
+                    "bbox": info.get("bbox"),
+                }
+            )
+    (data_dir / "cities.json").write_text(json.dumps(found, indent=1))
+    return found
+
+
 def charge_info() -> dict[str, object]:
     from . import charges
 
@@ -338,6 +374,8 @@ def export_dispatch(
     out_dir: Path,
     days: int,
     log: Callable[[str], None],
+    *,
+    city: City | None = None,
 ) -> dict[str, object]:
     """Simulate ride dispatch on the morning peak and save a replay for the map."""
     from .demand import DemandWorld, forecast_markdown, train_forecaster
@@ -346,7 +384,7 @@ def export_dispatch(
     started = time.perf_counter()
     config = DispatchConfig()
     ch = hierarchies[8.0]  # the morning-peak hierarchy the map also uses
-    world = DemandWorld(network)
+    world = DemandWorld.for_places(network, city.demand_centres) if city else DemandWorld(network)
     log("  training the demand forecast")
     forecast = train_forecaster(world)
     log(forecast_markdown(forecast.metrics))

@@ -17,6 +17,7 @@ about to appear, so the model is judged by the waiting time it saves.
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -63,23 +64,6 @@ DEMAND_CURVE: tuple[float, ...] = (
     0.6, 0.6, 0.55, 0.6, 0.75, 0.95, 1.0, 0.85, 0.7, 0.6, 0.55, 0.45,
 )  # fmt: skip
 
-LONDON_CENTRES: tuple[tuple[str, str, float, float, float], ...] = (
-    # name, kind, lat, lon, strength
-    ("King's Cross", "station", 51.5308, -0.1238, 1.2),
-    ("Euston", "station", 51.5282, -0.1337, 0.9),
-    ("Paddington", "station", 51.5154, -0.1755, 1.0),
-    ("Liverpool Street", "station", 51.5178, -0.0823, 1.1),
-    ("Waterloo", "station", 51.5033, -0.1145, 1.2),
-    ("Victoria", "station", 51.4952, -0.1441, 1.0),
-    ("London Bridge", "station", 51.5055, -0.0865, 0.9),
-    ("Bank", "office", 51.5133, -0.0890, 1.3),
-    ("Holborn", "office", 51.5174, -0.1200, 0.9),
-    ("Westminster", "office", 51.5007, -0.1246, 0.7),
-    ("Soho", "nightlife", 51.5136, -0.1340, 1.3),
-    ("Covent Garden", "nightlife", 51.5117, -0.1240, 1.0),
-    ("Shoreditch", "nightlife", 51.5255, -0.0790, 0.9),
-    ("Notting Hill", "nightlife", 51.5094, -0.1967, 0.6),
-)
 CENTRE_SPREAD_KM = 0.45
 EVENT_SPREAD_KM = 0.35
 EVENTS_PER_DAY = 2.0  # matches, concerts, closures: unannounced local surges
@@ -172,9 +156,26 @@ class DemandWorld:
         self.kernels /= self.kernels.sum(axis=1, keepdims=True)
         self.kinds = [c.kind for c in self.centres]
 
+    @classmethod
+    def for_places(
+        cls, network: RoadNetwork, places: Sequence[tuple[str, str, float, float, float]], **kw
+    ) -> DemandWorld:
+        """A demand world around named places: (name, kind, lat, lon, strength)."""
+        grid = Grid(network)
+        centres = []
+        for name, kind, lat, lon, strength in places:
+            x, y = grid.xy(lat, lon)
+            if grid.x.min() <= x <= grid.x.max() and grid.y.min() <= y <= grid.y.max():
+                centres.append(Centre(name, kind, x, y, strength))
+        if len(centres) < 3:  # places outside this network: fall back to generic centres
+            return cls(network, **kw)
+        return cls(network, centres=centres, **kw)
+
     def _default_centres(self) -> list[Centre]:
         inside = []
-        for name, kind, lat, lon, strength in LONDON_CENTRES:
+        from .cities import LONDON
+
+        for name, kind, lat, lon, strength in LONDON.demand_centres:
             x, y = self.grid.xy(lat, lon)
             if (
                 self.grid.x.min() <= x <= self.grid.x.max()

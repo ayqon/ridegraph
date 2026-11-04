@@ -335,7 +335,8 @@ function computeOptions() {
 }
 
 function chargeNote(route) {
-  const fee = engine.manifest.charge ? `£${engine.manifest.charge.daily_gbp}` : "";
+  if (!engine.manifest.charge) return null; // no charge in this city
+  const fee = `£${engine.manifest.charge.daily_gbp}`;
   if (!route.entersZone) return "no Congestion Charge";
   return chargeApplies() ? `${fee} Congestion Charge` : "in the zone, but not charged now";
 }
@@ -358,7 +359,7 @@ function updateOptions() {
         <span class="method-row">
           <span class="method-name">${r.label}</span>
           <span class="method-count">${formatEta(r.seconds).replaceAll("<small>", " ").replaceAll("</small>", " ").trim()}</span>
-          <span class="method-time">${(r.metres / 1000).toFixed(1)} km${delta} · ${chargeNote(r)}</span>
+          <span class="method-time">${[`${(r.metres / 1000).toFixed(1)} km${delta}`, chargeNote(r)].filter(Boolean).join(" · ")}</span>
         </span></label>`;
     })
     .join("") + (options.error ? `<p class="method-note">${options.error}</p>` : "");
@@ -1393,6 +1394,7 @@ function applyCity(info) {
   DEFAULT_TRIP = { a: info.default_trip[0], b: info.default_trip[1] };
   DEFAULT_TOUR = info.default_tour;
   $("sheet").closest("section").setAttribute("aria-label", `Map of ${info.name}`);
+  $("city-notes").textContent = (info.notes ?? []).join(" ");
 }
 
 function buildCitySwitcher() {

@@ -110,19 +110,27 @@ def cmd_build(args: argparse.Namespace) -> int:
     network = network_from_overpass(payload)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     network.save(args.out)
-    print(f"Built {network.num_nodes:,} nodes / {network.num_edges:,} edges -> {args.out}")
+    bans = network.banned_turns
+    banned = 0 if bans is None else len(bans)
+    print(
+        f"Built {network.num_nodes:,} nodes / {network.num_edges:,} edges, "
+        f"{banned:,} banned turns -> {args.out}"
+    )
     return 0
 
 
 def cmd_info(args: argparse.Namespace) -> int:
     from .graph import Graph, RoadNetwork
 
-    graph = Graph(RoadNetwork.load(_require(args.network, "build")))
+    network = RoadNetwork.load(_require(args.network, "build"))
+    graph = Graph(network)
     total_km = sum(graph.length_m) / 1000
+    bans = network.banned_turns
     print(f"nodes:      {graph.num_nodes:,}")
     print(f"edges:      {graph.num_edges:,}")
     print(f"road length {total_km:,.0f} km (directed)")
     print(f"top speed   {graph.max_speed_mps * 3.6:.0f} km/h")
+    print(f"banned turns {0 if bans is None else len(bans):,} (obeyed with --turns)")
     return 0
 
 

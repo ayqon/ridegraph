@@ -34,6 +34,7 @@ nav:
   - Design decisions: decisions.md
   - Road rules: road-rules.md
   - Results: writeup.md
+  - New York study: nyc-study.md
   - HTTP API: http-api.md
   - Command line: cli.md
   - Python API: api.md

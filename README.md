@@ -59,8 +59,11 @@ Arrival-time error on 4,000 trips the models never saw:
 | Gradient-boosted trees (used on the map) | 6.8% | 78% |
 | Graph neural network | 6.6% | 80% |
 
-The arrival-time and dispatch results use simulated trips, because real trip
-data for London is not public. The simulated city's speeds are checked
+On real Manhattan taxi trips (TLC records, trained on January to March 2025
+and tested on April), the router alone is 43% off on average and the learned
+model 28%; see [the New York study](docs/nyc-study.md). The London
+arrival-time and dispatch results above use simulated trips, because real
+trip data for London is not public. The simulated city's speeds are checked
 against Department for Transport and TomTom figures; see
 [How it works](docs/how-it-works.md) for details.
 
@@ -131,6 +134,7 @@ type checking and the full suite on Python 3.10, 3.12 and 3.13.
 - [Architecture](docs/architecture.md) and [design decisions](docs/decisions.md)
 - [Road rules and driving behaviour](docs/road-rules.md): what the router obeys, what it does not yet, and how each rule fits
 - [Write-up](docs/writeup.md): what the results show
+- [New York study](docs/nyc-study.md): arrival times on real taxi trips
 - [HTTP API](docs/http-api.md)
 
 ## Citing

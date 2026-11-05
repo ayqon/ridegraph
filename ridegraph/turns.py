@@ -156,6 +156,15 @@ class TurnGraph:
         )
         to_seg = order[np.repeat(out_first[dst], per_seg) + offset_in_group]
 
+        # Turns the law forbids are simply never created.
+        bans = network.banned_turns
+        if bans is not None and len(bans):
+            key = (src[from_seg] * n + dst[from_seg]) * n + dst[to_seg]
+            banned_key = (bans[:, 0].astype(np.int64) * n + bans[:, 1]) * n + bans[:, 2]
+            allowed = ~np.isin(key, banned_key)
+            from_seg, to_seg = from_seg[allowed], to_seg[allowed]
+            total = len(from_seg)
+
         bearing = segment_bearings(network)
         angle = (bearing[to_seg] - bearing[from_seg] + 180.0) % 360.0 - 180.0
         via = dst[from_seg]

@@ -109,3 +109,44 @@ def test_restrictions_through_a_stretch_of_road_are_skipped():
     rel = restriction("no_right_turn", 12, 11)
     rel["members"][1] = {"type": "way", "ref": 10, "role": "via"}
     assert bans_as_osm_ids(network_from_overpass(payload(rel))) == set()
+
+
+# -- obeying them --------------------------------------------------------------
+
+
+def test_turn_graph_never_takes_a_banned_turn():
+    from ridegraph.dijkstra import dijkstra
+    from ridegraph.osm import network_from_overpass
+    from ridegraph.turns import NO_PENALTIES, TurnGraph
+
+    free = network_from_overpass(payload())
+    banned = network_from_overpass(payload(restriction("no_left_turn", 12, 13)))
+    idx = {int(osm): i for i, osm in enumerate(free.node_ids)}
+    south, west = idx[4], idx[5]
+
+    direct = TurnGraph(free, NO_PENALTIES)
+    detour = TurnGraph(banned, NO_PENALTIES)
+    allowed = dijkstra(direct.graph(), direct.start(south), direct.end(west))
+    forced = dijkstra(detour.graph(), detour.start(south), detour.end(west))
+    assert allowed.found and forced.found
+    # Without the left turn the only legal way is to go round another arm and back.
+    assert forced.seconds > allowed.seconds
+    assert detour.num_manoeuvres == direct.num_manoeuvres - 1
+
+
+def test_bans_leave_other_turns_alone():
+    from ridegraph.dijkstra import dijkstra
+    from ridegraph.osm import network_from_overpass
+    from ridegraph.turns import NO_PENALTIES, TurnGraph
+
+    free = TurnGraph(network_from_overpass(payload()), NO_PENALTIES)
+    banned = TurnGraph(
+        network_from_overpass(payload(restriction("no_left_turn", 12, 13))), NO_PENALTIES
+    )
+    for a in range(5):
+        for b in range(5):
+            if a == b:
+                continue
+            x = dijkstra(free.graph(), free.start(a), free.end(b)).seconds
+            y = dijkstra(banned.graph(), banned.start(a), banned.end(b)).seconds
+            assert y >= x

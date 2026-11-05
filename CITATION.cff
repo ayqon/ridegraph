@@ -10,7 +10,15 @@ repository-code: "https://github.com/ayqon/ridegraph"
 url: "https://ridegraph.dev"
 license: MIT
 version: 1.0.0
-date-released: "2026-11-04"
+doi: 10.5281/zenodo.23966468
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.23966468
+    description: All versions of Ridegraph
+  - type: doi
+    value: 10.5281/zenodo.23966469
+    description: Ridegraph 1.0.0
+date-released: "2026-11-05"
 keywords:
   - routing
   - shortest paths

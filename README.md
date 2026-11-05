@@ -3,6 +3,7 @@
 [![CI](https://github.com/ayqon/ridegraph/actions/workflows/ci.yml/badge.svg)](https://github.com/ayqon/ridegraph/actions/workflows/ci.yml)
 [![Coverage](https://img.shields.io/endpoint?url=https%3A%2F%2Fraw.githubusercontent.com%2Fayqon%2Fridegraph%2Fbadges%2Fcoverage.json)](https://github.com/ayqon/ridegraph/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23966468.svg)](https://doi.org/10.5281/zenodo.23966468)
 
 Routing, arrival-time prediction and ride dispatch on real city road networks
 (central London, Nicosia and Manhattan), written from scratch in Python and
@@ -131,6 +132,18 @@ type checking and the full suite on Python 3.10, 3.12 and 3.13.
 - [Road rules and driving behaviour](docs/road-rules.md): what the router obeys, what it does not yet, and how each rule fits
 - [Write-up](docs/writeup.md): what the results show
 - [HTTP API](docs/http-api.md)
+
+## Citing
+
+If you use Ridegraph in your work, please cite it:
+
+> Konstantinou, I. (2026). *Ridegraph: routing, arrival-time prediction and
+> ride dispatch on city road networks* (Version 1.0.0) [Computer software].
+> Zenodo. https://doi.org/10.5281/zenodo.23966469
+
+GitHub's "Cite this repository" button gives the same reference in APA and
+BibTeX. The DOI [10.5281/zenodo.23966468](https://doi.org/10.5281/zenodo.23966468)
+always points to the latest version.
 
 ## Data
 

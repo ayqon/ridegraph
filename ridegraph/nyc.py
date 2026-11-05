@@ -15,13 +15,20 @@ Sources:
 
 from __future__ import annotations
 
+import time
 import zipfile
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 
 from .graph import RoadNetwork
+
+if TYPE_CHECKING:
+    from .ch import ContractionHierarchy
+    from .eta import Dataset, RouteContext
 
 
 @dataclass(frozen=True)
@@ -226,3 +233,49 @@ def read_trips(path: str | Path) -> Trips:
         dropoff_zone=table.column("DOLocationID").to_numpy().astype(np.int32),
         distance_km=table.column("trip_distance").to_numpy().astype(np.float64) * KM_PER_MILE,
     )
+
+
+# -- trips as training data ------------------------------------------------------
+
+
+def trip_dataset(
+    ctx: RouteContext,
+    hierarchies: dict[float, ContractionHierarchy],
+    trips: Trips,
+    anchors: dict[int, int],
+    *,
+    log: Callable[[str], None] = lambda msg: None,
+) -> tuple[Dataset, np.ndarray]:
+    """Route each trip between its zones' anchors and pair it with its real time.
+
+    Returns the dataset and the index, into ``trips``, of the trips it holds
+    (a trip is skipped if the router finds no way between its zones). Routes
+    are cached per zone pair and preset, since a month of trips repeats the
+    same few thousand pairs.
+    """
+    from .eta import TripRows, nearest_preset
+
+    rows = TripRows()
+    used: list[int] = []
+    routes: dict[tuple[int, int, int], list[int] | None] = {}
+    hours, weekends = trips.hour, trips.weekend
+    started = time.perf_counter()
+    for i in range(len(trips)):
+        pu, do = int(trips.pickup_zone[i]), int(trips.dropoff_zone[i])
+        hour, weekend = float(hours[i]), bool(weekends[i])
+        ch = nearest_preset(hour, hierarchies)
+        key = (pu, do, id(ch))
+        if key not in routes:
+            route = ch.query(anchors[pu], anchors[do])
+            routes[key] = route.path if route.found and len(route.path) >= 2 else None
+        path = routes[key]
+        if path is None:
+            continue
+        times = ctx.edge_times(hour, weekend)
+        edges = ctx.path_edges(path, times)
+        x = ctx.features_from_edges(path, edges, times, hour, weekend)
+        rows.add(x, edges, times, hour, weekend, float(trips.duration_s[i]))
+        used.append(i)
+        if len(rows) % 20_000 == 0:
+            log(f"    {len(rows):,} trips routed ({time.perf_counter() - started:.0f}s)")
+    return rows.dataset(), np.array(used, dtype=np.int64)

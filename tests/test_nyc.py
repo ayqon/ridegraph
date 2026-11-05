@@ -140,3 +140,36 @@ def test_reading_a_trip_file(tmp_path):
     assert trips.duration_s.tolist() == [930.0]
     assert trips.hour.tolist() == [8.25]
     assert trips.distance_km[0] == pytest.approx(3.218688)
+
+
+def test_trips_become_training_rows_with_their_real_times():
+    from ridegraph.ch import ContractionHierarchy
+    from ridegraph.eta import RouteContext
+    from ridegraph.nyc import trip_dataset, zone_anchors
+    from ridegraph.router import Router, Scenario
+    from ridegraph.synthetic import grid_network
+
+    network = grid_network(12, 12, seed=4)
+    ctx = RouteContext(network)
+    # Four zones: the quadrants of the grid.
+    lat, lon = ctx.network.lat, ctx.network.lon
+    north, east = lat > np.median(lat), lon > np.median(lon)
+    zones = (1 + north.astype(int) * 2 + east.astype(int)).astype(np.int32)
+    anchors = zone_anchors(ctx.network, zones)
+    hierarchies = {
+        h: ContractionHierarchy.build(Router(ctx.network, Scenario(hour=h)).graph)
+        for h in (8.0, 13.0)
+    }
+    trips = trips_of(
+        [
+            ("2025-03-04T08:10", 600, 1, 4, 2.0),
+            ("2025-03-04T08:40", 660, 1, 4, 2.0),  # same pair and preset: cached route
+            ("2025-03-05T13:05", 420, 2, 3, 1.5),
+        ]
+    )
+    data, used = trip_dataset(ctx, hierarchies, trips, anchors)
+    assert used.tolist() == [0, 1, 2]
+    assert data.observed.tolist() == [600.0, 660.0, 420.0]
+    assert (data.graph_eta > 0).all()
+    assert np.allclose(data.y, np.log(data.observed / data.graph_eta))
+    assert np.array_equal(data.edges[0], data.edges[1])

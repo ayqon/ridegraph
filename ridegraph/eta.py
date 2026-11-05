@@ -496,13 +496,7 @@ def train(
     log: Callable[[str], None] = lambda msg: None,
 ) -> EtaResult:
     """Simulate trips, train and compare ETA models, return the best for export."""
-    from sklearn.ensemble import HistGradientBoostingRegressor
-    from sklearn.inspection import permutation_importance
-    from sklearn.linear_model import Ridge
     from sklearn.model_selection import train_test_split
-    from sklearn.neural_network import MLPRegressor
-    from sklearn.pipeline import make_pipeline
-    from sklearn.preprocessing import StandardScaler
 
     ctx = RouteContext(network)
     if hierarchies is None:
@@ -517,6 +511,43 @@ def train(
     log(f"  simulating {trips:,} trips")
     data = simulate_trips(ctx, world, hierarchies, trips, seed=seed + 1, log=log)
     idx_train, idx_test = train_test_split(np.arange(len(data.y)), test_size=0.2, random_state=seed)
+    result, gnn_model = compare_models(
+        ctx, data, idx_train, idx_test, seed=seed, gnn_epochs=gnn_epochs, log=log
+    )
+    # The simulated city knows where its congestion really is, so the maps the
+    # models learned can be checked against it.
+    result.interval["learned_hotspot_r"] = learned_hotspot_correlation(
+        result.model_json, ctx, world
+    )
+    if gnn_model is not None:
+        result.interval["gnn_hotspot_r"] = gnn_hotspot_correlation(gnn_model, ctx, world)
+    return result
+
+
+def compare_models(
+    ctx: RouteContext,
+    data: Dataset,
+    idx_train: np.ndarray,
+    idx_test: np.ndarray,
+    *,
+    seed: int = 0,
+    gnn_epochs: int = 25,
+    log: Callable[[str], None] = lambda msg: None,
+) -> tuple[EtaResult, object | None]:
+    """Train every ETA model on one set of trips and score it on another.
+
+    The split is the caller's: random for simulated trips, by month for real
+    ones, so a model is always judged on trips from after the ones it learned
+    from. Returns the result and the graph neural network, if one was trained.
+    """
+    from sklearn.ensemble import HistGradientBoostingRegressor
+    from sklearn.inspection import permutation_importance
+    from sklearn.linear_model import Ridge
+    from sklearn.model_selection import train_test_split
+    from sklearn.neural_network import MLPRegressor
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+
     Xtr, Xte = data.X[idx_train], data.X[idx_test]
     ytr = data.y[idx_train]
     eta_te, obs_te = data.graph_eta[idx_test], data.observed[idx_test]
@@ -561,7 +592,7 @@ def train(
     ).fit(Xtr, ytr)
     metrics["Gradient-boosted trees"] = error_metrics(to_seconds(gbdt.predict(Xte)), obs_te)
 
-    gnn_r = math.nan
+    gnn_model = None
     if gnn_epochs:
         log("  training the graph neural network")
         gnn_model = _train_gnn(ctx, data, idx_train, gnn_epochs, seed, log)
@@ -570,7 +601,6 @@ def train(
         metrics["Graph neural network"] = error_metrics(
             gnn_model.predict(gnn_batch(data, idx_test)), obs_te
         )
-        gnn_r = gnn_hotspot_correlation(gnn_model, ctx, world)
 
     sample = np.arange(min(len(idx_test), 3000))
     imp = permutation_importance(
@@ -618,10 +648,10 @@ def train(
     model_json["conformal_margin"] = margin
     # A typical trip, used by the map to ask "how slow would a trip through here be?"
     model_json["reference"] = [float(v) for v in np.median(Xtr, axis=0)]
-    interval["learned_hotspot_r"] = learned_hotspot_correlation(model_json, ctx, world)
-    if math.isfinite(gnn_r):
-        interval["gnn_hotspot_r"] = gnn_r
-    return EtaResult(metrics, importance, gbdt, len(data.y), model_json, interval, quantile_models)
+    result = EtaResult(
+        metrics, importance, gbdt, len(data.y), model_json, interval, quantile_models
+    )
+    return result, gnn_model
 
 
 def _train_gnn(ctx: RouteContext, data: Dataset, idx_train, epochs: int, seed: int, log):

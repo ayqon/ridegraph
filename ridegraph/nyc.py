@@ -123,3 +123,106 @@ def zone_anchors(network: RoadNetwork, zone_of_node: np.ndarray) -> dict[int, in
         d = (lat - lat.mean()) ** 2 + ((lon - lon.mean()) * scale) ** 2
         anchors[int(zone)] = int(nodes[np.argmin(d)])
     return anchors
+
+
+# -- trips ---------------------------------------------------------------------
+
+TRIP_COLUMNS = (
+    "tpep_pickup_datetime",
+    "tpep_dropoff_datetime",
+    "trip_distance",
+    "PULocationID",
+    "DOLocationID",
+)
+KM_PER_MILE = 1.609344
+
+
+@dataclass(frozen=True)
+class Trips:
+    """Taxi trips as plain arrays, one entry per trip.
+
+    Times are New York local time, as TLC records them, in seconds since
+    1970-01-01 00:00 of that clock.
+    """
+
+    pickup_s: np.ndarray  # int64
+    duration_s: np.ndarray  # float64
+    pickup_zone: np.ndarray  # int32
+    dropoff_zone: np.ndarray  # int32
+    distance_km: np.ndarray  # float64
+
+    def __len__(self) -> int:
+        return len(self.pickup_s)
+
+    def take(self, index: np.ndarray) -> Trips:
+        return Trips(
+            self.pickup_s[index],
+            self.duration_s[index],
+            self.pickup_zone[index],
+            self.dropoff_zone[index],
+            self.distance_km[index],
+        )
+
+    @property
+    def hour(self) -> np.ndarray:
+        """Hour of day of each pickup, with minutes as a fraction."""
+        return (self.pickup_s % 86_400) / 3600.0
+
+    @property
+    def weekend(self) -> np.ndarray:
+        # 1970-01-01 was a Thursday, so day 2 after it was a Saturday.
+        return ((self.pickup_s // 86_400 + 3) % 7) >= 5
+
+
+def clean(
+    trips: Trips,
+    zones: set[int],
+    *,
+    month: str | None = None,
+    min_s: float = 60.0,
+    max_s: float = 3 * 3600.0,
+    min_kmh: float = 1.0,
+    max_kmh: float = 80.0,
+) -> Trips:
+    """Keep trips that start and end in different zones of the map and look real.
+
+    TLC's own guidance is that a small share of records are wrong: zero or
+    negative durations, meters left running, distances that imply impossible
+    speeds, and trips dated outside the month the file covers. Those are
+    dropped. Trips that start and end in the same zone are dropped too, since
+    with zone-level locations there is no route to compare against.
+    """
+    zone_list = np.array(sorted(zones), dtype=np.int32)
+    keep = np.isin(trips.pickup_zone, zone_list) & np.isin(trips.dropoff_zone, zone_list)
+    keep &= trips.pickup_zone != trips.dropoff_zone
+    keep &= (trips.duration_s >= min_s) & (trips.duration_s <= max_s)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        kmh = trips.distance_km / (trips.duration_s / 3600.0)
+    keep &= (kmh >= min_kmh) & (kmh <= max_kmh)
+    if month is not None:
+        start = np.datetime64(f"{month}-01", "s").astype(np.int64)
+        next_month = np.datetime64(month, "M") + np.timedelta64(1, "M")
+        end = next_month.astype("datetime64[s]").astype(np.int64)
+        keep &= (trips.pickup_s >= start) & (trips.pickup_s < end)
+    return trips.take(np.flatnonzero(keep))
+
+
+def read_trips(path: str | Path) -> Trips:
+    """One month of TLC yellow taxi trip records from its Parquet file."""
+    import pyarrow.parquet as pq
+
+    table = pq.read_table(path, columns=list(TRIP_COLUMNS))
+
+    def seconds(name: str) -> np.ndarray:
+        col = table.column(name).to_numpy()
+        return col.astype("datetime64[s]").astype(np.int64)
+
+    pickup = seconds("tpep_pickup_datetime")
+    dropoff = seconds("tpep_dropoff_datetime")
+    return Trips(
+        pickup_s=pickup,
+        duration_s=(dropoff - pickup).astype(np.float64),
+        pickup_zone=table.column("PULocationID").to_numpy().astype(np.int32),
+        dropoff_zone=table.column("DOLocationID").to_numpy().astype(np.int32),
+        distance_km=table.column("trip_distance").to_numpy().astype(np.float64) * KM_PER_MILE,
+    )

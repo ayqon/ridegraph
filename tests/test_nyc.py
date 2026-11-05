@@ -79,3 +79,64 @@ def test_reading_the_zone_shapefile(tmp_path):
     assert (zone.id, zone.borough, zone.name) == (161, "Manhattan", "Midtown Test")
     ring = zone.rings[0]
     assert np.allclose(ring[:, 0], lon, atol=1e-6) and np.allclose(ring[:, 1], lat, atol=1e-6)
+
+
+# -- trips ---------------------------------------------------------------------
+
+
+def trips_of(rows: list[tuple[str, float, int, int, float]]):
+    from ridegraph.nyc import Trips
+
+    pickup = np.array([np.datetime64(r[0], "s").astype(np.int64) for r in rows])
+    return Trips(
+        pickup_s=pickup,
+        duration_s=np.array([r[1] for r in rows], dtype=np.float64),
+        pickup_zone=np.array([r[2] for r in rows], dtype=np.int32),
+        dropoff_zone=np.array([r[3] for r in rows], dtype=np.int32),
+        distance_km=np.array([r[4] for r in rows], dtype=np.float64),
+    )
+
+
+def test_cleaning_drops_records_that_cannot_be_real():
+    from ridegraph.nyc import clean
+
+    trips = trips_of(
+        [
+            ("2025-03-04T08:15", 900, 161, 230, 3.0),  # fine
+            ("2025-03-04T08:15", 900, 161, 161, 1.0),  # same zone
+            ("2025-03-04T08:15", 900, 161, 1, 3.0),  # ends off the map (Newark)
+            ("2025-03-04T08:15", 20, 161, 230, 0.1),  # too short
+            ("2025-03-04T08:15", 900, 161, 230, 60.0),  # 240 km/h
+            ("2025-02-28T23:50", 900, 161, 230, 3.0),  # outside the month
+        ]
+    )
+    kept = clean(trips, {161, 230}, month="2025-03")
+    assert len(kept) == 1 and kept.pickup_zone.tolist() == [161]
+
+
+def test_hour_and_weekend_come_from_the_local_pickup_time():
+    trips = trips_of([("2025-03-04T08:30", 900, 1, 2, 3.0), ("2025-03-08T23:00", 900, 1, 2, 3.0)])
+    assert trips.hour.tolist() == [8.5, 23.0]
+    assert trips.weekend.tolist() == [False, True]  # a Tuesday, then a Saturday
+
+
+def test_reading_a_trip_file(tmp_path):
+    pa = pytest.importorskip("pyarrow")
+    pq = pytest.importorskip("pyarrow.parquet")
+    from ridegraph.nyc import read_trips
+
+    table = pa.table(
+        {
+            "VendorID": [2],
+            "tpep_pickup_datetime": pa.array([np.datetime64("2025-03-04T08:15:00", "us")]),
+            "tpep_dropoff_datetime": pa.array([np.datetime64("2025-03-04T08:30:30", "us")]),
+            "trip_distance": [2.0],
+            "PULocationID": [161],
+            "DOLocationID": [230],
+        }
+    )
+    pq.write_table(table, tmp_path / "yellow.parquet")
+    trips = read_trips(tmp_path / "yellow.parquet")
+    assert trips.duration_s.tolist() == [930.0]
+    assert trips.hour.tolist() == [8.25]
+    assert trips.distance_km[0] == pytest.approx(3.218688)

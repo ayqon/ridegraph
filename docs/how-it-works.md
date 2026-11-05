@@ -492,7 +492,7 @@ The demo in `web/` runs entirely in the browser, with no server:
 * **Built and deployed by CI.** On each push, a workflow downloads central
   London from OpenStreetMap (cached between runs), snapshots TfL's
   disruptions, builds the graph, contracts it for each preset, trains the
-  ETA models, simulates dispatch and publishes `web/` to GitHub Pages.
+  ETA models, simulates dispatch and publishes `web/` to Cloudflare Pages.
 
 ## 11. An HTTP API
 

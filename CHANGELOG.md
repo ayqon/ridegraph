@@ -1,12 +1,17 @@
 # Changelog
 
-All notable changes to ridegraph. The format follows
+All notable changes to Ridegraph. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 uses [semantic versioning](https://semver.org/).
 
-## [1.0.0] - 2026-11-03
+## [1.0.0] - 2026-11-05
 
 First public release.
+
+### Cities
+- Central London, Nicosia and Manhattan from the same code; each city supplies
+  its area, landmarks, demand centres and which side of the road traffic
+  drives on. Turn costs are mirrored for right-hand traffic.
 
 ### Routing
 - Road graph from OpenStreetMap: drivable ways, one-way rules, largest
@@ -41,10 +46,21 @@ First public release.
 
 ### Live map
 - In-browser port of every algorithm on a canvas street atlas, held to
-  Python by Node tests; five modes including a dispatch replay.
+  Python by Node tests; route planning, travel-time maps, delivery rounds and
+  a dispatch replay, with a city switcher.
+
+### HTTP API
+- FastAPI service for routes, travel-time areas and delivery rounds at any
+  time of day on Customizable Contraction Hierarchies, with GeoJSON
+  responses and a Docker image.
+
+### Validation
+- Simulated trip speeds by time of day set beside Department for Transport
+  and TomTom figures for central London.
 
 ### Engineering
 - Property-based tests, mypy, 92% line coverage, CI on Python 3.10, 3.12 and
-  3.13, documentation site, automated build and deployment.
+  3.13, documentation site (including a page on road rules and what the
+  router does not model yet), automated build and deployment.
 
 [1.0.0]: https://github.com/ayqon/ridegraph/releases/tag/v1.0.0

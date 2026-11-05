@@ -1,4 +1,4 @@
-name: Deploy map demo
+name: Deploy site
 
 on:
   push:
@@ -7,9 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write # to push the private site-preview branch
-  pages: write
-  id-token: write
+  contents: read
 
 concurrency:
   group: pages
@@ -76,44 +74,14 @@ jobs:
 
       # The built site, data included, on its own branch, so it can be
       # previewed privately before the repository is public and Pages is on.
-      - name: Save the built site to the site-preview branch
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          rm -rf /tmp/site && cp -r web /tmp/site && rm -rf /tmp/site/test
-          cd /tmp/site
-          git init -q -b site-preview
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -qm "Site preview built from ${GITHUB_SHA::7}"
-          git push -qf "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:site-preview
-      # Cloudflare Pages hosts the public site while the repository is
-      # private. Runs once the two repository secrets are set.
+      - name: Assemble the site
+        run: rm -rf /tmp/site && cp -r web /tmp/site && rm -rf /tmp/site/test
+      # Cloudflare Pages hosts the site at ridegraph.dev.
       - name: Deploy to Cloudflare Pages
         if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ env.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
-          preCommands: |
-            rm -rf /tmp/site/.git
-            wrangler pages project create ridegraph --production-branch=main || true
+          preCommands: wrangler pages project create ridegraph --production-branch=main || true
           command: pages deploy /tmp/site --project-name=ridegraph --branch=main --commit-dirty=true
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: web
-
-  deploy:
-    needs: build
-    # Pages needs the repository to be public on this plan; until then, the
-    # build above still produces the site-preview download.
-    if: ${{ !github.event.repository.private }}
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - uses: actions/configure-pages@v5
-      - id: deployment
-        uses: actions/deploy-pages@v4

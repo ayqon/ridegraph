@@ -45,6 +45,11 @@ class RoadNetwork:
     Two-way streets appear as two edges, one per direction.
     ``maxspeed_kph`` is NaN where OSM has no usable limit. ``traffic_signals``
     marks nodes with lights; networks saved before it existed load as all-False.
+
+    ``banned_turns`` lists turns the law forbids, one row per turn: the node a
+    driver comes from, the junction, and the node they may not continue to,
+    all as indices into the node arrays. "Only straight on" signs are stored
+    as a ban on every other way out. Only the turn-aware graph can obey them.
     """
 
     node_ids: np.ndarray  # int64, OSM node ids
@@ -56,6 +61,7 @@ class RoadNetwork:
     road_class: np.ndarray  # int8, index into ROAD_CLASSES
     maxspeed_kph: np.ndarray  # float32
     traffic_signals: np.ndarray | None = None  # bool per node
+    banned_turns: np.ndarray | None = None  # int32 (k, 3): from, via, to node
 
     def __post_init__(self) -> None:
         n, m = len(self.node_ids), len(self.src)
@@ -63,6 +69,14 @@ class RoadNetwork:
             object.__setattr__(self, "traffic_signals", np.zeros(n, dtype=bool))
         elif len(self.traffic_signals) != n:
             raise ValueError("traffic_signals must have one entry per node")
+        if self.banned_turns is None:
+            object.__setattr__(self, "banned_turns", np.zeros((0, 3), dtype=np.int32))
+        elif self.banned_turns.ndim != 2 or self.banned_turns.shape[1] != 3:
+            raise ValueError("banned_turns must have shape (k, 3)")
+        elif len(self.banned_turns) and (
+            self.banned_turns.min() < 0 or self.banned_turns.max() >= n
+        ):
+            raise ValueError("banned turn refers to a node out of range")
         if not (len(self.lat) == len(self.lon) == n):
             raise ValueError("node arrays must have equal length")
         for name in ("dst", "length_m", "road_class", "maxspeed_kph"):
@@ -95,6 +109,7 @@ class RoadNetwork:
             road_class=self.road_class,
             maxspeed_kph=self.maxspeed_kph,
             traffic_signals=signals,
+            banned_turns=self.banned_turns,
         )
 
     @classmethod
@@ -120,6 +135,7 @@ def csr_sorted(network: RoadNetwork) -> RoadNetwork:
         road_class=network.road_class[order],
         maxspeed_kph=network.maxspeed_kph[order],
         traffic_signals=network.traffic_signals,
+        banned_turns=network.banned_turns,
     )
 
 

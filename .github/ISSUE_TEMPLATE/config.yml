@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://ridegraph.dev/docs/
+    about: How each part works, and what is not modelled yet.

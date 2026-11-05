@@ -1,0 +1,27 @@
+name: Bug report
+description: Something gives a wrong answer, an error, or behaves oddly on the map.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you saw instead.
+    validations:
+      required: true
+  - type: input
+    id: city
+    attributes:
+      label: City
+      placeholder: London, Nicosia or Manhattan
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: The command you ran, or the points you clicked on the map. For a route, the start and end coordinates help most.
+      render: shell
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `pip show ridegraph`, or "the live map" with your browser.

@@ -1,0 +1,16 @@
+name: Idea or feature
+description: Suggest something Ridegraph should model or do.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would it help with
+      description: The question you want answered, or the behaviour that is missing.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How it might work
+      description: Any thoughts on the approach, data sources or papers. Optional.

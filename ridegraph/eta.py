@@ -320,6 +320,66 @@ def nearest_preset(hour: float, presets: dict[float, ContractionHierarchy]) -> C
     return presets[min(presets, key=gap)]
 
 
+class TripRows:
+    """Collects trips one at a time and turns them into a ``Dataset``.
+
+    Shared by simulated trips and real ones, so both produce exactly the same
+    features and bookkeeping.
+    """
+
+    def __init__(self) -> None:
+        self.rows: list[np.ndarray] = []
+        self.observed: list[float] = []
+        self.edges: list[np.ndarray] = []
+        self.seconds: list[np.ndarray] = []
+        self.hours: list[float] = []
+        self.weekends: list[bool] = []
+
+    def __len__(self) -> int:
+        return len(self.rows)
+
+    def add(
+        self,
+        x: np.ndarray,
+        edges: list[int],
+        times: np.ndarray,
+        hour: float,
+        weekend: bool,
+        observed: float,
+    ) -> None:
+        e = np.asarray(edges, dtype=np.int64)
+        self.rows.append(x)
+        self.edges.append(e)
+        self.seconds.append(times[e])
+        self.hours.append(hour)
+        self.weekends.append(weekend)
+        self.observed.append(observed)
+
+    def dataset(self) -> Dataset:
+        from .gnn import time_features
+
+        X = np.array(self.rows).reshape(len(self.rows), len(FEATURES))
+        observed = np.array(self.observed, dtype=np.float64)
+        graph_eta = X[:, 0]
+        hours, weekends = np.array(self.hours), np.array(self.weekends)
+        level = np.array(
+            [
+                DEFAULT_PROFILE.congestion(h, weekend=w)
+                for h, w in zip(self.hours, self.weekends, strict=True)
+            ]
+        )
+        return Dataset(
+            X,
+            np.log(observed / graph_eta),
+            graph_eta,
+            observed,
+            self.edges,
+            self.seconds,
+            X[:, 8:13].astype(np.float64).reshape(-1, 5),
+            time_features(hours, weekends, level),
+        )
+
+
 def simulate_trips(
     ctx: RouteContext,
     world: World,
@@ -338,14 +398,10 @@ def simulate_trips(
     rng = np.random.default_rng(seed)
     net = ctx.network
     n = net.num_nodes
-    rows: list[np.ndarray] = []
-    ys: list[float] = []
-    etas: list[float] = []
-    observed: list[float] = []
-    all_edges, all_secs, counts, hours, weekends = [], [], [], [], []
+    trips = TripRows()
     started = time.perf_counter()
     attempts = 0
-    while len(rows) < count and attempts < count * 5:
+    while len(trips) < count and attempts < count * 5:
         attempts += 1
         a, b = int(rng.integers(n)), int(rng.integers(n))
         crow = haversine_m(
@@ -362,34 +418,10 @@ def simulate_trips(
         edges = ctx.path_edges(route.path, times)
         x = ctx.features_from_edges(route.path, edges, times, hour, weekend)
         truth = world.trip_seconds(route.path, edges, times, hour, weekend, rng)
-        rows.append(x)
-        e = np.asarray(edges, dtype=np.int64)
-        all_edges.append(e)
-        all_secs.append(times[e])
-        counts.append([x[8], x[9], x[10], x[11], x[12]])
-        hours.append(hour)
-        weekends.append(weekend)
-        etas.append(x[0])
-        observed.append(truth)
-        ys.append(math.log(truth / x[0]))
-        if len(rows) % 5000 == 0:
-            log(f"    {len(rows):,} trips simulated ({time.perf_counter() - started:.0f}s)")
-    from .gnn import time_features
-
-    hours_a, weekend_a = np.array(hours), np.array(weekends)
-    level = np.array(
-        [DEFAULT_PROFILE.congestion(h, weekend=w) for h, w in zip(hours, weekends, strict=True)]
-    )
-    return Dataset(
-        np.array(rows),
-        np.array(ys),
-        np.array(etas),
-        np.array(observed),
-        all_edges,
-        all_secs,
-        np.array(counts, dtype=np.float64).reshape(-1, 5),
-        time_features(hours_a, weekend_a, level),
-    )
+        trips.add(x, edges, times, hour, weekend, truth)
+        if len(trips) % 5000 == 0:
+            log(f"    {len(trips):,} trips simulated ({time.perf_counter() - started:.0f}s)")
+    return trips.dataset()
 
 
 def error_metrics(predicted: np.ndarray, observed: np.ndarray) -> dict[str, float]:

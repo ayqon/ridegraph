@@ -69,6 +69,10 @@ export class Atlas {
     this.revealed = 0;
     this.route = null;
     this.listeners = { click: [], view: [] };
+    // Optional hook: given a screen point, return a {move(latLon), end()} handle
+    // to drag something drawn on the map (a delivery stop, a travel-time origin)
+    // instead of panning.
+    this.grab = null;
 
     this.resize();
     this.fit();
@@ -255,7 +259,11 @@ export class Atlas {
     el.addEventListener("pointerdown", (ev) => {
       el.setPointerCapture(ev.pointerId);
       pointers.set(ev.pointerId, [ev.offsetX, ev.offsetY]);
-      if (pointers.size === 1) down = { x: ev.offsetX, y: ev.offsetY, moved: false };
+      if (pointers.size === 1) {
+        const handle = this.grab ? this.grab(ev.offsetX, ev.offsetY) : null;
+        down = { x: ev.offsetX, y: ev.offsetY, moved: false, handle };
+        if (handle) el.classList.add("is-dragging");
+      }
       if (pointers.size === 2) {
         const [a, b] = [...pointers.values()];
         pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), scale: this.view.scale };
@@ -263,7 +271,11 @@ export class Atlas {
       }
     });
     el.addEventListener("pointermove", (ev) => {
-      if (!pointers.has(ev.pointerId)) return;
+      if (!pointers.has(ev.pointerId)) {
+        // Hovering: show that a marker can be picked up.
+        el.classList.toggle("can-grab", Boolean(this.grab && this.grab(ev.offsetX, ev.offsetY)));
+        return;
+      }
       const prev = pointers.get(ev.pointerId);
       pointers.set(ev.pointerId, [ev.offsetX, ev.offsetY]);
       if (pinch && pointers.size === 2) {
@@ -275,7 +287,10 @@ export class Atlas {
       }
       if (down) {
         if (Math.hypot(ev.offsetX - down.x, ev.offsetY - down.y) > 4) down.moved = true;
-        if (down.moved) {
+        if (down.moved && down.handle) {
+          const [x, y] = this.toWorld(ev.offsetX, ev.offsetY);
+          down.handle.move(this.toLatLon(x, y));
+        } else if (down.moved) {
           el.classList.add("is-panning");
           this.panBy(ev.offsetX - prev[0], ev.offsetY - prev[1]);
         }
@@ -283,9 +298,12 @@ export class Atlas {
     });
     const end = (ev) => {
       pointers.delete(ev.pointerId);
-      el.classList.remove("is-panning");
+      el.classList.remove("is-panning", "is-dragging");
       if (pointers.size < 2) pinch = null;
-      if (down && !down.moved && ev.type === "pointerup") {
+      if (down && down.handle) {
+        // A press on a marker never counts as a click on the map.
+        if (down.moved) down.handle.end();
+      } else if (down && !down.moved && ev.type === "pointerup") {
         const [x, y] = this.toWorld(ev.offsetX, ev.offsetY);
         this.emit("click", this.toLatLon(x, y));
       }

@@ -741,8 +741,13 @@ legend {
   cursor: crosshair;
 }
 
-.atlas-overlay.is-panning {
+.atlas-overlay.is-panning,
+.atlas-overlay.is-dragging {
   cursor: grabbing;
+}
+
+.atlas-overlay.can-grab {
+  cursor: grab;
 }
 
 .pin {

@@ -310,7 +310,11 @@ function showTrip() {
   // The learned arrival time leads: it is what a rider would be told. The
   // router's road time sits underneath with the gap the model adds explained.
   $("eta").innerHTML = formatEta(learned ? learned.seconds : r.seconds);
-  const parts = [`${placeName(state.a, false)} to ${placeName(state.b, false)}`, `${(r.metres / 1000).toFixed(1)} km`, `${state.preset.label.toLowerCase()} traffic`];
+  const from = placeName(state.a, false);
+  const to = placeName(state.b, false);
+  const bare = (s) => s.replace(/^near /, "");
+  const ends = bare(from) === bare(to) ? `around ${bare(from)}` : `${from} to ${to}`;
+  const parts = [ends, `${(r.metres / 1000).toFixed(1)} km`, `${state.preset.label.toLowerCase()} traffic`];
   if (r.alt) parts.unshift(r.alt.label);
   if (r.manoeuvres) parts.push(describeManoeuvres(r.manoeuvres));
   $("trip-meta").textContent = parts.join(" · ");
@@ -591,8 +595,9 @@ function placePins() {
     ["b", $("pin-b")],
   ]) {
     const node = state[key];
-    el.hidden = node === null;
-    if (node === null) continue;
+    // The pins belong to route planning; the other tabs draw their own markers.
+    el.hidden = node === null || state.mode !== "route";
+    if (el.hidden) continue;
     const [x, y] = atlas.nodeScreen(node);
     el.style.transform = `translate(${x}px, ${y}px)`;
   }
@@ -635,6 +640,16 @@ function bindPins() {
     };
     el.addEventListener("pointerup", stop);
     el.addEventListener("pointercancel", stop);
+    // Scrolling over a pin zooms the map, as it does anywhere else.
+    el.addEventListener(
+      "wheel",
+      (ev) => {
+        ev.preventDefault();
+        const box = sheet.getBoundingClientRect();
+        atlas.zoomAt(Math.exp(-ev.deltaY * (ev.deltaMode ? 0.05 : 0.0015)), ev.clientX - box.left, ev.clientY - box.top);
+      },
+      { passive: false },
+    );
     el.addEventListener("keydown", (ev) => {
       const step = ev.shiftKey ? 60 : 20;
       const delta = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[ev.key];
@@ -669,11 +684,81 @@ function onMapClick({ lat, lon }) {
     run({ animate: true });
     return;
   }
-  // Start a new trip: the click becomes A.
+  if (state.a !== null && state.b !== null) {
+    // Both ends are set: move whichever pin is nearer the click.
+    const [x, y] = atlas.toScreen(...atlas.local(lat, lon));
+    const dist = (n) => Math.hypot(...atlas.nodeScreen(n).map((v, i) => v - [x, y][i]));
+    const key = dist(state.a) <= dist(state.b) ? "a" : "b";
+    if (state[key] === node) return;
+    state[key] = node;
+    placePins();
+    run({ animate: true });
+    return;
+  }
   state.a = node;
   state.b = null;
   placePins();
   clearTrip("Now place B");
+}
+
+// ------------------------------------------------------------------ dragging markers drawn on the map
+
+const GRAB_PX = 16;
+
+/** Throttle a drag to one update per frame, and only when the junction changes. */
+function dragHandle(current, apply, finish) {
+  let pending = null;
+  let frame = 0;
+  let last = current;
+  return {
+    move({ lat, lon }) {
+      pending = engine.nearest(lat, lon);
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        if (pending === null || pending === last) return;
+        last = pending;
+        apply(pending);
+      });
+    },
+    end() {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      if (pending !== null && pending !== last) apply(pending);
+      finish();
+    },
+  };
+}
+
+function grabMarker(sx, sy) {
+  const near = (node) => {
+    const [x, y] = atlas.nodeScreen(node);
+    return Math.hypot(x - sx, y - sy) <= GRAB_PX;
+  };
+  if (state.mode === "reach" && reach.origin !== null && near(reach.origin)) {
+    return dragHandle(
+      reach.origin,
+      (node) => {
+        reach.origin = node;
+        computeReach({ quick: true });
+      },
+      () => computeReach(),
+    );
+  }
+  if (state.mode === "tour") {
+    for (let i = tour.stops.length - 1; i >= 0; i--) {
+      if (!near(tour.stops[i])) continue;
+      return dragHandle(
+        tour.stops[i],
+        (node) => {
+          tour.stops[i] = node;
+          computeTour();
+        },
+        () => {},
+      );
+    }
+  }
+  return null;
 }
 
 // ------------------------------------------------------------------ rulers
@@ -780,7 +865,7 @@ async function enterRoute() {
   $("key-route").hidden = false;
   atlas.beneath = drawRouteOptions;
   $("heat-toggle").hidden = !etaModel?.model.reference;
-  $("hint").textContent = "Click to place A, then B. Drag a pin to move it.";
+  $("hint").textContent = "Click to place A, then B. Click again or drag to move a pin.";
   await engine.usePreset(state.preset);
   if (liveState.on && liveState.factor) engine.setLive(liveState.factor);
   engine.setTurns(state.turns);
@@ -1104,7 +1189,7 @@ async function enterReach() {
   computeReach();
   atlas.extras = drawReach;
   $("key-reach").hidden = false;
-  $("hint").textContent = "Click anywhere to measure travel times from there.";
+  $("hint").textContent = "Click anywhere, or drag the marker, to measure travel times from there.";
   atlas.drawOverlay();
 }
 
@@ -1153,7 +1238,7 @@ function areasOf(times) {
   return sets.map((s) => s.size * AREA_CELL_KM ** 2);
 }
 
-function computeReach() {
+function computeReach({ quick = false } = {}) {
   const budget = Math.max(...BANDS_MIN) * 60;
   const { times } = engine.timesWithin(reach.origin, budget, reach.arriving);
   const paths = BANDS_MIN.map(() => new Path2D());
@@ -1172,7 +1257,9 @@ function computeReach() {
   reach.paths = paths;
   reach.areas = areasOf(times);
   const preset = presetById(reach.preset);
-  if (preset.hour !== 3) {
+  if (quick) {
+    // While dragging, skip the night-time comparison; it is filled in on drop.
+  } else if (preset.hour !== 3) {
     engine.setTime(3);
     reach.night = areasOf(engine.timesWithin(reach.origin, budget, reach.arriving).times);
     engine.setTime(preset.hour);
@@ -1255,7 +1342,7 @@ async function enterTour() {
   computeTour();
   atlas.extras = drawTour;
   $("key-tour").hidden = false;
-  $("hint").textContent = "Click the map to add a stop. The first stop is the depot.";
+  $("hint").textContent = "Click to add a stop, drag one to move it. The first stop is the depot.";
   atlas.drawOverlay();
 }
 
@@ -1455,6 +1542,7 @@ async function main() {
     drawRulers();
   });
   atlas.on("click", onMapClick);
+  atlas.grab = grabMarker;
   buildControls();
   bindPins();
   if (engine.manifest.eta) {

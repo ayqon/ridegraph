@@ -35,9 +35,11 @@ class OverpassError(RuntimeError):
 
 
 def overpass_query(south: float, west: float, north: float, east: float) -> str:
-    """Overpass QL fetching drivable ways and river centrelines in a bounding box.
+    """Overpass QL fetching drivable ways, turn restrictions and river centrelines.
 
     Rivers are not routed on; the map demo draws them so the city is recognisable.
+    Turn restrictions ("no right turn", "only straight on") come as relations
+    whose members are the ways and junctions they apply to.
     """
     classes = "|".join(ROAD_CLASSES)
     bbox = f"{south},{west},{north},{east}"
@@ -46,6 +48,7 @@ def overpass_query(south: float, west: float, north: float, east: float) -> str:
         "("
         f'way["highway"~"^({classes})$"]["area"!="yes"]({bbox});'
         f'way["waterway"="river"]({bbox});'
+        f'relation["type"="restriction"]({bbox});'
         ");"
         "(._;>;);"
         "out body;"

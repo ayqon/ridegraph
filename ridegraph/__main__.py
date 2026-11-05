@@ -43,7 +43,7 @@ def _city(args: argparse.Namespace):
             "fetch": Path(city.raw_path),
             "build": Path(city.network_path),
             "export-web": Path("web/data") / city.key,
-        }[args.command]
+        }.get(args.command)
     return city
 
 
@@ -555,6 +555,37 @@ def cmd_validate(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_nyc_eta(args: argparse.Namespace) -> int:
+    from dataclasses import asdict
+
+    from .nyc import eta_study, study_markdown
+
+    _city(args)
+    study = eta_study(
+        _load_network(args.network),
+        _require(args.zones, "the taxi_zones.zip file from TLC"),
+        [_require(p, "a TLC trip file") for p in args.train],
+        _require(args.test, "a TLC trip file"),
+        per_month=args.per_month,
+        gnn_epochs=args.gnn_epochs,
+        log=lambda msg: print(msg, file=sys.stderr),
+    )
+    report = study_markdown(study)
+    print(report)
+    if args.out:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        summary = asdict(study)
+        summary["result"] = {
+            "metrics": study.result.metrics,
+            "interval": study.result.interval,
+            "importance": study.result.importance,
+            "trips": study.result.trips,
+        }
+        args.out.write_text(json.dumps(summary, indent=2))
+        args.out.with_suffix(".md").write_text(report + "\n")
+    return 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     import os
 
@@ -733,6 +764,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)
     p.add_argument("--trips", type=int, default=300)
     p.set_defaults(func=cmd_validate)
+
+    p = sub.add_parser(
+        "nyc-eta", help="train arrival times on real New York taxi trips, test on a later month"
+    )
+    p.add_argument("--city", choices=list(CITIES), default="new-york")
+    p.add_argument("--network", type=Path, default=None)
+    p.add_argument("--zones", type=Path, required=True, help="TLC taxi_zones.zip")
+    p.add_argument("--train", type=Path, nargs="+", required=True, help="monthly trip files")
+    p.add_argument("--test", type=Path, required=True, help="a later monthly trip file")
+    p.add_argument("--per-month", type=int, default=40_000, help="trips sampled per month")
+    p.add_argument("--gnn-epochs", type=int, default=10)
+    p.add_argument("--out", type=Path, help="save the results as JSON (and a .md report)")
+    p.set_defaults(func=cmd_nyc_eta)
 
     p = sub.add_parser("serve", help="run the HTTP routing API")
     p.add_argument("--network", type=Path, default=DEFAULT_NETWORK)

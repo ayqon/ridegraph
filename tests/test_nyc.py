@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import pytest
 
@@ -252,3 +254,40 @@ def test_the_whole_study_runs_on_a_small_city(tmp_path):
     metrics = study.result.metrics
     assert "Gradient-boosted trees" in metrics and "Graph ETA (router only)" in metrics
     assert study.by_distance and study.by_distance[0]["trips"] > 0
+
+
+def test_the_study_command_writes_a_report(tmp_path, monkeypatch):
+    pytest.importorskip("sklearn")
+    from ridegraph.__main__ import main
+    from ridegraph.synthetic import grid_network
+
+    network = grid_network(14, 14, seed=5)
+    network.save(tmp_path / "net.npz")
+    lat0, lat1 = float(network.lat.min()), float(network.lat.max())
+    lon0, lon1 = float(network.lon.min()), float(network.lon.max())
+    mid = (lon0 + lon1) / 2
+    write_zone_file(
+        tmp_path / "taxi_zones.zip",
+        {
+            7: (lon0 - 0.001, lat0 - 0.001, mid, lat1 + 0.001),
+            8: (mid, lat0 - 0.001, lon1 + 0.001, lat1 + 0.001),
+        },
+    )
+    for i, month in enumerate(("2025-01", "2025-02")):
+        write_month(tmp_path / f"yellow_tripdata_{month}.parquet", month, [7, 8], 400, seed=i)
+    out = tmp_path / "study.json"
+    code = main(
+        [
+            "nyc-eta",
+            "--network", str(tmp_path / "net.npz"),
+            "--zones", str(tmp_path / "taxi_zones.zip"),
+            "--train", str(tmp_path / "yellow_tripdata_2025-01.parquet"),
+            "--test", str(tmp_path / "yellow_tripdata_2025-02.parquet"),
+            "--per-month", "300", "--gnn-epochs", "0", "--out", str(out),
+        ]
+    )  # fmt: skip
+    assert code == 0
+    summary = json.loads(out.read_text())
+    assert summary["test_month"] == "2025-02"
+    assert "Gradient-boosted trees" in summary["result"]["metrics"]
+    assert "## Arrival-time error on the test month" in out.with_suffix(".md").read_text()

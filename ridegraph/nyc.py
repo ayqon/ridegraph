@@ -435,3 +435,53 @@ def error_by_distance(
             }
         )
     return rows
+
+
+def study_markdown(study: EtaStudy) -> str:
+    """The study's results as a Markdown report."""
+    from .eta import metrics_markdown
+
+    iv = study.result.interval
+    lines = [
+        "## Data",
+        "",
+        f"Trips on the Manhattan map, between {study.zones} taxi zones. Train: "
+        f"{', '.join(study.train_months)}. Test: {study.test_month}, never seen in training.",
+        "",
+        "| Month | Trip records | Usable | Routed |",
+        "|---|---:|---:|---:|",
+    ]
+    for month in [*study.train_months, study.test_month]:
+        lines.append(
+            f"| {month} | {study.trips_read[month]:,} | {study.trips_kept[month]:,} "
+            f"| {study.trips_used[month]:,} |"
+        )
+    lines += [
+        "",
+        "## Arrival-time error on the test month",
+        "",
+        metrics_markdown(study.result.metrics),
+        "",
+        f"Arrival window (10th to 90th percentile): {iv['coverage_pct']:.1f}% of test trips "
+        f"inside it against an 80% target ({iv['uncalibrated_coverage_pct']:.1f}% before "
+        f"conformal calibration), mean width {iv['mean_width_pct']:.0f}% of the trip.",
+        "",
+        "## By trip length",
+        "",
+        "| Recorded distance | Trips | Router alone | Gradient-boosted trees |",
+        "|---|---:|---:|---:|",
+    ]
+    for row in study.by_distance:
+        span = f"{row['from_km']:.0f} to {row['to_km']:.0f} km"
+        if row["to_km"] >= 100:
+            span = f"over {row['from_km']:.0f} km"
+        lines.append(
+            f"| {span} | {row['trips']:,} | {row['router_mape_pct']:.1f}% "
+            f"| {row['model_mape_pct']:.1f}% |"
+        )
+    lines += [
+        "",
+        "Trip ends are known only to the taxi zone, so each trip is routed between "
+        "representative junctions of its zones. Short trips are hit hardest by that.",
+    ]
+    return "\n".join(lines)

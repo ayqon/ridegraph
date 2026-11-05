@@ -28,7 +28,7 @@ from .graph import RoadNetwork
 
 if TYPE_CHECKING:
     from .ch import ContractionHierarchy
-    from .eta import Dataset, RouteContext
+    from .eta import Dataset, EtaResult, RouteContext
 
 
 @dataclass(frozen=True)
@@ -279,3 +279,159 @@ def trip_dataset(
         if len(rows) % 20_000 == 0:
             log(f"    {len(rows):,} trips routed ({time.perf_counter() - started:.0f}s)")
     return rows.dataset(), np.array(used, dtype=np.int64)
+
+
+# -- the arrival-time study -------------------------------------------------------
+
+
+def zones_on_map(network: RoadNetwork, zones: list[Zone], *, min_nodes: int = 25) -> list[Zone]:
+    """Zones that lie on the map: their middle is inside it and they hold real streets.
+
+    Zones cut by the edge of the map would have their trips pinned to the
+    wrong place, so a zone counts only if the middle of its outline falls
+    within the map's bounds and at least ``min_nodes`` junctions lie inside it.
+    """
+    lat0, lat1 = network.lat.min(), network.lat.max()
+    lon0, lon1 = network.lon.min(), network.lon.max()
+    counts = np.bincount(zone_of_nodes(network, zones), minlength=max(z.id for z in zones) + 1)
+    kept = []
+    for zone in zones:
+        middle = np.concatenate(zone.rings).mean(axis=0)
+        inside = lon0 <= middle[0] <= lon1 and lat0 <= middle[1] <= lat1
+        if inside and counts[zone.id] >= min_nodes:
+            kept.append(zone)
+    return kept
+
+
+def join(datasets: list[Dataset]) -> Dataset:
+    """One dataset holding the trips of several, in order."""
+    from .eta import Dataset
+
+    return Dataset(
+        np.concatenate([d.X for d in datasets]),
+        np.concatenate([d.y for d in datasets]),
+        np.concatenate([d.graph_eta for d in datasets]),
+        np.concatenate([d.observed for d in datasets]),
+        [e for d in datasets for e in d.edges],
+        [s for d in datasets for s in d.seconds],
+        np.concatenate([d.counts for d in datasets]),
+        np.concatenate([d.tau for d in datasets]),
+    )
+
+
+@dataclass
+class EtaStudy:
+    result: EtaResult
+    train_months: list[str]
+    test_month: str
+    zones: int
+    trips_read: dict[str, int]
+    trips_kept: dict[str, int]
+    trips_used: dict[str, int]
+    by_distance: list[dict[str, float]]
+
+
+def month_of(path: str | Path) -> str:
+    """``2025-03`` from a TLC file name such as ``yellow_tripdata_2025-03.parquet``."""
+    stem = Path(path).stem
+    return stem[-7:]
+
+
+def eta_study(
+    network: RoadNetwork,
+    zones_path: str | Path,
+    train_files: list[Path],
+    test_file: Path,
+    *,
+    per_month: int = 40_000,
+    seed: int = 0,
+    gnn_epochs: int = 10,
+    log: Callable[[str], None] = lambda msg: None,
+) -> EtaStudy:
+    """Train the arrival-time models on some months of real trips; test on a later one.
+
+    Each month is cleaned, then sampled down to ``per_month`` trips so that
+    no month dominates and the study runs in minutes. The test month is never
+    seen in training, so the errors are what a deployed model would make.
+    """
+    from .ch import ContractionHierarchy
+    from .eta import RouteContext, compare_models
+    from .router import Router, Scenario
+    from .web_export import PRESETS
+
+    ctx = RouteContext(network)
+    zones = zones_on_map(ctx.network, read_zones(zones_path))
+    anchors = zone_anchors(ctx.network, zone_of_nodes(ctx.network, zones))
+    log(f"  {len(anchors)} taxi zones lie on the map")
+    hierarchies = {
+        p.hour: ContractionHierarchy.build(Router(ctx.network, Scenario(hour=p.hour)).graph)
+        for p in PRESETS
+    }
+    rng = np.random.default_rng(seed)
+    read: dict[str, int] = {}
+    kept: dict[str, int] = {}
+    used: dict[str, int] = {}
+    parts: list[Dataset] = []
+    test_trips: Trips | None = None
+    for path in [*train_files, test_file]:
+        month = month_of(path)
+        raw = read_trips(path)
+        clean_trips = clean(raw, set(anchors), month=month)
+        read[month], kept[month] = len(raw), len(clean_trips)
+        if len(clean_trips) > per_month:
+            pick = np.sort(rng.choice(len(clean_trips), per_month, replace=False))
+            clean_trips = clean_trips.take(pick)
+        log(f"  {month}: {len(raw):,} trips, {kept[month]:,} usable, routing {len(clean_trips):,}")
+        data, idx = trip_dataset(ctx, hierarchies, clean_trips, anchors, log=log)
+        used[month] = len(idx)
+        parts.append(data)
+        if path == test_file:
+            test_trips = clean_trips.take(idx)
+    assert test_trips is not None
+    data = join(parts)
+    n_test = len(parts[-1].y)
+    idx_train = np.arange(len(data.y) - n_test)
+    idx_test = np.arange(len(data.y) - n_test, len(data.y))
+    log(f"  training on {len(idx_train):,} trips, testing on {n_test:,} from a later month")
+    result, _ = compare_models(
+        ctx, data, idx_train, idx_test, seed=seed, gnn_epochs=gnn_epochs, log=log
+    )
+    return EtaStudy(
+        result=result,
+        train_months=[month_of(p) for p in train_files],
+        test_month=month_of(test_file),
+        zones=len(anchors),
+        trips_read=read,
+        trips_kept=kept,
+        trips_used=used,
+        by_distance=error_by_distance(result, data, idx_test, test_trips),
+    )
+
+
+def error_by_distance(
+    result: EtaResult, data: Dataset, idx_test: np.ndarray, trips: Trips
+) -> list[dict[str, float]]:
+    """Error of the router and the shipped model by recorded trip distance.
+
+    Short trips suffer most from zone-level locations: the true start and end
+    can be several hundred metres from the anchors either way, which is a
+    large share of a 2 km trip and a small one of a 10 km trip.
+    """
+    middle = data.graph_eta[idx_test] * np.exp(result.model.predict(data.X[idx_test]))  # type: ignore[attr-defined]
+    router = data.graph_eta[idx_test]
+    observed = data.observed[idx_test]
+    rows = []
+    for lo, hi in ((0, 2), (2, 4), (4, 7), (7, 100)):
+        sel = (trips.distance_km >= lo) & (trips.distance_km < hi)
+        if sel.sum() < 50:
+            continue
+        rows.append(
+            {
+                "from_km": float(lo),
+                "to_km": float(hi),
+                "trips": int(sel.sum()),
+                "router_mape_pct": float(np.mean(np.abs(router[sel] / observed[sel] - 1)) * 100),
+                "model_mape_pct": float(np.mean(np.abs(middle[sel] / observed[sel] - 1)) * 100),
+            }
+        )
+    return rows

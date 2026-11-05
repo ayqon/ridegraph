@@ -173,3 +173,82 @@ def test_trips_become_training_rows_with_their_real_times():
     assert (data.graph_eta > 0).all()
     assert np.allclose(data.y, np.log(data.observed / data.graph_eta))
     assert np.array_equal(data.edges[0], data.edges[1])
+
+
+def write_zone_file(path, cells: dict[int, tuple[float, float, float, float]]) -> None:
+    """A TLC-style zone shapefile of rectangles given as (lon0, lat0, lon1, lat1)."""
+    shapefile = pytest.importorskip("shapefile")
+    pyproj = pytest.importorskip("pyproj")
+    import zipfile
+
+    crs = pyproj.CRS.from_epsg(2263)
+    to_plane = pyproj.Transformer.from_crs("EPSG:4326", crs, always_xy=True)
+    base = path.parent / "taxi_zones"
+    with shapefile.Writer(str(base), shapeType=shapefile.POLYGON) as w:
+        w.field("LocationID", "N", decimal=0)
+        w.field("zone", "C")
+        w.field("borough", "C")
+        for zone, (x0, y0, x1, y1) in cells.items():
+            xs, ys = to_plane.transform([x0, x1, x1, x0, x0], [y0, y0, y1, y1, y0])
+            w.poly([list(zip(xs, ys, strict=True))])
+            w.record(zone, f"Zone {zone}", "Manhattan")
+    (path.parent / "taxi_zones.prj").write_text(crs.to_wkt())
+    with zipfile.ZipFile(path, "w") as zf:
+        for ext in ("shp", "shx", "dbf", "prj"):
+            zf.write(path.parent / f"taxi_zones.{ext}", f"taxi_zones.{ext}")
+
+
+def write_month(path, month: str, zones: list[int], count: int, seed: int) -> None:
+    pa = pytest.importorskip("pyarrow")
+    pq = pytest.importorskip("pyarrow.parquet")
+    rng = np.random.default_rng(seed)
+    start = np.datetime64(f"{month}-01T00:00:00", "us")
+    offset = rng.integers(0, 27 * 86_400, count).astype("timedelta64[s]")
+    pickup = start + offset
+    km = rng.uniform(1.5, 6.0, count)
+    duration = (km / 12.0 * 3600 * rng.uniform(0.8, 1.3, count)).astype("timedelta64[s]")
+    pu = rng.choice(zones, count)
+    do = rng.choice(zones, count)
+    table = pa.table(
+        {
+            "tpep_pickup_datetime": pa.array(pickup),
+            "tpep_dropoff_datetime": pa.array(pickup + duration),
+            "trip_distance": km / 1.609344,
+            "PULocationID": pu,
+            "DOLocationID": do,
+        }
+    )
+    pq.write_table(table, path)
+
+
+def test_the_whole_study_runs_on_a_small_city(tmp_path):
+    pytest.importorskip("sklearn")
+    from ridegraph.nyc import eta_study
+    from ridegraph.synthetic import grid_network
+
+    network = grid_network(16, 16, seed=2)
+    lat0, lat1 = float(network.lat.min()), float(network.lat.max())
+    lon0, lon1 = float(network.lon.min()), float(network.lon.max())
+    mid_lat, mid_lon = (lat0 + lat1) / 2, (lon0 + lon1) / 2
+    pad = 0.001
+    cells = {
+        1: (lon0 - pad, lat0 - pad, mid_lon, mid_lat),
+        2: (mid_lon, lat0 - pad, lon1 + pad, mid_lat),
+        3: (lon0 - pad, mid_lat, mid_lon, lat1 + pad),
+        4: (mid_lon, mid_lat, lon1 + pad, lat1 + pad),
+    }
+    zones = tmp_path / "taxi_zones.zip"
+    write_zone_file(zones, cells)
+    files = []
+    for i, month in enumerate(("2025-01", "2025-02", "2025-03")):
+        f = tmp_path / f"yellow_tripdata_{month}.parquet"
+        write_month(f, month, [1, 2, 3, 4, 132], 900, seed=i)  # 132 is off the map
+        files.append(f)
+
+    study = eta_study(network, zones, files[:2], files[2], per_month=400, gnn_epochs=0)
+    assert study.zones == 4
+    assert study.train_months == ["2025-01", "2025-02"] and study.test_month == "2025-03"
+    assert all(study.trips_used[m] <= 400 for m in study.trips_used)
+    metrics = study.result.metrics
+    assert "Gradient-boosted trees" in metrics and "Graph ETA (router only)" in metrics
+    assert study.by_distance and study.by_distance[0]["trips"] > 0

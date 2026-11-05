@@ -18,7 +18,7 @@ across traffic is allowed, but it takes longer.
 | Speed limits | Legal | Yes, from OpenStreetMap where tagged |
 | Live closures and roadworks | Legal | Yes, from TfL's feed (London) |
 | Congestion Charge | Legal (a charge) | Yes, priced and avoidable |
-| Turn restrictions | Legal | Not yet |
+| Turn restrictions | Legal | Yes, when turn costs are on |
 | Bus lanes and bus gates | Legal | Not yet |
 | Time-limited restrictions | Legal | Not yet |
 | ULEZ | Legal (a charge) | Not yet |
@@ -37,20 +37,24 @@ recorded in OpenStreetMap as restriction relations: a road you arrive on, the
 junction (or short stretch of road) you pass through, and a road you may not,
 or must, leave by. Central London has thousands of them.
 
-Ridegraph does not read these yet, which means some of its routes may use a
-turn that a driver is not allowed to make. This is the most important gap on
-this page, because it affects whether a route is correct rather than how
-long it takes.
+Ridegraph downloads these with the roads and obeys them whenever turn costs
+are switched on. Each restriction is reduced to the node a driver comes
+from, the junction and the node they may not continue to (`osm.py`), and
+an "only straight on" sign becomes a ban on every other way out, including
+turning back.
 
-They fit naturally into the turn-aware graph Ridegraph already builds for
-turn costs (`turns.py`). In that graph every road segment is a node and every
-possible move from one segment to the next is an edge, so a "no right turn"
-is simply an edge that is never created, and an "only straight on" removes
-every other edge leaving that segment. Restrictions that span several
-junctions ("via ways") need the same idea applied to short chains of
-segments. A plain junction-to-junction graph cannot express a turn ban at
-all, which is one more reason the turn-aware graph is the right one for real
-routing.
+They fit naturally into the turn-aware graph Ridegraph builds for turn costs
+(`turns.py`). In that graph every road segment is a node and every possible
+move from one segment to the next is an edge, so a banned turn is simply an
+edge that is never created. The browser keeps the same edges, so its
+numbering matches Python's, but gives forbidden ones an infinite cost.
+
+Two limits remain. A plain junction-to-junction graph cannot express a turn
+ban at all, so the fastest search methods, which run on that graph, ignore
+them; switch on turn costs for legal routes. And restrictions that run
+through a stretch of road rather than a single junction ("via ways") are
+rare and not read yet; they need the same idea applied to short chains of
+segments.
 
 ### Bus lanes and bus gates
 
@@ -169,10 +173,9 @@ drop-offs are instant, so their totals are driving time only.
 
 ## Order of work
 
-1. Turn restrictions, because without them a route can be illegal.
-2. Kerbside pickup, because it is the most distinctive ride-hailing problem
+1. Kerbside pickup, because it is the most distinctive ride-hailing problem
    here and changes what the dispatch results mean.
-3. Vehicle profiles (taxi, private hire, delivery van), which bring bus
+2. Vehicle profiles (taxi, private hire, delivery van), which bring bus
    lanes, ULEZ and stronger turn avoidance in together.
-4. Time-limited restrictions, using the same mechanism as live closures.
-5. Signal delays and stop times, which refine the arrival-time estimates.
+3. Time-limited restrictions, using the same mechanism as live closures.
+4. Signal delays and stop times, which refine the arrival-time estimates.

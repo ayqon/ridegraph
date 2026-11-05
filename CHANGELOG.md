@@ -4,6 +4,17 @@ All notable changes to Ridegraph. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 uses [semantic versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Turn restrictions from OpenStreetMap ("no right turn", "only straight on"),
+  obeyed by turn-aware routing in Python and in the browser.
+- Delivery stops and the travel-time origin can be dragged on the map; a
+  click moves the nearer route pin once both are placed.
+
+### Fixed
+- Route pins no longer reappear in other tabs when the map is moved.
+
 ## [1.0.0] - 2026-11-05
 
 First public release.
@@ -63,4 +74,5 @@ First public release.
   3.13, documentation site (including a page on road rules and what the
   router does not model yet), automated build and deployment.
 
+[Unreleased]: https://github.com/ayqon/ridegraph/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/ayqon/ridegraph/releases/tag/v1.0.0

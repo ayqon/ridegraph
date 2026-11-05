@@ -1,0 +1,85 @@
+name: New York study
+
+# Trains the arrival-time models on real TLC yellow taxi trips for Manhattan
+# and tests them on a later month. Run by hand: the trip files are large and
+# the results only change when the code or the chosen months do.
+on:
+  workflow_dispatch:
+    inputs:
+      months:
+        description: "Months of trips, oldest first; the last one is the test month"
+        default: "2025-01 2025-02 2025-03 2025-04"
+      per_month:
+        description: "Trips sampled per month"
+        default: "40000"
+      gnn_epochs:
+        description: "Graph neural network epochs (0 to skip)"
+        default: "5"
+
+permissions:
+  contents: read
+
+jobs:
+  study:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e ".[ml,nyc]"
+
+      - name: Restore OpenStreetMap downloads
+        uses: actions/cache@v4
+        with:
+          path: data/raw
+          key: osm-cities-${{ hashFiles('ridegraph/overpass.py', 'ridegraph/cities.py') }}
+          restore-keys: osm-
+      - name: Build the Manhattan road graph
+        run: |
+          raw=$(python -c "from ridegraph.cities import get; print(get('new-york').raw_path)")
+          [ -f "$raw" ] || python -m ridegraph fetch --city new-york
+          python -m ridegraph build --city new-york
+
+      - name: Restore TLC downloads
+        uses: actions/cache@v4
+        with:
+          path: data/nyc
+          key: tlc-${{ github.event.inputs.months }}
+      - name: Download taxi zones and trip records
+        env:
+          MONTHS: ${{ github.event.inputs.months }}
+        run: |
+          mkdir -p data/nyc
+          base=https://d37ci6vzurychx.cloudfront.net
+          ua="ridegraph (https://github.com/ayqon/ridegraph)"
+          [ -f data/nyc/taxi_zones.zip ] || curl -fsSL -A "$ua" -o data/nyc/taxi_zones.zip "$base/misc/taxi_zones.zip"
+          for m in $MONTHS; do
+            f=data/nyc/yellow_tripdata_$m.parquet
+            [ -f "$f" ] || curl -fsSL -A "$ua" -o "$f" "$base/trip-data/yellow_tripdata_$m.parquet"
+          done
+          ls -la data/nyc
+
+      - name: Run the study
+        env:
+          MONTHS: ${{ github.event.inputs.months }}
+          PER_MONTH: ${{ github.event.inputs.per_month }}
+          GNN_EPOCHS: ${{ github.event.inputs.gnn_epochs }}
+        run: |
+          set -- $MONTHS
+          test_month=${!#}
+          train=""
+          for m in "$@"; do [ "$m" = "$test_month" ] || train="$train data/nyc/yellow_tripdata_$m.parquet"; done
+          python -m ridegraph nyc-eta \
+            --zones data/nyc/taxi_zones.zip \
+            --train $train \
+            --test data/nyc/yellow_tripdata_$test_month.parquet \
+            --per-month "$PER_MONTH" --gnn-epochs "$GNN_EPOCHS" \
+            --out results/nyc-eta.json
+          cat results/nyc-eta.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nyc-eta
+          path: results/

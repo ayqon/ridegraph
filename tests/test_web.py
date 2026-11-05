@@ -6,10 +6,13 @@ import json
 import random
 import shutil
 import subprocess
+from dataclasses import replace
 from pathlib import Path
 
+import numpy as np
 import pytest
 
+from ridegraph.graph import RoadNetwork
 from ridegraph.router import Router, Scenario
 from ridegraph.synthetic import grid_network
 from ridegraph.web_export import PRESETS, export
@@ -30,9 +33,20 @@ def test_export_layout(tmp_path) -> None:
     assert json.loads((tmp_path / "manifest.json").read_text())["version"] == 1
 
 
+def with_random_bans(network: RoadNetwork, count: int, seed: int) -> RoadNetwork:
+    """The network with ``count`` of its turns forbidden, chosen at random."""
+    out: dict[int, list[int]] = {}
+    for u, v in zip(network.src.tolist(), network.dst.tolist(), strict=True):
+        out.setdefault(u, []).append(v)
+    turns = [(u, v, w) for u, v in zip(network.src.tolist(), network.dst.tolist(), strict=True)
+             for w in out.get(v, [])]  # fmt: skip
+    chosen = random.Random(seed).sample(turns, count)
+    return replace(network, banned_turns=np.array(chosen, dtype=np.int32))
+
+
 @pytest.mark.skipif(NODE is None, reason="node is not installed")
 def test_javascript_engine_matches_python(tmp_path) -> None:
-    network = grid_network(18, 18, seed=9, oneway_share=0.3)
+    network = with_random_bans(grid_network(18, 18, seed=9, oneway_share=0.3), 60, seed=2)
     export(network, tmp_path, log=lambda m: None)
     rng = random.Random(5)
     cases = []

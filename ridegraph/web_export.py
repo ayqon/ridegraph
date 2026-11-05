@@ -21,7 +21,7 @@ import json
 import sys
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -83,7 +83,10 @@ def _write(path: Path, blob: bytes) -> int:
 def graph_arrays(network: RoadNetwork) -> dict[str, np.ndarray]:
     """Graph arrays for a network already in CSR order (see ``csr_sorted``)."""
     graph = Graph(network)
-    turns = TurnGraph(network)
+    # Every manoeuvre is exported, banned or not, so the browser can number the
+    # turn graph exactly as Python would without bans; the banned ones are
+    # flagged and never taken.
+    turns = TurnGraph(replace(network, banned_turns=None))
     order = np.arange(network.num_edges)
     return {
         # float64: A*'s heuristic must not overshoot by coordinate rounding.
@@ -98,7 +101,24 @@ def graph_arrays(network: RoadNetwork) -> dict[str, np.ndarray]:
         # head), in TurnGraph order; the browser rebuilds the turn graph from it.
         "turn_kind": turns.turn_kind[: turns.num_manoeuvres].astype(np.uint8),
         "signals": np.asarray(network.traffic_signals, dtype=np.uint8),
+        "turn_banned": banned_manoeuvres(network, turns),
     }
+
+
+def banned_manoeuvres(network: RoadNetwork, turns: TurnGraph) -> np.ndarray:
+    """1 for each manoeuvre of an unrestricted ``TurnGraph`` that the law forbids."""
+    count = turns.num_manoeuvres
+    bans = network.banned_turns
+    if bans is None or not len(bans):
+        return np.zeros(count, dtype=np.uint8)
+    n = network.num_nodes
+    src = network.src.astype(np.int64)
+    dst = network.dst.astype(np.int64)
+    from_seg = turns.exp_src[:count]
+    to_seg = turns.target_seg[:count]
+    key = (src[from_seg] * n + dst[from_seg]) * n + dst[to_seg]
+    banned_key = (bans[:, 0].astype(np.int64) * n + bans[:, 1]) * n + bans[:, 2]
+    return np.isin(key, banned_key).astype(np.uint8)
 
 
 def ch_arrays(ch: ContractionHierarchy) -> dict[str, np.ndarray]:

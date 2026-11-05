@@ -304,7 +304,10 @@ export class Engine {
         to[e] = j;
         target[e] = j;
         kind[e] = turn;
-        penalty[e] = seconds[turn] + (this.signals[via] ? signalWait : 0);
+        // A turn the law forbids stays in the graph so edge numbers match
+        // Python's, but can never be taken.
+        const banned = this.turn_banned && this.turn_banned[mStart[i] + k];
+        penalty[e] = banned ? Infinity : seconds[turn] + (this.signals[via] ? signalWait : 0);
         e++;
       }
       to[e] = m + n + via; // arrive: segment -> end(head)

@@ -35,7 +35,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: web/data
-          key: webdata-${{ hashFiles('ridegraph/**/*.py', 'pyproject.toml') }}
+          key: webdata-${{ hashFiles('ridegraph/**/*.py', 'pyproject.toml', '.github/workflows/pages.yml') }}
 
       # Reuse the OpenStreetMap downloads between deploys so the shared
       # Overpass servers are only queried when a query or a city changes.
@@ -82,5 +82,4 @@ jobs:
         with:
           apiToken: ${{ env.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ env.CLOUDFLARE_ACCOUNT_ID }}
-          preCommands: wrangler pages project create ridegraph --production-branch=main || true
           command: pages deploy /tmp/site --project-name=ridegraph --branch=main --commit-dirty=true

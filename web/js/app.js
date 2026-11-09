@@ -325,7 +325,8 @@ function showTrip() {
 
 function chargeApplies() {
   const c = engine.manifest.charge;
-  return Boolean(c) && charging(c, state.preset.hour);
+  // The map can draw before a time of day has been picked.
+  return Boolean(c) && Boolean(state.preset) && charging(c, state.preset.hour);
 }
 
 function scheduleOptions(delay) {

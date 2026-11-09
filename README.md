@@ -156,6 +156,13 @@ available under the Open Database License. Live road disruptions powered by
 TfL Open Data; contains OS data © Crown copyright and database rights 2016
 and Geomni UK Map data © and database rights 2019.
 
+## How it was built
+
+I designed and built Ridegraph myself, using Claude (Anthropic) through
+Claude Code as a coding assistant for parts of the code, tests and docs.
+Everything was reviewed, tested and checked against the numbers above
+before it went in.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

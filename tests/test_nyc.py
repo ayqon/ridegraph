@@ -291,3 +291,22 @@ def test_the_study_command_writes_a_report(tmp_path, monkeypatch):
     assert summary["test_month"] == "2025-02"
     assert "Gradient-boosted trees" in summary["result"]["metrics"]
     assert "## Arrival-time error on the test month" in out.with_suffix(".md").read_text()
+
+
+def test_zone_pair_median_falls_back_when_data_is_thin():
+    from ridegraph.nyc import zone_pair_median
+
+    train = trips_of(
+        [("2025-01-07T08:00", d, 1, 2, 2.0) for d in (500, 600, 700, 800, 900)]  # morning
+        + [("2025-01-07T13:00", d, 1, 2, 2.0) for d in (300, 320)]  # too few at midday
+        + [("2025-01-07T13:00", 1000, 3, 4, 2.0)]
+    )
+    test = trips_of(
+        [
+            ("2025-02-04T08:30", 650, 1, 2, 2.0),  # same pair and band
+            ("2025-02-04T13:30", 400, 1, 2, 2.0),  # same pair, other band
+            ("2025-02-04T13:30", 400, 5, 6, 2.0),  # never seen
+        ]
+    )
+    # 700 from the morning trips, 600 from all seven, 650 from all eight.
+    assert zone_pair_median(train, test).tolist() == [700.0, 600.0, 650.0]

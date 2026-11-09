@@ -355,7 +355,7 @@ def eta_study(
     seen in training, so the errors are what a deployed model would make.
     """
     from .ch import ContractionHierarchy
-    from .eta import RouteContext, compare_models
+    from .eta import RouteContext, compare_models, error_metrics
     from .router import Router, Scenario
     from .web_export import PRESETS
 
@@ -373,6 +373,7 @@ def eta_study(
     used: dict[str, int] = {}
     parts: list[Dataset] = []
     test_trips: Trips | None = None
+    train_trips: list[Trips] = []
     for path in [*train_files, test_file]:
         month = month_of(path)
         raw = read_trips(path)
@@ -387,6 +388,8 @@ def eta_study(
         parts.append(data)
         if path == test_file:
             test_trips = clean_trips.take(idx)
+        else:
+            train_trips.append(clean_trips.take(idx))
     assert test_trips is not None
     data = join(parts)
     n_test = len(parts[-1].y)
@@ -396,6 +399,13 @@ def eta_study(
     result, _ = compare_models(
         ctx, data, idx_train, idx_test, seed=seed, gnn_epochs=gnn_epochs, log=log
     )
+    # The baseline any routing has to beat: what trips between the same two
+    # zones at the same time of day took before.
+    median = zone_pair_median(concat_trips(train_trips), test_trips)
+    result.metrics = {
+        "Zone-pair median (no routing)": error_metrics(median, data.observed[idx_test]),
+        **result.metrics,
+    }
     return EtaStudy(
         result=result,
         train_months=[month_of(p) for p in train_files],
@@ -406,6 +416,55 @@ def eta_study(
         trips_used=used,
         by_distance=error_by_distance(result, data, idx_test, test_trips),
     )
+
+
+def concat_trips(parts: list[Trips]) -> Trips:
+    return Trips(
+        np.concatenate([p.pickup_s for p in parts]),
+        np.concatenate([p.duration_s for p in parts]),
+        np.concatenate([p.pickup_zone for p in parts]),
+        np.concatenate([p.dropoff_zone for p in parts]),
+        np.concatenate([p.distance_km for p in parts]),
+    )
+
+
+HOUR_BANDS = (0, 6, 10, 16, 20, 24)  # night, morning peak, midday, evening peak, evening
+
+
+def zone_pair_median(train: Trips, test: Trips, *, min_trips: int = 5) -> np.ndarray:
+    """Predict each test trip as the median of earlier trips between the same zones.
+
+    Uses the same zone pair in the same part of the day when at least
+    ``min_trips`` earlier trips match, otherwise the zone pair at any time,
+    otherwise every earlier trip. No routing is involved, which is what makes
+    it the baseline the router and the learned models have to beat.
+    """
+
+    def band(trips: Trips) -> np.ndarray:
+        return np.searchsorted(HOUR_BANDS, trips.hour, side="right") - 1
+
+    by_band: dict[tuple[int, int, int], list[float]] = {}
+    by_pair: dict[tuple[int, int], list[float]] = {}
+    for pu, do, b, d in zip(
+        train.pickup_zone.tolist(), train.dropoff_zone.tolist(), band(train).tolist(),
+        train.duration_s.tolist(), strict=True,
+    ):  # fmt: skip
+        by_band.setdefault((pu, do, b), []).append(d)
+        by_pair.setdefault((pu, do), []).append(d)
+    overall = float(np.median(train.duration_s))
+    out = np.empty(len(test))
+    for i, (pu, do, b) in enumerate(
+        zip(test.pickup_zone.tolist(), test.dropoff_zone.tolist(), band(test).tolist(), strict=True)
+    ):
+        same_band = by_band.get((pu, do, b), [])
+        same_pair = by_pair.get((pu, do), [])
+        if len(same_band) >= min_trips:
+            out[i] = np.median(same_band)
+        elif len(same_pair) >= min_trips:
+            out[i] = np.median(same_pair)
+        else:
+            out[i] = overall
+    return out
 
 
 def error_by_distance(

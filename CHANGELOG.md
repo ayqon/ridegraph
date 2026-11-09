@@ -11,9 +11,14 @@ uses [semantic versioning](https://semver.org/).
   obeyed by turn-aware routing in Python and in the browser.
 - Delivery stops and the travel-time origin can be dragged on the map; a
   click moves the nearer route pin once both are placed.
+- Junctions with a banned turn are marked on the map when turn costs are on.
+- New York study on real TLC taxi trips, with a zone-pair median baseline and
+  a model that combines that history with the route.
 
 ### Fixed
 - Route pins no longer reappear in other tabs when the map is moved.
+- Deploys rebuilt cities from map data downloaded before turn restrictions
+  existed, so no city had any.
 
 ## [1.0.0] - 2026-11-05
 

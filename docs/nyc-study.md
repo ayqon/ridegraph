@@ -40,6 +40,7 @@ target.
 | Ridge regression | 220 s | 32.7% | 63.2% | 21% |
 | Neural network (MLP) | 196 s | 28.4% | 55.1% | 25% |
 | Gradient-boosted trees | 192 s | 28.1% | 55.1% | 25% |
+| Gradient-boosted trees + zone history | 192 s | 28.2% | 55.1% | 25% |
 | Graph neural network | 200 s | 29.1% | 56.9% | 24% |
 
 The arrival window (10th to 90th percentile) contained 77.8% of test trips
@@ -71,6 +72,12 @@ has from its past trips; the route itself adds about 17 seconds a trip on
 average. That is a real but modest improvement, and the honest headline of
 this study.
 
+**Adding the history to the model changes nothing.** Giving the trees the
+zone-pair median as an extra input (taken, for each training month, from
+the other months only, so no trip sees its own time) scores 28.2%, the same
+as without it. The route features already carry what the history knows:
+which zones a trip joins, how long the route is and when it runs.
+
 **The learned correction still pays for itself against the router.** It cuts the router's error
 by more than a third overall, and by roughly half on trips of 4 to 7 km.
 Part of the router's error is a simple bias that one overall factor
@@ -95,9 +102,6 @@ obvious next thing to try.
 
 ## Limits and next steps
 
-- **Combine the two.** Giving the model the zone-pair median as an extra
-  input should do better than either on its own: history for the typical
-  trip, the route for what is unusual about this one.
 - **More months and other years,** to see whether the gap between training
   and test months is seasonal.
 - **Dispatch on real demand** (issue #5): replaying real request times and

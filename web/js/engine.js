@@ -275,6 +275,25 @@ export class Engine {
    * Build the edge-expanded graph, numbered exactly like ridegraph/turns.py:
    * segments 0..m-1 (CSR edge ids), start(x) = m + x, end(x) = m + n + x.
    */
+  /** Junctions where at least one turn is banned (OpenStreetMap restrictions). */
+  bannedJunctions() {
+    if (this._bannedJunctions) return this._bannedJunctions;
+    const found = new Set();
+    const banned = this.turn_banned;
+    if (banned) {
+      const { m, first_out: first, head } = this;
+      let at = 0;
+      for (let i = 0; i < m; i++) {
+        const via = head[i];
+        const degree = first[via + 1] - first[via];
+        for (let k = 0; k < degree; k++) if (banned[at + k]) found.add(via);
+        at += degree;
+      }
+    }
+    this._bannedJunctions = Int32Array.from(found);
+    return this._bannedJunctions;
+  }
+
   buildTurnGraph() {
     const { n, m, first_out: first, head, edgeSrc } = this;
     const N = m + 2 * n;

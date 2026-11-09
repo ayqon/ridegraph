@@ -218,6 +218,7 @@ function buildControls() {
       showMethodNote();
     }
     state.switchedFromCh = false;
+    updateLiveKey();
     run({ animate: true });
   });
   $("zoom-in").addEventListener("click", () => atlas.zoomAt(1.6));
@@ -418,6 +419,7 @@ async function fetchLive() {
 }
 
 function updateLiveKey() {
+  $("key-bans").hidden = !(state.turns && state.mode === "route" && engine.bannedJunctions().length);
   const on = liveState.on && state.mode === "route";
   $("key-closed").hidden = !(on && liveState.matched.some((d) => d.closed));
   $("key-slow").hidden = !(on && liveState.matched.some((d) => !d.closed));
@@ -441,8 +443,29 @@ function drawDisruptions(ctx) {
   ctx.setLineDash([]);
 }
 
+/** A small no-entry sign at each junction with a banned turn, once zoomed in. */
+function drawBans(ctx) {
+  if (!state.turns || atlas.view.scale < atlas.minScale * 2.5) return;
+  const width = ctx.canvas.clientWidth;
+  const height = ctx.canvas.clientHeight;
+  for (const node of engine.bannedJunctions()) {
+    const [x, y] = atlas.nodeScreen(node);
+    if (x < -8 || y < -8 || x > width + 8 || y > height + 8) continue;
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI * 2);
+    ctx.fillStyle = "#c8102e";
+    ctx.fill();
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(x - 3, y - 0.9, 6, 1.8);
+  }
+}
+
 function drawRouteOptions(ctx) {
   drawDisruptions(ctx);
+  drawBans(ctx);
   const charge = engine.manifest.charge;
   if (charge) {
     ctx.beginPath();

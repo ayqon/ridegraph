@@ -928,6 +928,25 @@ legend {
   background: #e86a10;
 }
 
+.key .ban {
+  position: relative;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #c8102e;
+  display: inline-block;
+}
+
+.key .ban::after {
+  content: "";
+  position: absolute;
+  left: 2.5px;
+  right: 2.5px;
+  top: 4.5px;
+  height: 2px;
+  background: #fff;
+}
+
 .dot {
   width: 8px;
   height: 8px;

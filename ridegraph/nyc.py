@@ -406,17 +406,20 @@ def eta_study(
         "Zone-pair median (no routing)": error_metrics(median, data.observed[idx_test]),
         **result.metrics,
     }
-    history_train = np.concatenate(
-        [
-            zone_pair_median(concat_trips(train_trips[:i] + train_trips[i + 1 :]), part)
-            for i, part in enumerate(train_trips)
-        ]
-    )
-    log("  training gradient-boosted trees with zone history")
-    combined = history_and_route(data, idx_train, idx_test, history_train, median, seed=seed)
-    result.metrics["Gradient-boosted trees + zone history"] = error_metrics(
-        combined, data.observed[idx_test]
-    )
+    # History for each training month comes from the other months, which
+    # needs at least two of them.
+    if len(train_trips) >= 2:
+        history_train = np.concatenate(
+            [
+                zone_pair_median(concat_trips(train_trips[:i] + train_trips[i + 1 :]), part)
+                for i, part in enumerate(train_trips)
+            ]
+        )
+        log("  training gradient-boosted trees with zone history")
+        combined = history_and_route(data, idx_train, idx_test, history_train, median, seed=seed)
+        result.metrics["Gradient-boosted trees + zone history"] = error_metrics(
+            combined, data.observed[idx_test]
+        )
     return EtaStudy(
         result=result,
         train_months=[month_of(p) for p in train_files],

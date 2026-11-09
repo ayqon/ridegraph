@@ -29,7 +29,7 @@ from __future__ import annotations
 import math
 import time
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from itertools import pairwise
 
 import numpy as np
@@ -92,7 +92,9 @@ class RouteContext:
         self.road_class = network.road_class.astype(np.int64)
         self.group = class_group(self.road_class)
         self.length_m = network.length_m.astype(np.float64)
-        turns = TurnGraph(network)
+        # Classify every manoeuvre, banned or not, so they can be looked up by
+        # their position among a segment's ways out.
+        turns = TurnGraph(replace(network, banned_turns=None))
         self.turn_kind = turns.turn_kind[: turns.num_manoeuvres]
         degree = np.diff(np.array(self.graph.first_out))
         self.m_start = np.concatenate([[0], np.cumsum(degree[network.dst])])

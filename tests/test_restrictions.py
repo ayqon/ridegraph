@@ -150,3 +150,24 @@ def test_bans_leave_other_turns_alone():
             x = dijkstra(free.graph(), free.start(a), free.end(b)).seconds
             y = dijkstra(banned.graph(), banned.start(a), banned.end(b)).seconds
             assert y >= x
+
+
+def test_eta_features_work_on_a_network_with_bans():
+    import random
+
+    from ridegraph.ch import ContractionHierarchy
+    from ridegraph.eta import RouteContext, World, simulate_trips
+    from ridegraph.router import Router, Scenario
+    from ridegraph.synthetic import grid_network
+
+    network = grid_network(14, 14, seed=3)
+    out: dict[int, list[int]] = {}
+    for u, v in zip(network.src.tolist(), network.dst.tolist(), strict=True):
+        out.setdefault(u, []).append(v)
+    turns = [(u, v, w) for u, v in zip(network.src.tolist(), network.dst.tolist(), strict=True)
+             for w in out.get(v, [])]  # fmt: skip
+    bans = np.array(random.Random(1).sample(turns, 40), dtype=np.int32)
+    ctx = RouteContext(RoadNetwork(**{**network.__dict__, "banned_turns": bans}))
+    hierarchies = {8.0: ContractionHierarchy.build(Router(ctx.network, Scenario(hour=8.0)).graph)}
+    data = simulate_trips(ctx, World(ctx, seed=0), hierarchies, 200, seed=2)
+    assert len(data.y) == 200

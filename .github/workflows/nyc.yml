@@ -36,7 +36,6 @@ jobs:
         with:
           path: data/raw
           key: osm-cities-${{ hashFiles('ridegraph/overpass.py', 'ridegraph/cities.py') }}
-          restore-keys: osm-
       - name: Build the Manhattan road graph
         run: |
           raw=$(python -c "from ridegraph.cities import get; print(get('new-york').raw_path)")

@@ -406,6 +406,17 @@ def eta_study(
         "Zone-pair median (no routing)": error_metrics(median, data.observed[idx_test]),
         **result.metrics,
     }
+    history_train = np.concatenate(
+        [
+            zone_pair_median(concat_trips(train_trips[:i] + train_trips[i + 1 :]), part)
+            for i, part in enumerate(train_trips)
+        ]
+    )
+    log("  training gradient-boosted trees with zone history")
+    combined = history_and_route(data, idx_train, idx_test, history_train, median, seed=seed)
+    result.metrics["Gradient-boosted trees + zone history"] = error_metrics(
+        combined, data.observed[idx_test]
+    )
     return EtaStudy(
         result=result,
         train_months=[month_of(p) for p in train_files],
@@ -465,6 +476,39 @@ def zone_pair_median(train: Trips, test: Trips, *, min_trips: int = 5) -> np.nda
         else:
             out[i] = overall
     return out
+
+
+def history_and_route(
+    data: Dataset,
+    idx_train: np.ndarray,
+    idx_test: np.ndarray,
+    history_train: np.ndarray,
+    history_test: np.ndarray,
+    *,
+    seed: int = 0,
+) -> np.ndarray:
+    """Predicted seconds from the route features plus what the zone pair took before.
+
+    The history input for each training month comes only from the other
+    training months, so no trip ever sees its own duration.
+    """
+    from sklearn.ensemble import HistGradientBoostingRegressor
+
+    def inputs(idx: np.ndarray, history: np.ndarray) -> np.ndarray:
+        return np.column_stack([data.X[idx], np.log(history / data.graph_eta[idx])])
+
+    model = HistGradientBoostingRegressor(
+        max_iter=400,
+        learning_rate=0.06,
+        max_leaf_nodes=31,
+        min_samples_leaf=40,
+        l2_regularization=1.0,
+        early_stopping=True,
+        validation_fraction=0.1,
+        random_state=seed,
+    )
+    model.fit(inputs(idx_train, history_train), data.y[idx_train])
+    return data.graph_eta[idx_test] * np.exp(model.predict(inputs(idx_test, history_test)))
 
 
 def error_by_distance(

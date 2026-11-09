@@ -253,6 +253,8 @@ def test_the_whole_study_runs_on_a_small_city(tmp_path):
     assert all(study.trips_used[m] <= 400 for m in study.trips_used)
     metrics = study.result.metrics
     assert "Gradient-boosted trees" in metrics and "Graph ETA (router only)" in metrics
+    assert "Zone-pair median (no routing)" in metrics
+    assert "Gradient-boosted trees + zone history" in metrics
     assert study.by_distance and study.by_distance[0]["trips"] > 0
 
 

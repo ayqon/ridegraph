@@ -44,7 +44,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: data/raw
-          key: osm-cities-${{ hashFiles('ridegraph/overpass.py', 'ridegraph/cities.py') }}
+          key: osm-cities-v2-${{ hashFiles('ridegraph/overpass.py', 'ridegraph/cities.py') }}
       - name: Download each city that is missing
         if: steps.citydata.outputs.cache-hit != 'true'
         run: |

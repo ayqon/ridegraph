@@ -34,6 +34,7 @@ target.
 
 | Model | Mean abs. error | Mean abs. % error | 90th pct. % error | Within 10% |
 |---|---:|---:|---:|---:|
+| Zone-pair median, no routing | 209 s | 30.7% | 60.2% | 23% |
 | Router alone | 362 s | 43.4% | 68.9% | 7% |
 | Router x one overall factor | 242 s | 36.0% | 71.6% | 20% |
 | Ridge regression | 220 s | 32.7% | 63.2% | 21% |
@@ -61,7 +62,16 @@ is 28%. The simulated city's only noise is what it was built with; real
 trips add traffic incidents, double-parked vehicles, pickups that take
 longer than expected, and drivers who do not follow the router's route.
 
-**The learned correction still pays for itself.** It cuts the router's error
+**The routing adds less than it seems.** The fairest baseline needs no
+routing at all: predict each trip as the median of earlier trips between
+the same two zones in the same part of the day. That alone is 30.7% off,
+against 43.4% for the router and 28.1% for the best model. So most of the
+learned model's gain over the router is knowledge any taxi company already
+has from its past trips; the route itself adds about 17 seconds a trip on
+average. That is a real but modest improvement, and the honest headline of
+this study.
+
+**The learned correction still pays for itself against the router.** It cuts the router's error
 by more than a third overall, and by roughly half on trips of 4 to 7 km.
 Part of the router's error is a simple bias that one overall factor
 removes, but only part: time of day, where the trip runs and its length all
@@ -85,10 +95,9 @@ obvious next thing to try.
 
 ## Limits and next steps
 
-- **A stronger baseline.** The fair comparison for real trips is not only
-  the router but also the median duration for the same zone pair and hour
-  in the training months, which needs no routing at all. If the learned
-  correction does not beat that, the routing is not adding information.
+- **Combine the two.** Giving the model the zone-pair median as an extra
+  input should do better than either on its own: history for the typical
+  trip, the route for what is unusual about this one.
 - **More months and other years,** to see whether the gap between training
   and test months is seasonal.
 - **Dispatch on real demand** (issue #5): replaying real request times and

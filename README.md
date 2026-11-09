@@ -60,8 +60,8 @@ Arrival-time error on 4,000 trips the models never saw:
 | Graph neural network | 6.6% | 80% |
 
 On real Manhattan taxi trips (TLC records, trained on January to March 2025
-and tested on April), the router alone is 43% off on average and the learned
-model 28%; see [the New York study](docs/nyc-study.md). The London
+and tested on April), the router alone is 43% off on average, the median of
+earlier trips between the same zones 31%, and the learned model 28%; see [the New York study](docs/nyc-study.md). The London
 arrival-time and dispatch results above use simulated trips, because real
 trip data for London is not public. The simulated city's speeds are checked
 against Department for Transport and TomTom figures; see
